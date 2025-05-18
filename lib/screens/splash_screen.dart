@@ -37,10 +37,10 @@ class _SplashScreenState extends State<SplashScreen>
     _animationController.forward();
 
     // Check if onboarding is completed and auth status before navigating
+    final authService = Provider.of<AuthService>(context, listen: false);
     Timer(const Duration(seconds: 3), () async {
       final bool onboardingComplete =
           await PreferencesService.isOnboardingComplete();
-      final authService = Provider.of<AuthService>(context, listen: false);
 
       if (mounted) {
         // If onboarding is not complete, show onboarding
@@ -87,7 +87,7 @@ class _SplashScreenState extends State<SplashScreen>
                   width: 200,
                   height: 200,
                   decoration: BoxDecoration(
-                    color: AppColors.secondary.withOpacity(0.2),
+                    color: AppColors.secondary.withAlpha((0.2 * 255).round()),
                     shape: BoxShape.circle,
                   ),
                   child: Lottie.asset(
