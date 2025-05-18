@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ovarian_cyst_support_app/services/provider_service.dart';
-import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:ovarian_cyst_support_app/screens/appointment_booking_screen.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
@@ -15,7 +14,6 @@ class ProviderSearchScreen extends StatefulWidget {
 
 class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
   final ProviderService _providerService = ProviderService();
-  final DatabaseService _databaseService = DatabaseService();
 
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -79,12 +77,11 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
     });
 
     try {
-      final providers = await _providerService.getHealthcareProviders(
+      final providers = await _providerService.getProviders(
         specialty:
             _selectedSpecialty != 'All Specialties' ? _selectedSpecialty : null,
         location:
             _selectedLocation != 'All Locations' ? _selectedLocation : null,
-        maxDistance: _maxDistance,
       );
 
       setState(() {
@@ -327,7 +324,9 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
           _applyFilters();
         },
         backgroundColor: Colors.grey[100],
-        selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+        selectedColor: Theme.of(
+          context,
+        ).primaryColor.withAlpha((0.2 * 255).round()),
         labelStyle: TextStyle(
           color: isSelected ? Theme.of(context).primaryColor : Colors.black87,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -350,7 +349,9 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
           ListTile(
             leading: CircleAvatar(
               radius: 25,
-              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
+              backgroundColor: Theme.of(
+                context,
+              ).primaryColor.withAlpha((0.2 * 255).round()),
               child: Text(
                 provider['name'].substring(0, 1),
                 style: TextStyle(
@@ -734,7 +735,7 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
                           radius: 30,
                           backgroundColor: Theme.of(
                             context,
-                          ).primaryColor.withOpacity(0.2),
+                          ).primaryColor.withAlpha((0.2 * 255).round()),
                           child: Text(
                             provider['name'].substring(0, 1),
                             style: TextStyle(

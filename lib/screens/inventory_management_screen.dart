@@ -5,6 +5,9 @@ import 'package:ovarian_cyst_support_app/services/sync_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:intl/intl.dart';
 
+// Create an alias for backward compatibility
+typedef TreatmentType = TreatmentItemType;
+
 class InventoryManagementScreen extends StatefulWidget {
   final String? facilityId;
   final bool isAdmin;
@@ -37,18 +40,22 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
   bool _requiresPrescription = false;
 
   // Get display text for type enum
-  String getTypeString(TreatmentType type) {
+  String getTypeString(TreatmentItemType type) {
     switch (type) {
-      case TreatmentType.medication:
+      case TreatmentItemType.medication:
         return 'Medication';
-      case TreatmentType.procedure:
+      case TreatmentItemType.procedure:
         return 'Procedure';
-      case TreatmentType.equipment:
+      case TreatmentItemType.equipment:
         return 'Equipment';
-      case TreatmentType.supplies:
-        return 'Supplies';
-      default:
+      case TreatmentItemType.service:
+        return 'Service';
+      case TreatmentItemType.test:
+        return 'Test';
+      case TreatmentItemType.other:
         return 'Other';
+      default:
+        return 'Unknown';
     }
   }
 
@@ -120,7 +127,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
             }
 
             // Apply low stock filter
-            if (_showLowStock && item.stockLevel > 10) {
+            if (_showLowStock && (item.stockLevel ?? 0) > 10) {
               return false;
             }
 
@@ -443,9 +450,9 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
   Widget _buildInventoryItemCard(TreatmentItem item) {
     // Determine stock level color
     Color stockColor;
-    if (item.stockLevel <= 0) {
+    if ((item.stockLevel ?? 0) <= 0) {
       stockColor = Colors.red;
-    } else if (item.stockLevel < 10) {
+    } else if ((item.stockLevel ?? 0) < 10) {
       stockColor = Colors.orange;
     } else {
       stockColor = Colors.green;
@@ -769,7 +776,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
   }
 
   void _showStockUpdateDialog(TreatmentItem item) {
-    int newStock = item.stockLevel;
+    int newStock = item.stockLevel ?? 0;
 
     showDialog(
       context: context,
