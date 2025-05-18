@@ -198,7 +198,7 @@ class _TrackingScreenState extends State<TrackingScreen>
           Icon(
             Icons.medication_outlined,
             size: 80,
-            color: AppColors.textLight.withOpacity(0.5),
+            color: AppColors.textLight.withAlpha((0.5 * 255).toInt()),
           ),
           const SizedBox(height: 16),
           Text(
@@ -223,7 +223,7 @@ class _TrackingScreenState extends State<TrackingScreen>
           Icon(
             Icons.calendar_today_outlined,
             size: 80,
-            color: AppColors.textLight.withOpacity(0.5),
+            color: AppColors.textLight.withAlpha((0.5 * 255).toInt()),
           ),
           const SizedBox(height: 16),
           Text(

@@ -165,10 +165,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () async {
                 Navigator.of(context).pop();
 
+                // Capture the context before the async gap
+                final rootContext = context;
+
                 try {
                   // Show loading dialog
                   showDialog(
-                    context: context,
+                    context: rootContext,
                     barrierDismissible: false,
                     builder: (BuildContext context) {
                       return const Center(child: CircularProgressIndicator());
@@ -177,7 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   // Get auth service
                   final authService = Provider.of<AuthService>(
-                    context,
+                    rootContext,
                     listen: false,
                   );
 
@@ -186,10 +189,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   if (mounted) {
                     // Close loading dialog
-                    Navigator.of(context).pop();
+                    Navigator.of(rootContext).pop();
 
                     // Navigate to login screen
-                    Navigator.of(context).pushAndRemoveUntil(
+                    Navigator.of(rootContext).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (context) => const LoginScreen(),
                       ),
@@ -197,7 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
 
                     // Show success message
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(rootContext).showSnackBar(
                       const SnackBar(
                         content: Text('Account deleted successfully'),
                       ),
@@ -206,10 +209,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 } catch (e) {
                   if (mounted) {
                     // Close loading dialog if open
-                    Navigator.of(context).pop();
+                    Navigator.of(rootContext).pop();
 
                     // Show error message
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(rootContext).showSnackBar(
                       SnackBar(content: Text('Error deleting account: $e')),
                     );
                   }
