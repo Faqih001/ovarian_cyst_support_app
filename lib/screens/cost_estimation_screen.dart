@@ -5,7 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:intl/intl.dart';
 
 class CostEstimationScreen extends StatefulWidget {
-  const CostEstimationScreen({Key? key}) : super(key: key);
+  const CostEstimationScreen({super.key});
 
   @override
   State<CostEstimationScreen> createState() => _CostEstimationScreenState();
@@ -26,10 +26,10 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
   String _selectedTreatmentType = 'Regular Checkup';
   String _selectedFacility = 'Public Hospital';
   String _selectedLocation = 'Nairobi';
-  List<String> _selectedProcedures = [];
+  final List<String> _selectedProcedures = [];
 
   // Treatment types
-  List<String> _treatmentTypes = [
+  final List<String> _treatmentTypes = [
     'Regular Checkup',
     'Diagnostic Services',
     'Minor Cyst Removal',
@@ -38,7 +38,7 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
   ];
 
   // Facility types
-  List<String> _facilityTypes = [
+  final List<String> _facilityTypes = [
     'Public Hospital',
     'Private Hospital',
     'Specialized Clinic',
@@ -46,7 +46,7 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
   ];
 
   // Locations
-  List<String> _locations = [
+  final List<String> _locations = [
     'Nairobi',
     'Mombasa',
     'Kisumu',

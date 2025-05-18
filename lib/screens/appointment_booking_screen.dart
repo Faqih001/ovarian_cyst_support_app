@@ -11,10 +11,10 @@ class AppointmentBookingScreen extends StatefulWidget {
   final DateTime? initialDate;
 
   const AppointmentBookingScreen({
-    Key? key,
+    super.key,
     required this.provider,
     this.initialDate,
-  }) : super(key: key);
+  });
 
   @override
   State<AppointmentBookingScreen> createState() =>
@@ -46,7 +46,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
 
   // Selected services
   List<Map<String, dynamic>> _availableServices = [];
-  List<String> _selectedServices = [];
+  final List<String> _selectedServices = [];
 
   @override
   void initState() {
@@ -263,7 +263,9 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
 
       // Set reminder if enabled
       if (_reminderEnabled) {
-        await NotificationService.scheduleAppointmentReminder(bookedAppointment);
+        await NotificationService.scheduleAppointmentReminder(
+          bookedAppointment,
+        );
       }
 
       setState(() {

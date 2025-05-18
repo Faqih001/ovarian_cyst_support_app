@@ -7,7 +7,7 @@ import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:intl/intl.dart';
 
 class ProviderSearchScreen extends StatefulWidget {
-  const ProviderSearchScreen({Key? key}) : super(key: key);
+  const ProviderSearchScreen({super.key});
 
   @override
   State<ProviderSearchScreen> createState() => _ProviderSearchScreenState();
@@ -30,14 +30,14 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
   String _selectedLocation = 'All Locations';
   double _maxDistance = 50.0; // kilometers
 
-  List<String> _specialties = [
+  final List<String> _specialties = [
     'All Specialties',
     'Gynecology',
     'Obstetrics',
     'Fertility',
     'Oncology',
   ];
-  List<String> _locations = [
+  final List<String> _locations = [
     'All Locations',
     'Nairobi',
     'Mombasa',

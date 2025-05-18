@@ -301,7 +301,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   void _showCreatePostDialog() {
-    final TextEditingController _postController = TextEditingController();
+    final TextEditingController postController = TextEditingController();
 
     showDialog(
       context: context,
@@ -317,7 +317,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: _postController,
+                controller: postController,
                 maxLines: 5,
                 decoration: InputDecoration(
                   hintText: 'What\'s on your mind?',
@@ -341,7 +341,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (_postController.text.isNotEmpty) {
+                if (postController.text.isNotEmpty) {
                   setState(() {
                     _posts.insert(
                       0,
@@ -349,7 +349,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         username: 'You',
                         userImage: 'Y',
                         timeAgo: 'Just now',
-                        content: _postController.text,
+                        content: postController.text,
                         likes: 0,
                         comments: 0,
                       ),

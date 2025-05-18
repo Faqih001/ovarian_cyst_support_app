@@ -9,7 +9,7 @@ import 'package:ovarian_cyst_support_app/services/ai_service.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
 
 class SymptomPredictionScreen extends StatefulWidget {
-  const SymptomPredictionScreen({Key? key}) : super(key: key);
+  const SymptomPredictionScreen({super.key});
 
   @override
   State<SymptomPredictionScreen> createState() =>
@@ -614,7 +614,7 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),

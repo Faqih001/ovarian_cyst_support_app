@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/auth/login_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
-import 'package:ovarian_cyst_support_app/services/notification_service.dart';
 import 'package:ovarian_cyst_support_app/services/sync_service.dart';
 
 class SettingsScreen extends StatefulWidget {

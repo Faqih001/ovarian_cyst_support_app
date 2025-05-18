@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 
 class ChatbotScreen extends StatefulWidget {
-  const ChatbotScreen({Key? key}) : super(key: key);
+  const ChatbotScreen({super.key});
 
   @override
   State<ChatbotScreen> createState() => _ChatbotScreenState();

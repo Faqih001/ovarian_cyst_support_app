@@ -302,7 +302,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   void _showCreatePostDialog() {
-    final TextEditingController _postController = TextEditingController();
+    final TextEditingController postController = TextEditingController();
 
     showDialog(
       context: context,
@@ -318,7 +318,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: _postController,
+                controller: postController,
                 maxLines: 5,
                 decoration: InputDecoration(
                   hintText: 'What\'s on your mind?',
@@ -342,7 +342,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                if (_postController.text.isNotEmpty) {
+                if (postController.text.isNotEmpty) {
                   // Create a new post with a unique ID
                   final newId = '${_posts.length + 1}';
                   final newPost = CommunityPost(
@@ -350,7 +350,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     userId: 'current_user',
                     username: 'You',
                     userAvatar: '',
-                    content: _postController.text,
+                    content: postController.text,
                     timestamp: DateTime.now(),
                     tags: ['support'],
                     isLikedByCurrentUser: false,

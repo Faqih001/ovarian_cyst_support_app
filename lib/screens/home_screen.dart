@@ -655,7 +655,7 @@ class ResourceCard extends StatelessWidget {
   }
 }
             SliverToBoxAdapter(
-              child: Padding(
+              child = Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1010,16 +1010,16 @@ class ResourceCard extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
+        currentIndex = _currentIndex,
+        onTap = (index) {
           setState(() {
             _currentIndex = index;
           });
         },
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textLight,
-        type: BottomNavigationBarType.fixed,
-        items: const [
+        selectedItemColor = AppColors.primary,
+        unselectedItemColor = AppColors.textLight,
+        type = BottomNavigationBarType.fixed,
+        items = const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Home',

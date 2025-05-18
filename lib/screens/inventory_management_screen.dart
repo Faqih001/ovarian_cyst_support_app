@@ -10,10 +10,10 @@ class InventoryManagementScreen extends StatefulWidget {
   final bool isAdmin;
 
   const InventoryManagementScreen({
-    Key? key,
+    super.key,
     this.facilityId,
     this.isAdmin = false,
-  }) : super(key: key);
+  });
 
   @override
   State<InventoryManagementScreen> createState() =>
@@ -867,8 +867,7 @@ class TreatmentItemForm extends StatefulWidget {
   final String? facilityId;
   final TreatmentItem? editItem;
 
-  const TreatmentItemForm({Key? key, this.facilityId, this.editItem})
-    : super(key: key);
+  const TreatmentItemForm({super.key, this.facilityId, this.editItem});
 
   @override
   State<TreatmentItemForm> createState() => _TreatmentItemFormState();

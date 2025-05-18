@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
-import 'package:ovarian_cyst_support_app/models/medication.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
 
 class MedicationTrackingScreen extends StatefulWidget {

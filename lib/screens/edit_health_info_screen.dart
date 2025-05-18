@@ -134,7 +134,7 @@ class _EditHealthInfoScreenState extends State<EditHealthInfoScreen> {
                 deleteIcon: const Icon(Icons.cancel, size: 16),
                 onDeleted: () => onDelete(entry.key),
               );
-            }).toList(),
+            }),
 
             // Add button
             ActionChip(
