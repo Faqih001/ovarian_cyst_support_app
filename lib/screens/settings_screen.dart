@@ -164,7 +164,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               onPressed: () async {
                 Navigator.of(context).pop();
-                
+
                 try {
                   // Show loading dialog
                   showDialog(
@@ -174,33 +174,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       return const Center(child: CircularProgressIndicator());
                     },
                   );
-                  
+
                   // Get auth service
-                  final authService = Provider.of<AuthService>(context, listen: false);
-                  
+                  final authService = Provider.of<AuthService>(
+                    context,
+                    listen: false,
+                  );
+
                   // Delete user account
                   await authService.deleteAccount();
-                  
+
                   if (mounted) {
                     // Close loading dialog
                     Navigator.of(context).pop();
-                    
+
                     // Navigate to login screen
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
                       (route) => false,
                     );
-                    
+
                     // Show success message
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Account deleted successfully')),
+                      const SnackBar(
+                        content: Text('Account deleted successfully'),
+                      ),
                     );
                   }
                 } catch (e) {
                   if (mounted) {
                     // Close loading dialog if open
                     Navigator.of(context).pop();
-                    
+
                     // Show error message
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error deleting account: $e')),
@@ -291,26 +298,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Clear Cache'),
             subtitle: const Text('Free up storage space'),
             trailing: const Icon(Icons.cleaning_services_outlined),
-            onTap: () async {                // Clear cache implementation
-                try {
-                  // Clear shared preferences
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.clear();
+            onTap: () async {
+              // Clear cache implementation
+              try {
+                // Clear shared preferences
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
 
-                  // Reload preferences with default values
-                  if (mounted) {
-                    _loadPreferences();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cache cleared')),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error clearing cache: $e')),
-                    );
-                  }
+                // Reload preferences with default values
+                if (mounted) {
+                  _loadPreferences();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Cache cleared')),
+                  );
                 }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error clearing cache: $e')),
+                  );
+                }
+              }
             },
           ),
 

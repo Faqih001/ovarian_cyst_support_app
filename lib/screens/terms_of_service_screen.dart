@@ -20,16 +20,16 @@ class TermsOfServiceScreen extends StatelessWidget {
             Text(
               'Terms of Service',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               'Last Updated: May 18, 2025',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
             _buildSectionTitle(context, 'Acceptance of Terms'),
@@ -87,9 +87,9 @@ class TermsOfServiceScreen extends StatelessWidget {
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
+          fontWeight: FontWeight.bold,
+          color: AppColors.textPrimary,
+        ),
       ),
     );
   }

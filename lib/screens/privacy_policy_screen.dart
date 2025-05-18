@@ -20,16 +20,16 @@ class PrivacyPolicyScreen extends StatelessWidget {
             Text(
               'Privacy Policy',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               'Last Updated: May 18, 2025',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
             _buildSectionTitle(context, 'Introduction'),
@@ -50,7 +50,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
               'We use the information we collect to provide, maintain, and improve our services, including to:',
             ),
             _buildBulletPoint('Provide and deliver the services you request'),
-            _buildBulletPoint('Send you technical notices and support messages'),
+            _buildBulletPoint(
+              'Send you technical notices and support messages',
+            ),
             _buildBulletPoint('Respond to your comments and questions'),
             _buildBulletPoint('Personalize your experience'),
             _buildBulletPoint('Monitor and analyze trends and usage'),
@@ -80,9 +82,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
+          fontWeight: FontWeight.bold,
+          color: AppColors.textPrimary,
+        ),
       ),
     );
   }
