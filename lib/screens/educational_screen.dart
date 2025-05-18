@@ -147,7 +147,7 @@ class BasicsTab extends StatelessWidget {
               return Container(
                 width: double.infinity,
                 height: 200,
-                color: AppColors.secondary.withOpacity(0.3),
+                color: AppColors.secondary.withAlpha((0.3 * 255).toInt()),
                 child: const Center(
                   child: Text('Image will be displayed here'),
                 ),
@@ -408,7 +408,7 @@ class TreatmentTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.secondary.withOpacity(0.2),
+        color: AppColors.secondary.withAlpha((0.2 * 255).toInt()),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

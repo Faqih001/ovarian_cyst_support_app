@@ -6,6 +6,8 @@ import 'package:ovarian_cyst_support_app/screens/auth/login_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/sync_service.dart';
 import 'package:ovarian_cyst_support_app/services/theme_service.dart';
+import 'package:ovarian_cyst_support_app/screens/privacy_policy_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/terms_of_service_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -156,6 +158,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () async {
                 Navigator.of(context).pop();
                 
@@ -200,11 +206,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SnackBar(content: Text('Error deleting account: $e')),
                     );
                   }
-                },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
+                }
+              },
               child: const Text('Delete'),
             ),
           ],
@@ -382,7 +385,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Terms of Service'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              // TODO: Navigate to terms of service screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TermsOfServiceScreen(),
+                ),
+              );
             },
           ),
           ListTile(

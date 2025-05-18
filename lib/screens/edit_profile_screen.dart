@@ -169,7 +169,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.secondary.withOpacity(0.2),
+                      color: AppColors.secondary.withAlpha((0.2 * 255).toInt()),
                       image:
                           _photoUrl != null
                               ? DecorationImage(
