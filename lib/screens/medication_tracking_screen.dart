@@ -646,19 +646,15 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                             medication['id'],
                           );
 
-                          // Store context before async gap
-                          final currentContext = context;
+                          // Check if still mounted after async operation
+                          if (!mounted) return;
 
-                          if (mounted) {
-                            ScaffoldMessenger.of(currentContext).showSnackBar(
-                              const SnackBar(
-                                content: Text('Medication deleted'),
-                              ),
-                            );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Medication deleted')),
+                          );
 
-                            // Reload medications
-                            await _loadMedications();
-                          }
+                          // Reload medications
+                          await _loadMedications();
                         }
                       },
                       icon: const Icon(Icons.delete, color: Colors.red),

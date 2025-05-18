@@ -128,11 +128,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             // Mark onboarding as completed
                             await PreferencesService.setOnboardingComplete();
 
-                            // Store context before async gap
-                            final currentContext = context;
-
+                            // Check if still mounted after async operation
                             if (mounted) {
-                              Navigator.of(currentContext).pushReplacement(
+                              Navigator.of(context).pushReplacement(
                                 MaterialPageRoute(
                                   builder: (context) => const LoginScreen(),
                                 ),

@@ -339,37 +339,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () async {
-                final authService = Provider.of<AuthService>(
-                  context,
-                  listen: false,
-                );
+              onPressed: () {
+                // Close the confirmation dialog
+                Navigator.of(context).pop();
 
-                // Store the BuildContext in a local variable
-                final currentContext = context;
-
-                // Show loading indicator
-                showDialog(
-                  context: currentContext,
-                  barrierDismissible: false,
-                  builder: (BuildContext context) {
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                );
-
-                // Perform logout
-                await authService.signOut();
-
-                // Navigate to login screen
-                if (mounted) {
-                  Navigator.of(currentContext).pop(); // Close dialog
-                  Navigator.of(currentContext).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => const LoginScreen(),
-                    ),
-                    (route) => false,
-                  );
-                }
+                // Call logout function
+                _performLogout();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -380,6 +355,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _performLogout() async {
+    if (!mounted) return;
+
+    final authService = Provider.of<AuthService>(context, listen: false);
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+
+    // Perform logout
+    await authService.signOut();
+
+    // Check if still mounted after async operation
+    if (!mounted) return;
+
+    // Close loading dialog
+    Navigator.of(context).pop();
+
+    // Navigate to login screen
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
     );
   }
 }
