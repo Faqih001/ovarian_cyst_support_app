@@ -654,6 +654,7 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                           );
 
                           // Reload medications
+                          if (!mounted) return;
                           await _loadMedications();
                         }
                       },

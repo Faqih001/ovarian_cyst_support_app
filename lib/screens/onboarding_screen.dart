@@ -126,16 +126,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             );
                           } else {
                             // Mark onboarding as completed
+                            if (!mounted) return;
                             await PreferencesService.setOnboardingComplete();
 
                             // Check if still mounted after async operation
-                            if (mounted) {
-                              Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(
-                                  builder: (context) => const LoginScreen(),
-                                ),
-                              );
-                            }
+                            if (!mounted) return;
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (context) => const LoginScreen(),
+                              ),
+                            );
                           }
                         },
                         style: AppStyles.primaryButton,
