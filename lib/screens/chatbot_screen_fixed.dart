@@ -312,7 +312,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 BoxShadow(
                   offset: const Offset(0, -2),
                   blurRadius: 4,
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withAlpha(25), // Replaced withOpacity(0.1)
                 ),
               ],
             ),
@@ -427,7 +427,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               width: 36,
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                color: Theme.of(context).primaryColor.withAlpha(25), // Replaced withOpacity(0.1)
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -457,7 +457,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withAlpha(13), // Replaced withOpacity(0.05)
                         offset: const Offset(0, 1),
                         blurRadius: 3,
                       ),

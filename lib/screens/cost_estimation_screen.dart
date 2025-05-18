@@ -12,7 +12,7 @@ class CostEstimationScreen extends StatefulWidget {
 }
 
 class _CostEstimationScreenState extends State<CostEstimationScreen> {
-  final ProviderService _providerService = ProviderService();
+  // Removed unused field _providerService
   final PaymentService _paymentService = PaymentService();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -20,7 +20,7 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
 
   bool _isLoading = false;
   bool _isOffline = false;
-  String _errorMessage = '';
+  // Removed unused field _errorMessage
 
   // Selected services, treatments, etc.
   String _selectedTreatmentType = 'Regular Checkup';
@@ -743,7 +743,7 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.1),
+                                    color: statusColor.withAlpha(25), // Replaced withOpacity(0.1)
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
@@ -878,6 +878,9 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
         _isLoading = false;
       });
 
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
+
       // Close bottom sheet
       Navigator.pop(context);
 
@@ -886,6 +889,8 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
 
       // In a real app, this would open the receipt in a webview or PDF viewer
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
       });

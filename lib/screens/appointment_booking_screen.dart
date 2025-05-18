@@ -365,12 +365,16 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
           'Payment request sent. Please check your phone to complete.',
         );
 
+        // Check if widget is still mounted after async operation
+        if (!mounted) return;
+
         // Close the current dialog
         Navigator.of(context).pop();
 
         // Navigate back to previous screen
         Navigator.of(context).pop(true);
       } else {
+        if (!mounted) return;
         _showMessage('Payment failed: ${paymentResult['message']}');
       }
     } catch (e) {
@@ -818,7 +822,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
+              backgroundColor: Theme.of(context).primaryColor.withAlpha(51), // Replaced withOpacity(0.2)
               child: Text(
                 widget.provider['name'].substring(0, 1),
                 style: TextStyle(
