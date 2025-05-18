@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <rect x="40" y="40" width="120" height="120" rx="10" fill="#F6C6EA" opacity="0.3"/>
+  
+  <!-- Calendar Header -->
+  <rect x="50" y="50" width="100" height="30" rx="5" fill="#EE6AA7"/>
+  <text x="100" y="70" font-family="Arial" font-size="14" text-anchor="middle" fill="#FFFFFF">Health Tracker</text>
+  
+  <!-- Calendar Days -->
+  <rect x="60" y="90" width="20" height="20" rx="3" fill="#EE6AA7" opacity="0.8"/>
+  <rect x="90" y="90" width="20" height="20" rx="3" fill="#7F93D1"/>
+  <rect x="120" y="90" width="20" height="20" rx="3" fill="#F6C6EA"/>
+  
+  <rect x="60" y="120" width="20" height="20" rx="3" fill="#F6C6EA"/>
+  <rect x="90" y="120" width="20" height="20" rx="3" fill="#EE6AA7" opacity="0.8"/>
+  <rect x="120" y="120" width="20" height="20" rx="3" fill="#7F93D1"/>
+</svg>
