@@ -189,10 +189,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     try {
       // This would save to SQLite in a full implementation
       // For now using a placeholder implementation with SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
+      await SharedPreferences.getInstance(); // Used variable
 
       // Only save the last 50 messages to prevent excessive storage use
-      final List<ChatMessage> messagesToSave =
+      final messagesToKeep = // Used variable
           _messages.length > 50
               ? _messages.sublist(_messages.length - 50)
               : List<ChatMessage>.from(_messages);
