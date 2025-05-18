@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ovarian_cyst_support_app/services/provider_service.dart';
-import 'package:ovarian_cyst_support_app/services/payment_service.dart';
 import 'package:ovarian_cyst_support_app/services/notification_service.dart';
 import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -23,7 +22,6 @@ class AppointmentBookingScreen extends StatefulWidget {
 
 class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   final ProviderService _providerService = ProviderService();
-  final PaymentService _paymentService = PaymentService();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _purposeController = TextEditingController();
@@ -36,7 +34,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   bool _isLoading = false;
   bool _isOffline = false;
   String _errorMessage = '';
-  final bool _reminderEnabled = true;
+  bool _reminderEnabled = true;
 
   // Payment details
   double _consultationFee = 0;
@@ -206,12 +204,11 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
 
       // Schedule a reminder
       if (_reminderEnabled) {
-        NotificationService.scheduleAppointmentReminder(result);
+        NotificationService.scheduleAppointmentReminderWithModel(result);
       }
 
-        // Show success dialog
-        _showBookingSuccessDialog(result.id);
-      }
+      // Show success dialog
+      _showBookingSuccessDialog(result.id);
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to book appointment: ${e.toString()}';

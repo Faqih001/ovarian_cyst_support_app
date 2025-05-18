@@ -533,7 +533,7 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
                       ),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: Theme.of(context).primaryColor.withOpacity(0.15),
+                        color: Theme.of(context).primaryColor.withAlpha((0.15 * 255).round()),
                       ),
                     ),
                   ],
@@ -704,7 +704,7 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: riskColor.withOpacity(0.2),
+                                color: riskColor.withAlpha((0.2 * 255).round()),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(

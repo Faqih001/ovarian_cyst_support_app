@@ -7,7 +7,11 @@ import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class SymptomTrackingScreen extends StatefulWidget {
-  const SymptomTrackingScreen({super.key});
+  const SymptomTrackingScreen({super                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withAlpha((0.2 * 255).round()),
+                        borderRadius: BorderRadius.circular(16),
+                      ),);
 
   @override
   State<SymptomTrackingScreen> createState() => _SymptomTrackingScreenState();
@@ -446,7 +450,7 @@ class _SymptomTrackingScreenState extends State<SymptomTrackingScreen>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.secondary.withOpacity(0.2),
+                        color: AppColors.secondary.withAlpha((0.2 * 255).round()),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
@@ -483,7 +487,7 @@ class _SymptomTrackingScreenState extends State<SymptomTrackingScreen>
                               symptom,
                               style: const TextStyle(fontSize: 12),
                             ),
-                            backgroundColor: AppColors.primary.withOpacity(0.1),
+                            backgroundColor: AppColors.primary.withAlpha((0.1 * 255).round()),
                           );
                         }).toList(),
                   ),
@@ -627,7 +631,7 @@ class _SymptomTrackingScreenState extends State<SymptomTrackingScreen>
                             dotData: const FlDotData(show: true),
                             belowBarData: BarAreaData(
                               show: true,
-                              color: Colors.red.withOpacity(0.1),
+                              color: Colors.red.withAlpha((0.1 * 255).round()),
                             ),
                           ),
                           // Bloating line
@@ -646,7 +650,7 @@ class _SymptomTrackingScreenState extends State<SymptomTrackingScreen>
                             dotData: const FlDotData(show: true),
                             belowBarData: BarAreaData(
                               show: true,
-                              color: Colors.blue.withOpacity(0.1),
+                              color: Colors.blue.withAlpha((0.1 * 255).round()),
                             ),
                           ),
                         ],
@@ -859,7 +863,7 @@ class _SymptomTrackingScreenState extends State<SymptomTrackingScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.secondary.withOpacity(0.1),
+        color: AppColors.secondary.withAlpha((0.1 * 255).round()),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
