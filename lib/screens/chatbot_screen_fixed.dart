@@ -247,12 +247,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        color: Theme.of(context).primaryColor.withAlpha(25), // Replaced withOpacity(0.1)
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: Theme.of(
                             context,
-                          ).primaryColor.withOpacity(0.5),
+                          ).primaryColor.withAlpha(128), // Replaced withOpacity(0.5)
                         ),
                       ),
                       child: Center(
@@ -282,7 +282,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     height: 32,
                     width: 32,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: Theme.of(context).primaryColor.withAlpha(25), // Replaced withOpacity(0.1)
                       shape: BoxShape.circle,
                     ),
                     child: Icon(

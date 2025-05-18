@@ -198,9 +198,13 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
 
       // Schedule a reminder
       if (_reminderEnabled) {
-        // Use the method that takes an Appointment object directly
+        // Extract the needed information from the appointment object
         await NotificationService.scheduleAppointmentReminder(
-          bookedAppointment,
+          bookedAppointment.id,
+          bookedAppointment.dateTime,
+          bookedAppointment.providerName,
+          bookedAppointment.purpose,
+          bookedAppointment.location,
         );
       }
 

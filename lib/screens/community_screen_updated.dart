@@ -83,7 +83,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withAlpha(25), // Replaced withOpacity(0.1) with withAlpha
             child: Column(
               children: [
                 const Text(
@@ -234,7 +234,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             color: AppColors.accent,
                           ),
                         ),
-                        backgroundColor: AppColors.accent.withOpacity(0.1),
+                        backgroundColor: AppColors.accent.withAlpha(25), // Replaced withOpacity(0.1)
                         padding: EdgeInsets.zero,
                         labelPadding: const EdgeInsets.symmetric(horizontal: 8),
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -256,7 +256,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         color:
                             post.isLikedByCurrentUser
                                 ? AppColors.primary
-                                : AppColors.primary.withOpacity(0.7),
+                                : AppColors.primary.withAlpha(179), // Replaced withOpacity(0.7)
                         size: 20,
                       ),
                       onPressed: () {
@@ -343,11 +343,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
             ElevatedButton(
               onPressed: () async {
                 if (postController.text.isNotEmpty) {
-                  // Create a new post with a unique ID
-                  final newId = '${_posts.length + 1}';
+                  // Create a new post
                   final newPost = CommunityPost(
-                    id: newId,
-                    userId: 'current_user',
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    userId: 'current_user_id', // Add the required userId field
                     username: 'You',
                     userAvatar: '',
                     content: postController.text,
@@ -361,18 +360,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     _posts.insert(0, newPost);
                   });
 
-                  // Save to local storage
-                  try {
-                    await DataPersistenceService.saveCommunityPosts(
-                      _posts.map((post) => post.toMap()).toList(),
-                    );
-                  } catch (e) {
-                    debugPrint('Error saving post: $e');
-                  }
-
-                  if (mounted) {
-                    Navigator.of(context).pop();
-                  }
+                  // Save to local storage and close dialog
+                  _savePostAndCloseDialog(newPost);
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -384,5 +373,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
         );
       },
     );
+  }
+
+  Future<void> _savePostAndCloseDialog(CommunityPost post) async {
+    try {
+      // Save to local storage
+      await DataPersistenceService.saveCommunityPosts(
+        _posts.map((post) => post.toMap()).toList(),
+      );
+    } catch (e) {
+      debugPrint('Error saving post: $e');
+    }
+
+    // Check if widget is still mounted after async operation
+    if (!mounted) return;
+    
+    // Close the dialog
+    Navigator.of(context).pop();
   }
 }
