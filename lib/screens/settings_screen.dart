@@ -76,6 +76,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _syncNow() async {
+    // Check if widget is mounted before using context
+    if (!mounted) return;
+
     final syncService = Provider.of<SyncService>(context, listen: false);
 
     try {
@@ -90,25 +93,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       await syncService.syncAll();
 
-      if (mounted) {
-        // Close loading dialog
-        Navigator.of(context).pop();
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
 
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data synchronized successfully')),
-        );
-      }
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data synchronized successfully')),
+      );
     } catch (e) {
-      if (mounted) {
-        // Close loading dialog
-        Navigator.of(context).pop();
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
 
-        // Show error message
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Sync error: $e')));
-      }
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Show error message
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Sync error: $e')));
     }
   }
 
@@ -163,60 +168,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
+                // Close the confirmation dialog
                 Navigator.of(context).pop();
 
-                // Capture the context before the async gap
-                final rootContext = context;
-
-                try {
-                  // Show loading dialog
-                  showDialog(
-                    context: rootContext,
-                    barrierDismissible: false,
-                    builder: (BuildContext context) {
-                      return const Center(child: CircularProgressIndicator());
-                    },
-                  );
-
-                  // Get auth service
-                  final authService = Provider.of<AuthService>(
-                    rootContext,
-                    listen: false,
-                  );
-
-                  // Delete user account
-                  await authService.deleteAccount();
-
-                  if (mounted) {
-                    // Close loading dialog
-                    Navigator.of(rootContext).pop();
-
-                    // Navigate to login screen
-                    Navigator.of(rootContext).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (context) => const LoginScreen(),
-                      ),
-                      (route) => false,
-                    );
-
-                    // Show success message
-                    ScaffoldMessenger.of(rootContext).showSnackBar(
-                      const SnackBar(
-                        content: Text('Account deleted successfully'),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    // Close loading dialog if open
-                    Navigator.of(rootContext).pop();
-
-                    // Show error message
-                    ScaffoldMessenger.of(rootContext).showSnackBar(
-                      SnackBar(content: Text('Error deleting account: $e')),
-                    );
-                  }
-                }
+                // Perform account deletion in a separate function
+                _performAccountDeletion();
               },
               child: const Text('Delete'),
             ),
@@ -224,6 +180,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+  }
+
+  Future<void> _performAccountDeletion() async {
+    // Show loading dialog before async operations
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+
+    try {
+      // Get auth service
+      final authService = Provider.of<AuthService>(context, listen: false);
+
+      // Delete user account
+      await authService.deleteAccount();
+
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Navigate to login screen
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Account deleted successfully')),
+      );
+    } catch (e) {
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
+
+      // Close loading dialog if open
+      Navigator.of(context).pop();
+
+      // Show error message
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error deleting account: $e')));
+    }
+  }
+
+  Future<void> _clearCache() async {
+    try {
+      // Show loading indicator
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+
+      // Clear shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Reload preferences with default values
+      _loadPreferences();
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Cache cleared')));
+    } catch (e) {
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error clearing cache: $e')));
+    }
   }
 
   @override
@@ -301,27 +348,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Clear Cache'),
             subtitle: const Text('Free up storage space'),
             trailing: const Icon(Icons.cleaning_services_outlined),
-            onTap: () async {
-              // Clear cache implementation
-              try {
-                // Clear shared preferences
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
-
-                // Reload preferences with default values
-                if (mounted) {
-                  _loadPreferences();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Cache cleared')),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error clearing cache: $e')),
-                  );
-                }
-              }
+            onTap: () {
+              _clearCache();
             },
           ),
 
