@@ -171,55 +171,9 @@ class _LoginScreenState extends State<LoginScreen>
 
                   // Login button
                   ElevatedButton(
-                    onPressed: () async {
+                    onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        final authService = Provider.of<AuthService>(
-                          context,
-                          listen: false,
-                        );
-                        final email = _emailController.text.trim();
-                        final password = _passwordController.text;
-
-                        // Show loading indicator
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (BuildContext context) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          },
-                        );
-
-                        // Attempt login
-                        final user = await authService
-                            .signInWithEmailAndPassword(email, password);
-
-                        // Close loading dialog
-                        if (mounted) Navigator.of(context).pop();
-
-                        if (user != null) {
-                          // Navigate to home on success
-                          if (mounted) {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (context) => const HomeScreen(),
-                              ),
-                            );
-                          }
-                        } else {
-                          // Show error message
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  authService.errorMessage ?? 'Login failed',
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
+                        _handleLogin();
                       }
                     },
                     style: AppStyles.primaryButton,
@@ -261,5 +215,56 @@ class _LoginScreenState extends State<LoginScreen>
         ),
       ),
     );
+  }
+
+  // Extract the login logic to a separate method to properly handle mounted check
+  Future<void> _handleLogin() async {
+    final authService = Provider.of<AuthService>(
+      context,
+      listen: false,
+    );
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    // Show loading indicator
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+
+    // Attempt login
+    final user =
+        await authService.signInWithEmailAndPassword(email, password);
+
+    // Check if widget is still mounted before continuing
+    if (!mounted) return;
+
+    // Close loading dialog
+    Navigator.of(context).pop();
+
+    if (user != null) {
+      // Navigate to home on success
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const HomeScreen(),
+        ),
+      );
+    } else {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            authService.errorMessage ?? 'Login failed',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

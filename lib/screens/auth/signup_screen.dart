@@ -220,62 +220,9 @@ class _SignupScreenState extends State<SignupScreen>
 
                   // Sign up button
                   ElevatedButton(
-                    onPressed: () async {
+                    onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        final authService = Provider.of<AuthService>(
-                          context,
-                          listen: false,
-                        );
-                        final name = _nameController.text.trim();
-                        final email = _emailController.text.trim();
-                        final password = _passwordController.text;
-
-                        // Show loading indicator
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (BuildContext context) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          },
-                        );
-
-                        // Attempt registration
-                        final user = await authService
-                            .registerWithEmailAndPassword(
-                              email,
-                              password,
-                              name,
-                            );
-
-                        // Close loading dialog
-                        if (mounted) Navigator.of(context).pop();
-
-                        if (user != null) {
-                          // Navigate to home on success
-                          if (mounted) {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => const HomeScreen(),
-                              ),
-                              (route) => false,
-                            );
-                          }
-                        } else {
-                          // Show error message
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  authService.errorMessage ??
-                                      'Registration failed',
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
+                        _handleSignup();
                       }
                     },
                     style: AppStyles.primaryButton,
@@ -297,5 +244,63 @@ class _SignupScreenState extends State<SignupScreen>
         ),
       ),
     );
+  }
+
+  // Extract the signup logic to a separate method with proper mounted checks
+  Future<void> _handleSignup() async {
+    final authService = Provider.of<AuthService>(
+      context,
+      listen: false,
+    );
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    // Check if widget is still mounted before showing dialog
+    if (!mounted) return;
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+
+    // Attempt registration
+    final user = await authService.registerWithEmailAndPassword(
+      email,
+      password,
+      name,
+    );
+
+    // Check if widget is still mounted before continuing
+    if (!mounted) return;
+
+    // Close loading dialog
+    Navigator.of(context).pop();
+
+    if (user != null) {
+      // Navigate to home on success
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const HomeScreen(),
+        ),
+        (route) => false,
+      );
+    } else {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            authService.errorMessage ?? 'Registration failed',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
