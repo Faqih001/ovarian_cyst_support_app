@@ -79,7 +79,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _isLoading = false;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading data: ${e.toString()}')),
@@ -104,14 +104,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       final syncService = Provider.of<SyncService>(context, listen: false);
-      final currentContext = context; // Store context before async gap
-      
+
       await syncService.syncAll();
       await _loadData(); // Reload data after sync
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
-          currentContext,
+          context,
         ).showSnackBar(SnackBar(content: Text('Sync error: ${e.toString()}')));
       }
     } finally {
@@ -714,7 +713,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               height: 50,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).primaryColor.withAlpha((0.2 * 255).toInt()),
+                color: Theme.of(
+                  context,
+                ).primaryColor.withAlpha((0.2 * 255).toInt()),
               ),
               child: Center(
                 child: Icon(
@@ -872,7 +873,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _getPainLevelColor(symptom.painLevel).withAlpha((0.2 * 255).toInt()),
+              color: _getPainLevelColor(
+                symptom.painLevel,
+              ).withAlpha((0.2 * 255).toInt()),
             ),
             child: Center(
               child: Text(

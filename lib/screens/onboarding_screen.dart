@@ -130,7 +130,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
                             // Store context before async gap
                             final currentContext = context;
-                            
+
                             if (mounted) {
                               Navigator.of(currentContext).pushReplacement(
                                 MaterialPageRoute(

@@ -534,8 +534,12 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                                 decoration: BoxDecoration(
                                   color:
                                       isActive
-                                          ? Colors.green.withAlpha((0.1 * 255).toInt())
-                                          : Colors.grey.withAlpha((0.1 * 255).toInt()),
+                                          ? Colors.green.withAlpha(
+                                            (0.1 * 255).toInt(),
+                                          )
+                                          : Colors.grey.withAlpha(
+                                            (0.1 * 255).toInt(),
+                                          ),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Text(
