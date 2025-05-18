@@ -500,7 +500,7 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -534,8 +534,8 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                                 decoration: BoxDecoration(
                                   color:
                                       isActive
-                                          ? Colors.green.withOpacity(0.1)
-                                          : Colors.grey.withOpacity(0.1),
+                                          ? Colors.green.withAlpha((0.1 * 255).toInt())
+                                          : Colors.grey.withAlpha((0.1 * 255).toInt()),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Text(
@@ -642,8 +642,11 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                             medication['id'],
                           );
 
+                          // Store context before async gap
+                          final currentContext = context;
+
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(currentContext).showSnackBar(
                               const SnackBar(
                                 content: Text('Medication deleted'),
                               ),

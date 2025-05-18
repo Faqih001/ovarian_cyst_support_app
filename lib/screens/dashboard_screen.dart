@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../models/symptom_entry.dart';
 import '../models/appointment.dart';
-import '../models/medication.dart';
 import '../models/symptom_prediction.dart';
-import '../services/notification_service.dart';
 import '../services/sync_service.dart';
 import '../services/database_service.dart';
 import '../services/ai_service.dart';
@@ -82,9 +79,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading data: ${e.toString()}')),
-      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading data: ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -104,12 +104,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       final syncService = Provider.of<SyncService>(context, listen: false);
+      final currentContext = context; // Store context before async gap
+      
       await syncService.syncAll();
       await _loadData(); // Reload data after sync
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Sync error: ${e.toString()}')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          currentContext,
+        ).showSnackBar(SnackBar(content: Text('Sync error: ${e.toString()}')));
+      }
     } finally {
       setState(() {
         _isSyncing = false;
@@ -419,7 +423,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withAlpha((0.1 * 255).toInt()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 28),
@@ -548,7 +552,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: riskColor.withOpacity(0.2),
+                          color: riskColor.withAlpha((0.2 * 255).toInt()),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
@@ -701,7 +705,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: Theme.of(context).primaryColor.withOpacity(0.1),
+          color: Theme.of(context).primaryColor.withAlpha((0.1 * 255).toInt()),
         ),
         child: Row(
           children: [
@@ -710,7 +714,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               height: 50,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).primaryColor.withOpacity(0.2),
+                color: Theme.of(context).primaryColor.withAlpha((0.2 * 255).toInt()),
               ),
               child: Center(
                 child: Icon(
@@ -807,7 +811,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 show: true,
                                 color: Theme.of(
                                   context,
-                                ).primaryColor.withOpacity(0.2),
+                                ).primaryColor.withAlpha((0.2 * 255).toInt()),
                               ),
                             ),
                           ],
@@ -868,7 +872,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _getPainLevelColor(symptom.painLevel).withOpacity(0.2),
+              color: _getPainLevelColor(symptom.painLevel).withAlpha((0.2 * 255).toInt()),
             ),
             child: Center(
               child: Text(

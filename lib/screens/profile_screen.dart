@@ -259,9 +259,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: AppColors.secondary.withAlpha((0.5 * 255).toInt()),
-        ),
+        side: BorderSide(color: AppColors.secondary.withAlpha(128)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -271,7 +269,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
+                color: AppColors.primary.withAlpha(25),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: AppColors.primary),
@@ -310,15 +308,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading:          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.secondary.withValues(alpha: (0.1 * 255).toInt()),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: AppColors.primary),
-          ),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: AppColors.secondary.withAlpha(25),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: AppColors.primary),
+      ),
       title: Text(title),
       subtitle: Text(subtitle),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -349,7 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 // Store the BuildContext in a local variable
                 final currentContext = context;
-                
+
                 // Show loading indicator
                 showDialog(
                   context: currentContext,
