@@ -78,15 +78,16 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
         });
       }
     }
-  }
-
-  // Helper method to handle loading medications after deletion
+  }  // Helper method to handle loading medications after deletion
   Future<void> _loadMedicationsAfterDelete() async {
+    // Only attempt to load medications if the widget is still mounted
+    if (!mounted) return;
+    
     await _loadMedications();
-
+    
     // Additional check if still mounted after async operation
     if (!mounted) return;
-
+    
     // If you need to do anything after loading medications and the widget is still mounted, do it here
   }
 
@@ -664,7 +665,8 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                             const SnackBar(content: Text('Medication deleted')),
                           );
 
-                          // Reload medications without awaiting it directly here
+                          // Call the helper method to handle medication loading
+                          // We don't await here because we don't need to block the UI
                           _loadMedicationsAfterDelete();
                         }
                       },
