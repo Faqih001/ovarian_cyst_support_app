@@ -40,8 +40,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-      _reminderNotificationsEnabled = prefs.getBool('reminder_notifications_enabled') ?? true;
-      _communityNotificationsEnabled = prefs.getBool('community_notifications_enabled') ?? true;
+      _reminderNotificationsEnabled =
+          prefs.getBool('reminder_notifications_enabled') ?? true;
+      _communityNotificationsEnabled =
+          prefs.getBool('community_notifications_enabled') ?? true;
       _syncOnCellular = prefs.getBool('sync_on_cellular') ?? false;
       _darkModeEnabled = prefs.getBool('dark_mode_enabled') ?? false;
       _selectedLanguage = prefs.getString('selected_language') ?? 'English';
@@ -51,8 +53,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications_enabled', _notificationsEnabled);
-    await prefs.setBool('reminder_notifications_enabled', _reminderNotificationsEnabled);
-    await prefs.setBool('community_notifications_enabled', _communityNotificationsEnabled);
+    await prefs.setBool(
+      'reminder_notifications_enabled',
+      _reminderNotificationsEnabled,
+    );
+    await prefs.setBool(
+      'community_notifications_enabled',
+      _communityNotificationsEnabled,
+    );
     await prefs.setBool('sync_on_cellular', _syncOnCellular);
     await prefs.setBool('dark_mode_enabled', _darkModeEnabled);
     await prefs.setString('selected_language', _selectedLanguage);
@@ -249,17 +257,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Clear shared preferences
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.clear();
-                
+
                 // Reload preferences with default values
                 _loadPreferences();
-                
+
                 ScaffoldMessenger.of(
                   context,
                 ).showSnackBar(const SnackBar(content: Text('Cache cleared')));
               } catch (e) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Error clearing cache: $e')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error clearing cache: $e')),
+                );
               }
             },
           ),
@@ -276,11 +284,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setState(() {
                 _darkModeEnabled = value;
               });
-              
+
               // Apply the theme change
               final theme = Provider.of<ThemeNotifier>(context, listen: false);
               theme.setTheme(value ? ThemeMode.dark : ThemeMode.light);
-              
+
               // Save the preference
               SharedPreferences.getInstance().then((prefs) {
                 prefs.setBool('dark_mode_enabled', value);

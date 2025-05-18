@@ -233,7 +233,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             color: AppColors.accent,
                           ),
                         ),
-                        backgroundColor: AppColors.accent.withAlpha((0.1 * 255).round()),
+                        backgroundColor: AppColors.accent.withAlpha(
+                          (0.1 * 255).round(),
+                        ),
                         padding: EdgeInsets.zero,
                         labelPadding: const EdgeInsets.symmetric(horizontal: 8),
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -255,7 +257,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         color:
                             post.isLikedByCurrentUser
                                 ? AppColors.primary
-                                : AppColors.primary.withAlpha((0.7 * 255).round()),
+                                : AppColors.primary.withAlpha(
+                                  (0.7 * 255).round(),
+                                ),
                         size: 20,
                       ),
                       onPressed: () {
