@@ -7,11 +7,7 @@ import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class SymptomTrackingScreen extends StatefulWidget {
-  const SymptomTrackingScreen({super                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary.withAlpha((0.2 * 255).round()),
-                        borderRadius: BorderRadius.circular(16),
-                      ),);
+  const SymptomTrackingScreen({super.key});
 
   @override
   State<SymptomTrackingScreen> createState() => _SymptomTrackingScreenState();

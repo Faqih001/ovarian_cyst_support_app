@@ -34,7 +34,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         setState(() {
           _posts =
               localPosts
-                  .map((postMap) => CommunityPost.fromJson(postMap))
+                  .map((postMap) => CommunityPost.fromMap(postMap))
                   .toList();
           _isLoading = false;
         });
@@ -82,7 +82,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withAlpha((0.1 * 255).round()),
             child: Column(
               children: [
                 const Text(
@@ -233,7 +233,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             color: AppColors.accent,
                           ),
                         ),
-                        backgroundColor: AppColors.accent.withOpacity(0.1),
+                        backgroundColor: AppColors.accent.withAlpha((0.1 * 255).round()),
                         padding: EdgeInsets.zero,
                         labelPadding: const EdgeInsets.symmetric(horizontal: 8),
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -255,7 +255,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         color:
                             post.isLikedByCurrentUser
                                 ? AppColors.primary
-                                : AppColors.primary.withOpacity(0.7),
+                                : AppColors.primary.withAlpha((0.7 * 255).round()),
                         size: 20,
                       ),
                       onPressed: () {
@@ -346,10 +346,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     _posts.insert(
                       0,
                       CommunityPost(
+                        id: DateTime.now().millisecondsSinceEpoch.toString(),
+                        userId: 'current_user',
                         username: 'You',
-                        userImage: 'Y',
-                        timeAgo: 'Just now',
+                        userAvatar: 'Y',
                         content: postController.text,
+                        timestamp: DateTime.now(),
                         likes: 0,
                         comments: 0,
                       ),
@@ -369,22 +371,4 @@ class _CommunityScreenState extends State<CommunityScreen> {
       },
     );
   }
-}
-
-class CommunityPost {
-  final String username;
-  final String userImage;
-  final String timeAgo;
-  final String content;
-  final int likes;
-  final int comments;
-
-  CommunityPost({
-    required this.username,
-    required this.userImage,
-    required this.timeAgo,
-    required this.content,
-    required this.likes,
-    required this.comments,
-  });
 }

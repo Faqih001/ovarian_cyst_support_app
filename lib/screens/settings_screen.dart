@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/auth/login_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
@@ -36,20 +37,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadPreferences() async {
-    // TODO: Load actual preferences from SharedPreferences or user profile
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      // Default values for now
-      _notificationsEnabled = true;
-      _reminderNotificationsEnabled = true;
-      _communityNotificationsEnabled = true;
-      _syncOnCellular = false;
-      _darkModeEnabled = false;
-      _selectedLanguage = 'English';
+      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+      _reminderNotificationsEnabled = prefs.getBool('reminder_notifications_enabled') ?? true;
+      _communityNotificationsEnabled = prefs.getBool('community_notifications_enabled') ?? true;
+      _syncOnCellular = prefs.getBool('sync_on_cellular') ?? false;
+      _darkModeEnabled = prefs.getBool('dark_mode_enabled') ?? false;
+      _selectedLanguage = prefs.getString('selected_language') ?? 'English';
     });
   }
 
   Future<void> _savePreferences() async {
-    // TODO: Save preferences to SharedPreferences or user profile
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', _notificationsEnabled);
+    await prefs.setBool('reminder_notifications_enabled', _reminderNotificationsEnabled);
+    await prefs.setBool('community_notifications_enabled', _communityNotificationsEnabled);
+    await prefs.setBool('sync_on_cellular', _syncOnCellular);
+    await prefs.setBool('dark_mode_enabled', _darkModeEnabled);
+    await prefs.setString('selected_language', _selectedLanguage);
+
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Settings saved')));
@@ -236,11 +243,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Clear Cache'),
             subtitle: const Text('Free up storage space'),
             trailing: const Icon(Icons.cleaning_services_outlined),
-            onTap: () {
-              // TODO: Implement cache clearing
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Cache cleared')));
+            onTap: () async {
+              // Clear cache implementation
+              try {
+                // Clear shared preferences
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                
+                // Reload preferences with default values
+                _loadPreferences();
+                
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Cache cleared')));
+              } catch (e) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Error clearing cache: $e')));
+              }
             },
           ),
 
@@ -256,7 +276,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setState(() {
                 _darkModeEnabled = value;
               });
-              // TODO: Implement dark mode toggling
+              
+              // Apply the theme change
+              final theme = Provider.of<ThemeNotifier>(context, listen: false);
+              theme.setTheme(value ? ThemeMode.dark : ThemeMode.light);
+              
+              // Save the preference
+              SharedPreferences.getInstance().then((prefs) {
+                prefs.setBool('dark_mode_enabled', value);
+              });
             },
           ),
           ListTile(
