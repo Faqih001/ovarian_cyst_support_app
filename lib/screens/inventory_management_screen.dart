@@ -54,8 +54,6 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
         return 'Test';
       case TreatmentItemType.other:
         return 'Other';
-      default:
-        return 'Unknown';
     }
   }
 
@@ -301,7 +299,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                     });
                   },
                   backgroundColor: Colors.grey[100],
-                  selectedColor: Colors.red.withOpacity(0.2),
+                  selectedColor: Colors.red.withAlpha((0.2 * 255).toInt()),
                   labelStyle: TextStyle(
                     color: _showLowStock ? Colors.red : Colors.black87,
                     fontWeight:
@@ -320,7 +318,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                     });
                   },
                   backgroundColor: Colors.grey[100],
-                  selectedColor: Colors.purple.withOpacity(0.2),
+                  selectedColor: Colors.purple.withAlpha((0.2 * 255).toInt()),
                   labelStyle: TextStyle(
                     color:
                         _requiresPrescription ? Colors.purple : Colors.black87,
@@ -437,7 +435,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
           });
         },
         backgroundColor: Colors.grey[100],
-        selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+        selectedColor: Theme.of(context).primaryColor.withAlpha((0.2 * 255).toInt()),
         labelStyle: TextStyle(
           color: isSelected ? Theme.of(context).primaryColor : Colors.black87,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -491,7 +489,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.purple.withOpacity(0.1),
+                                color: Colors.purple.withAlpha((0.1 * 255).toInt()),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -535,7 +533,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: stockColor.withOpacity(0.1),
+                        color: stockColor.withAlpha((0.1 * 255).toInt()),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -822,7 +820,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                       ),
                       onChanged: (value) {
                         setState(() {
-                          newStock = int.tryParse(value) ?? item.stockLevel;
+                          newStock = int.tryParse(value) ?? item.stockLevel ?? 0;
                         });
                       },
                       controller: TextEditingController(
@@ -907,9 +905,9 @@ class _TreatmentItemFormState extends State<TreatmentItemForm> {
       _name = widget.editItem!.name;
       _type = widget.editItem!.type;
       _description = widget.editItem!.description;
-      _cost = widget.editItem!.cost;
+      _cost = widget.editItem!.cost ?? 0.0;
       _requiresPrescription = widget.editItem!.requiresPrescription;
-      _stockLevel = widget.editItem!.stockLevel;
+      _stockLevel = widget.editItem!.stockLevel ?? 0;
       _manufacturer = widget.editItem!.manufacturer;
       _dosageInfo = widget.editItem!.dosageInfo;
       _sideEffects = widget.editItem!.sideEffects ?? [];
@@ -1242,9 +1240,11 @@ class _TreatmentItemFormState extends State<TreatmentItemForm> {
         return 'Procedure';
       case TreatmentType.equipment:
         return 'Equipment';
-      case TreatmentType.supplies:
-        return 'Supplies';
-      default:
+      case TreatmentType.service:
+        return 'Service';
+      case TreatmentType.test:
+        return 'Test';
+      case TreatmentType.other:
         return 'Other';
     }
   }
