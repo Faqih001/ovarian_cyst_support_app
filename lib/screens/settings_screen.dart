@@ -5,6 +5,7 @@ import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/auth/login_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/sync_service.dart';
+import 'package:ovarian_cyst_support_app/services/theme_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -65,9 +66,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setBool('dark_mode_enabled', _darkModeEnabled);
     await prefs.setString('selected_language', _selectedLanguage);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Settings saved')));
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Settings saved')));
+    }
   }
 
   Future<void> _syncNow() async {
@@ -153,17 +156,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                // TODO: Implement account deletion
+              onPressed: () async {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Account deletion feature not yet implemented',
-                    ),
-                  ),
-                );
-              },
+                
+                try {
+                  // Show loading dialog
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext context) {
+                      return const Center(child: CircularProgressIndicator());
+                    },
+                  );
+                  
+                  // Get auth service
+                  final authService = Provider.of<AuthService>(context, listen: false);
+                  
+                  // Delete user account
+                  await authService.deleteAccount();
+                  
+                  if (mounted) {
+                    // Close loading dialog
+                    Navigator.of(context).pop();
+                    
+                    // Navigate to login screen
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      (route) => false,
+                    );
+                    
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Account deleted successfully')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    // Close loading dialog if open
+                    Navigator.of(context).pop();
+                    
+                    // Show error message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error deleting account: $e')),
+                    );
+                  }
+                },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
@@ -251,24 +288,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Clear Cache'),
             subtitle: const Text('Free up storage space'),
             trailing: const Icon(Icons.cleaning_services_outlined),
-            onTap: () async {
-              // Clear cache implementation
-              try {
-                // Clear shared preferences
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
+            onTap: () async {                // Clear cache implementation
+                try {
+                  // Clear shared preferences
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.clear();
 
-                // Reload preferences with default values
-                _loadPreferences();
-
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('Cache cleared')));
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error clearing cache: $e')),
-                );
-              }
+                  // Reload preferences with default values
+                  if (mounted) {
+                    _loadPreferences();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Cache cleared')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error clearing cache: $e')),
+                    );
+                  }
+                }
             },
           ),
 
@@ -331,7 +370,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Privacy Policy'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              // TODO: Navigate to privacy policy screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PrivacyPolicyScreen(),
+                ),
+              );
             },
           ),
           ListTile(

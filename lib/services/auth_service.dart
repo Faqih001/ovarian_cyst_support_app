@@ -129,6 +129,39 @@ class AuthService with ChangeNotifier {
     }
   }
 
+  // Delete account
+  Future<void> deleteAccount() async {
+    try {
+      _setLoading(true);
+      _clearError();
+
+      // Delete user data from Firestore first
+      if (_user != null) {
+        await _firestore.collection('users').doc(_user!.uid).delete();
+
+        // Delete user authentication
+        await _user!.delete();
+
+        // Update status since user is now deleted
+        _user = null;
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+      } else {
+        throw Exception('No user is currently signed in');
+      }
+    } on FirebaseAuthException catch (e) {
+      // Handle authentication-specific exceptions
+      _setError(e.message ?? 'Failed to delete account');
+      rethrow;
+    } catch (e) {
+      // Handle general exceptions
+      _setError(e.toString());
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // Create user document in Firestore
   Future<void> _createUserDocument(
     String uid,
