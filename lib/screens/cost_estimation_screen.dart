@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ovarian_cyst_support_app/services/provider_service.dart';
 import 'package:ovarian_cyst_support_app/services/payment_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:intl/intl.dart';
@@ -12,7 +11,6 @@ class CostEstimationScreen extends StatefulWidget {
 }
 
 class _CostEstimationScreenState extends State<CostEstimationScreen> {
-  // Removed unused field _providerService
   final PaymentService _paymentService = PaymentService();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -20,7 +18,7 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
 
   bool _isLoading = false;
   bool _isOffline = false;
-  // Removed unused field _errorMessage
+  // _errorMessage removed as it was unused
 
   // Selected services, treatments, etc.
   String _selectedTreatmentType = 'Regular Checkup';
@@ -145,9 +143,9 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to load procedures. Please try again.';
         _isLoading = false;
       });
+      _showMessage('Failed to load procedures. Please try again.');
     }
   }
 
@@ -743,7 +741,9 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: statusColor.withAlpha(25), // Replaced withOpacity(0.1)
+                                    color: statusColor.withAlpha(
+                                      25,
+                                    ), // Replaced withOpacity(0.1)
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(

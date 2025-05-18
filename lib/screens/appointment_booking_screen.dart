@@ -276,9 +276,14 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
         _isLoading = false;
       });
 
+      // Check if widget is still mounted before showing dialog
+      if (!mounted) return;
+
       // Show success dialog
       _showBookingSuccessDialog(bookedAppointment.id);
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
         _errorMessage = 'An error occurred: ${e.toString()}';
@@ -355,6 +360,9 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
         description: 'Appointment with Dr. ${widget.provider['name']}',
       );
 
+      // Check if widget is still mounted
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
       });
@@ -374,15 +382,17 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
         // Navigate back to previous screen
         Navigator.of(context).pop(true);
       } else {
-        if (!mounted) return;
         _showMessage('Payment failed: ${paymentResult['message']}');
       }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
+        _errorMessage = 'Payment error: ${e.toString()}';
       });
 
-      _showMessage('Payment error: ${e.toString()}');
+      _showMessage(_errorMessage);
     }
   }
 
@@ -822,7 +832,9 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundColor: Theme.of(context).primaryColor.withAlpha(51), // Replaced withOpacity(0.2)
+              backgroundColor: Theme.of(
+                context,
+              ).primaryColor.withAlpha(51), // Replaced withOpacity(0.2)
               child: Text(
                 widget.provider['name'].substring(0, 1),
                 style: TextStyle(

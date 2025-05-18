@@ -219,10 +219,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   // Extract the login logic to a separate method to properly handle mounted check
   Future<void> _handleLogin() async {
-    final authService = Provider.of<AuthService>(
-      context,
-      listen: false,
-    );
+    final authService = Provider.of<AuthService>(context, listen: false);
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
@@ -232,15 +229,12 @@ class _LoginScreenState extends State<LoginScreen>
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
+        return const Center(child: CircularProgressIndicator());
       },
     );
 
     // Attempt login
-    final user =
-        await authService.signInWithEmailAndPassword(email, password);
+    final user = await authService.signInWithEmailAndPassword(email, password);
 
     // Check if widget is still mounted before continuing
     if (!mounted) return;
@@ -251,17 +245,13 @@ class _LoginScreenState extends State<LoginScreen>
     if (user != null) {
       // Navigate to home on success
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const HomeScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
     } else {
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            authService.errorMessage ?? 'Login failed',
-          ),
+          content: Text(authService.errorMessage ?? 'Login failed'),
           backgroundColor: Colors.red,
         ),
       );

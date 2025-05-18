@@ -83,7 +83,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            color: AppColors.primary.withAlpha(25), // Replaced withOpacity(0.1) with withAlpha
+            color: AppColors.primary.withAlpha(
+              25,
+            ), // Replaced withOpacity(0.1) with withAlpha
             child: Column(
               children: [
                 const Text(
@@ -234,7 +236,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             color: AppColors.accent,
                           ),
                         ),
-                        backgroundColor: AppColors.accent.withAlpha(25), // Replaced withOpacity(0.1)
+                        backgroundColor: AppColors.accent.withAlpha(
+                          25,
+                        ), // Replaced withOpacity(0.1)
                         padding: EdgeInsets.zero,
                         labelPadding: const EdgeInsets.symmetric(horizontal: 8),
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -256,7 +260,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         color:
                             post.isLikedByCurrentUser
                                 ? AppColors.primary
-                                : AppColors.primary.withAlpha(179), // Replaced withOpacity(0.7)
+                                : AppColors.primary.withAlpha(
+                                  179,
+                                ), // Replaced withOpacity(0.7)
                         size: 20,
                       ),
                       onPressed: () {
@@ -387,7 +393,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     // Check if widget is still mounted after async operation
     if (!mounted) return;
-    
+
     // Close the dialog
     Navigator.of(context).pop();
   }

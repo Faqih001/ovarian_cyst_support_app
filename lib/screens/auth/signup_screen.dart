@@ -248,10 +248,7 @@ class _SignupScreenState extends State<SignupScreen>
 
   // Extract the signup logic to a separate method with proper mounted checks
   Future<void> _handleSignup() async {
-    final authService = Provider.of<AuthService>(
-      context,
-      listen: false,
-    );
+    final authService = Provider.of<AuthService>(context, listen: false);
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -264,9 +261,7 @@ class _SignupScreenState extends State<SignupScreen>
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
+        return const Center(child: CircularProgressIndicator());
       },
     );
 
@@ -286,18 +281,14 @@ class _SignupScreenState extends State<SignupScreen>
     if (user != null) {
       // Navigate to home on success
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => const HomeScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
         (route) => false,
       );
     } else {
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            authService.errorMessage ?? 'Registration failed',
-          ),
+          content: Text(authService.errorMessage ?? 'Registration failed'),
           backgroundColor: Colors.red,
         ),
       );

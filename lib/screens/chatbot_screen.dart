@@ -194,9 +194,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       // final prefs = await SharedPreferences.getInstance();
 
       // Only save the last 50 messages to prevent excessive storage use
-      final messagesToFilter = _messages.length > 50
-          ? _messages.sublist(_messages.length - 50)
-          : List<ChatMessage>.from(_messages);
+      final messagesToFilter =
+          _messages.length > 50
+              ? _messages.sublist(_messages.length - 50)
+              : List<ChatMessage>.from(_messages);
 
       // Would encode and save chat history - implement this when needed
       // String encodedMessages = jsonEncode(messagesToFilter.map((msg) => msg.toJson()).toList());
@@ -284,9 +285,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                         color: Theme.of(context).primaryColor.withAlpha(25),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).primaryColor.withAlpha(128),
+                          color: Theme.of(context).primaryColor.withAlpha(128),
                         ),
                       ),
                       child: Center(
@@ -461,7 +460,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               width: 36,
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withAlpha(25), // changed from withOpacity(0.1)
+                color: Theme.of(
+                  context,
+                ).primaryColor.withAlpha(25), // changed from withOpacity(0.1)
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -491,7 +492,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withAlpha(13), // changed from withOpacity(0.05)
+                        color: Colors.black.withAlpha(
+                          13,
+                        ), // changed from withOpacity(0.05)
                         offset: const Offset(0, 1),
                         blurRadius: 3,
                       ),
