@@ -435,7 +435,9 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
           });
         },
         backgroundColor: Colors.grey[100],
-        selectedColor: Theme.of(context).primaryColor.withAlpha((0.2 * 255).toInt()),
+        selectedColor: Theme.of(
+          context,
+        ).primaryColor.withAlpha((0.2 * 255).toInt()),
         labelStyle: TextStyle(
           color: isSelected ? Theme.of(context).primaryColor : Colors.black87,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -489,7 +491,9 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.purple.withAlpha((0.1 * 255).toInt()),
+                                color: Colors.purple.withAlpha(
+                                  (0.1 * 255).toInt(),
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -820,7 +824,8 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                       ),
                       onChanged: (value) {
                         setState(() {
-                          newStock = int.tryParse(value) ?? item.stockLevel ?? 0;
+                          newStock =
+                              int.tryParse(value) ?? item.stockLevel ?? 0;
                         });
                       },
                       controller: TextEditingController(
