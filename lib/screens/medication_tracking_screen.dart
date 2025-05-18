@@ -80,6 +80,16 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
     }
   }
 
+  // Helper method to handle loading medications after deletion
+  Future<void> _loadMedicationsAfterDelete() async {
+    await _loadMedications();
+
+    // Additional check if still mounted after async operation
+    if (!mounted) return;
+
+    // If you need to do anything after loading medications and the widget is still mounted, do it here
+  }
+
   Future<void> _saveMedication() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -649,13 +659,13 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                           // Check if still mounted after async operation
                           if (!mounted) return;
 
+                          // Show snackbar since we're still mounted
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Medication deleted')),
                           );
 
-                          // Reload medications
-                          if (!mounted) return;
-                          await _loadMedications();
+                          // Reload medications without awaiting it directly here
+                          _loadMedicationsAfterDelete();
                         }
                       },
                       icon: const Icon(Icons.delete, color: Colors.red),

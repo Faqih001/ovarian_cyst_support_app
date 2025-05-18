@@ -44,6 +44,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
+  // Method to complete onboarding and navigate to login
+  Future<void> _completeOnboardingAndNavigate() async {
+    // Mark onboarding as completed
+    await PreferencesService.setOnboardingComplete();
+
+    // Check if the widget is still mounted before using BuildContext
+    if (!mounted) return;
+
+    // Navigate to login screen
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -125,17 +139,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               curve: Curves.ease,
                             );
                           } else {
-                            // Mark onboarding as completed
-                            if (!mounted) return;
-                            await PreferencesService.setOnboardingComplete();
-
-                            // Check if still mounted after async operation
-                            if (!mounted) return;
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (context) => const LoginScreen(),
-                              ),
-                            );
+                            // Mark onboarding as completed and navigate to login
+                            _completeOnboardingAndNavigate();
                           }
                         },
                         style: AppStyles.primaryButton,
