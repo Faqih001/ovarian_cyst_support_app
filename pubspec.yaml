@@ -46,7 +46,7 @@ dependencies:
   
   # Firebase Services
   firebase_analytics: ^10.8.5
-  logger: ^2.0.2+1
+  logger: ^2.0.2+1  # Single logger dependency with latest version
   
   # Location and Maps
   geolocator: ^11.0.0
@@ -71,7 +71,6 @@ dependencies:
   url_launcher: ^6.2.5
   image_picker: ^1.0.7
   permission_handler: ^11.3.0
-  logger: ^2.0.2
   cached_network_image: ^3.3.1
   flutter_rating_bar: ^4.0.1
   timezone: ^0.10.1  # Updated to be compatible with flutter_local_notifications
