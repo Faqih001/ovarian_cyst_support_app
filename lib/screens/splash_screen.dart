@@ -7,6 +7,7 @@ import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/onboarding_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/home_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/auth/login_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/auth/signup_screen.dart';
 import 'package:ovarian_cyst_support_app/services/preferences_service.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 
@@ -44,7 +45,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     final navigator = Navigator.of(context);
 
-    // Wait for animation
+    // Wait for animation and loading
     await Future.delayed(const Duration(seconds: 3));
 
     if (!mounted) return;
@@ -61,8 +62,11 @@ class _SplashScreenState extends State<SplashScreen>
       final authService = Provider.of<AuthService>(context, listen: false);
       Widget nextScreen;
 
-      if (!onboardingComplete || !hasCreatedAccount) {
+      // Determine the next screen based on app state
+      if (!onboardingComplete) {
         nextScreen = const OnboardingScreen();
+      } else if (!hasCreatedAccount) {
+        nextScreen = const SignupScreen();
       } else if (authService.status == AuthStatus.authenticated) {
         nextScreen = const HomeScreen();
       } else {
@@ -78,7 +82,6 @@ class _SplashScreenState extends State<SplashScreen>
     } catch (e) {
       // Handle any errors during navigation setup
       if (!mounted) return;
-
       await navigator.pushReplacement(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
       );

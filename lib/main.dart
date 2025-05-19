@@ -12,37 +12,45 @@ import 'package:ovarian_cyst_support_app/firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final logger = Logger();
-  final firestoreService = FirestoreService();
 
   try {
-    // Check if Firebase is already initialized
-    if (Firebase.apps.isEmpty) {
+    final apps = Firebase.apps;
+    if (apps.isEmpty) {
       await Firebase.initializeApp(
+        name: 'ovarian_cyst_support_app', // Unique name for this app instance
         options: DefaultFirebaseOptions.currentPlatform,
       );
       logger.i('Firebase initialized successfully');
-
-      // Enable Firestore offline persistence
-      firestoreService.enablePersistence();
     } else {
-      logger.i('Firebase already initialized, using existing instance');
-      Firebase.app(); // Get the already initialized instance
+      logger.w('Firebase already initialized');
+      Firebase.app('ovarian_cyst_support_app'); // Get the named instance
     }
+
+    final firestoreService = FirestoreService();
+    firestoreService.enablePersistence();
+
+    runApp(
+      MultiProvider(
+        providers: [
+          Provider<AuthService>(create: (_) => AuthService()),
+          Provider<PaymentService>(create: (_) => PaymentService()),
+          Provider<FirestoreService>(create: (_) => firestoreService),
+        ],
+        child: const MyApp(),
+      ),
+    );
   } catch (e) {
     logger.e('Error during Firebase initialization: $e');
-    // Consider showing a user-friendly error message or fallback behavior
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text('Error initializing app: $e'),
+          ),
+        ),
+      ),
+    );
   }
-
-  runApp(
-    MultiProvider(
-      providers: [
-        Provider<AuthService>(create: (_) => AuthService()),
-        Provider<PaymentService>(create: (_) => PaymentService()),
-        Provider<FirestoreService>(create: (_) => firestoreService),
-      ],
-      child: const MyApp(),
-    ),
-  );
 }
 
 class MyApp extends StatelessWidget {
