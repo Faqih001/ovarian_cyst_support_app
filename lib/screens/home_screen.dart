@@ -8,6 +8,7 @@ import 'package:ovarian_cyst_support_app/screens/profile_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/educational_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/provider_search_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/medication_tracking_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/kenyan_hospital_booking_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
 
@@ -416,8 +417,6 @@ class _HomeContentState extends State<HomeContent>
     }
   }
 
-
-
   Widget _buildEmojiButton(String emoji, String label) {
     return InkWell(
       onTap: () {
@@ -711,10 +710,57 @@ class _HomeContentState extends State<HomeContent>
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const ProviderSearchScreen(),
-                ),
+              // Show options for booking appointment
+              showModalBottomSheet(
+                context: context,
+                builder: (BuildContext context) {
+                  return SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const Text(
+                            'Choose Hospital Type',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          ListTile(
+                            leading: const Icon(Icons.local_hospital),
+                            title: const Text('Kenyan Hospitals'),
+                            subtitle: const Text('Browse hospitals in Kenya'),
+                            onTap: () {
+                              Navigator.pop(context); // Close the modal
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const KenyanHospitalBookingScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.healing),
+                            title: const Text('Other Healthcare Providers'),
+                            subtitle:
+                                const Text('Private clinics and specialists'),
+                            onTap: () {
+                              Navigator.pop(context); // Close the modal
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const ProviderSearchScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               );
             },
             style: ElevatedButton.styleFrom(

@@ -341,7 +341,7 @@ class _SignupScreenState extends State<SignupScreen>
           isError: false,
           duration: const Duration(seconds: 3),
         );
-        
+
         // Add a slight delay before navigation to allow the notification to be seen
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (mounted) {

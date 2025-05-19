@@ -169,7 +169,7 @@ class AuthService with ChangeNotifier {
             .collection('users')
             .doc(userCredential.user!.uid)
             .get();
-            
+
         if (docSnapshot.exists) {
           // Update last login timestamp
           await _firestore!
@@ -182,11 +182,11 @@ class AuthService with ChangeNotifier {
               .collection('users')
               .doc(userCredential.user!.uid)
               .set({
-                'email': userCredential.user!.email,
-                'name': userCredential.user!.displayName ?? 'User',
-                'createdAt': FieldValue.serverTimestamp(),
-                'lastLogin': FieldValue.serverTimestamp(),
-              });
+            'email': userCredential.user!.email,
+            'name': userCredential.user!.displayName ?? 'User',
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastLogin': FieldValue.serverTimestamp(),
+          });
         }
       }
 
