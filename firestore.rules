@@ -16,6 +16,12 @@ service cloud.firestore {
         && request.auth.token.email_verified == true;
     }
 
+    function isAdmin() {
+      return isAuthenticated() && 
+        ('admin' in request.auth.token.roles || 
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)));
+    }
+
     function hasRequiredFields(requiredFields) {
       return request.resource.data.keys().hasAll(requiredFields);
     }
@@ -29,15 +35,22 @@ service cloud.firestore {
           .hasOnly(allowedFields);
     }
 
-    // User profiles
-    match /users/{userId} {
+    // Admin users collection
+    match /adminUsers/{userId} {
       allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // User profiles with admin access
+    match /users/{userId} {
+      allow read: if isAuthenticated() || isAdmin();
       allow create: if isOwner(userId) 
         && hasRequiredFields(['name', 'email', 'createdAt'])
         && isValidTimestamp();
       allow update: if isOwner(userId)
-        && onlyFieldsChanged(['name', 'photoUrl', 'preferences', 'settings', 'updatedAt']);
-      allow delete: if false;
+        && onlyFieldsChanged(['name', 'photoUrl', 'preferences', 'settings', 'updatedAt'])
+        || isAdmin();
+      allow delete: if isAdmin();
     }
 
     // User agreements
