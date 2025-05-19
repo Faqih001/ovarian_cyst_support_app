@@ -15,7 +15,7 @@ class KenyanHospitalBookingScreen extends StatefulWidget {
   
   const KenyanHospitalBookingScreen({
     super.key, 
-    this.initialFacilityType = FacilityType.public,
+    this.initialFacilityType = FacilityType.ministry,
   });
 
   @override
@@ -41,7 +41,7 @@ class _KenyanHospitalBookingScreenState extends State<KenyanHospitalBookingScree
   bool _isSubmitting = false;
   
   // Facility type selection
-  FacilityType _selectedFacilityType = FacilityType.public;
+  FacilityType _selectedFacilityType = FacilityType.ministry;
 
   // Form controllers
   final _formKey = GlobalKey<FormState>();
@@ -279,9 +279,22 @@ class _KenyanHospitalBookingScreenState extends State<KenyanHospitalBookingScree
 
   @override
   Widget build(BuildContext context) {
+    String facilityTypeTitle;
+    switch (_selectedFacilityType) {
+      case FacilityType.ministry:
+        facilityTypeTitle = 'Ministry of Health';
+        break;
+      case FacilityType.privatePractice:
+        facilityTypeTitle = 'Private Practice';
+        break;
+      case FacilityType.privateEnterprise:
+        facilityTypeTitle = 'Private Enterprise';
+        break;
+    }
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text('Book Appointment - ${_selectedFacilityType == FacilityType.public ? 'Public' : 'Private'} Hospitals'),
+        title: Text('Book Appointment - $facilityTypeTitle'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
@@ -334,14 +347,14 @@ class _KenyanHospitalBookingScreenState extends State<KenyanHospitalBookingScree
             const SizedBox(height: 16),
             
             // Facility type selector
-            const Text('Select hospital type:'),
+            const Text('Select facility type:'),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: RadioListTile<FacilityType>(
-                    title: const Text('Public'),
-                    value: FacilityType.public,
+                    title: const Text('Ministry of Health'),
+                    value: FacilityType.ministry,
                     groupValue: _selectedFacilityType,
                     onChanged: (FacilityType? value) {
                       if (value != null) {
@@ -355,10 +368,35 @@ class _KenyanHospitalBookingScreenState extends State<KenyanHospitalBookingScree
                     },
                   ),
                 ),
+              ],
+            ),
+            Row(
+              children: [
                 Expanded(
                   child: RadioListTile<FacilityType>(
-                    title: const Text('Private'),
-                    value: FacilityType.private,
+                    title: const Text('Private Practice'),
+                    value: FacilityType.privatePractice,
+                    groupValue: _selectedFacilityType,
+                    onChanged: (FacilityType? value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedFacilityType = value;
+                          // Clear previous results when changing facility type
+                          _facilities = [];
+                          _selectedFacility = null;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<FacilityType>(
+                    title: const Text('Private Enterprise'),
+                    value: FacilityType.privateEnterprise,
                     groupValue: _selectedFacilityType,
                     onChanged: (FacilityType? value) {
                       if (value != null) {

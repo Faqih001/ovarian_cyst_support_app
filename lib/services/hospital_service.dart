@@ -1,229 +1,179 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
+import 'package:csv/csv.dart';
 import 'package:ovarian_cyst_support_app/models/facility.dart';
 import 'package:ovarian_cyst_support_app/models/doctor.dart';
 
 enum FacilityType {
-  public,
-  private
+  ministry, // Ministry of Health
+  privatePractice, // Private Practice (individual providers)
+  privateEnterprise // Private Enterprise (institutions, companies)
 }
 
 class HospitalService {
-  // Kenya Master Facility List API URL for public hospitals
-  final String _baseUrl = 'https://api.kmhfl.health.go.ke/api/v1';
-  
-  // CKAN Data API URL for private hospitals
-  final String _ckanBaseUrl = 'https://energydata.info/api/3/action';
-  
-  // Resource ID for Kenyan private hospitals (replace with actual resource ID)
-  final String _privateHospitalsResourceId = '841097c2-9424-4c90-b1e7-8e942a817c3c';
-  
   final Logger _logger = Logger();
-  
-  // API endpoints
-  static const String _facilitiesEndpoint = '/facilities/';
-  static const String _facilityDetailsEndpoint = '/facilities/';
-  static const String _countiesEndpoint = '/counties/';
-  
-  // API key (if required - check API documentation)
-  final Map<String, String> _headers = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    // Add API key or auth token if required
-    // 'Authorization': 'Bearer YOUR_API_TOKEN',
-  };  
 
-  // Get facilities from either public or private sources
+  // Path to the local CSV file
+  final String _csvFilePath = 'assets/healthcare_facilities.csv';
+
+  // Cache for facilities to avoid reloading the CSV file repeatedly
+  List<Map<String, dynamic>>? _facilitiesCache;
+
+  // Get facilities based on type and search criteria
   Future<List<Facility>> getFacilities({
     String? searchQuery,
     String? county,
     int page = 1,
     int pageSize = 20,
-    FacilityType facilityType = FacilityType.public,
+    FacilityType facilityType = FacilityType.ministry,
   }) async {
-    if (facilityType == FacilityType.private) {
-      return getPrivateFacilities(searchQuery: searchQuery, county: county, limit: pageSize);
-    } else {
-      return getPublicFacilities(searchQuery: searchQuery, county: county, page: page, pageSize: pageSize);
-    }
-  }
-
-  // Get public facilities with optional filters
-  Future<List<Facility>> getPublicFacilities({
-    String? searchQuery,
-    String? county,
-    int page = 1,
-    int pageSize = 20,
-  }) async {
-    // This is the original implementation for public facilities
     try {
-      Map<String, String> queryParams = {
-        'page': page.toString(),
-        'page_size': pageSize.toString(),
-      };
-      
-      if (searchQuery != null && searchQuery.isNotEmpty) {
-        queryParams['search'] = searchQuery;
+      // Load all facilities from CSV if not already cached
+      if (_facilitiesCache == null) {
+        await _loadFacilitiesFromCsv();
       }
-      
-      if (county != null && county.isNotEmpty) {
-        queryParams['county'] = county;
-      }
-      
-      final Uri uri = Uri.parse('$_baseUrl$_facilitiesEndpoint').replace(
-        queryParameters: queryParams,
-      );
-      
-      _logger.i('Fetching public facilities from: $uri');
-      
-      final response = await http.get(uri, headers: _headers);
-      
-      if (response.statusCode == 200) {
-        try {
-          final Map<String, dynamic> data = json.decode(response.body);
-          final List<dynamic> results = data['results'] ?? [];
-          
-          return results
-              .map((facilityData) => Facility.fromJson(facilityData))
-              .toList();
-        } catch (e) {
-          _logger.e('Error parsing facility data: $e');
-          return _getMockFacilities(searchQuery, county);
+
+      // Filter facilities based on criteria
+      List<Map<String, dynamic>> filteredFacilities =
+          _facilitiesCache!.where((facility) {
+        // Filter by facility type
+        bool matchesType = false;
+        String owner = facility['Owner'] ?? '';
+
+        switch (facilityType) {
+          case FacilityType.ministry:
+            matchesType = owner.contains('Ministry of Health');
+            break;
+          case FacilityType.privatePractice:
+            matchesType = owner.contains('Private Practice');
+            break;
+          case FacilityType.privateEnterprise:
+            matchesType = owner.contains('Private Enterprise');
+            break;
         }
-      } else {
-        _logger.e('Failed to load facilities: ${response.statusCode}');
-        return _getMockFacilities(searchQuery, county);
+
+        // Filter by search query if provided
+        bool matchesSearch = true;
+        if (searchQuery != null && searchQuery.isNotEmpty) {
+          String facilityName = facility['Facility_N'] ?? '';
+          matchesSearch =
+              facilityName.toLowerCase().contains(searchQuery.toLowerCase());
+        }
+
+        // Filter by county if provided
+        bool matchesCounty = true;
+        if (county != null && county.isNotEmpty) {
+          String facilityCounty = facility['County'] ?? '';
+          matchesCounty = facilityCounty.toLowerCase() == county.toLowerCase();
+        }
+
+        return matchesType && matchesSearch && matchesCounty;
+      }).toList();
+
+      // Apply pagination
+      int startIndex = (page - 1) * pageSize;
+      int endIndex = startIndex + pageSize;
+      if (startIndex >= filteredFacilities.length) {
+        return [];
       }
+      if (endIndex > filteredFacilities.length) {
+        endIndex = filteredFacilities.length;
+      }
+
+      List<Map<String, dynamic>> paginatedResults =
+          filteredFacilities.sublist(startIndex, endIndex);
+
+      // Convert to Facility objects
+      return paginatedResults
+          .map((data) => _convertCsvRowToFacility(data))
+          .toList();
     } catch (e) {
       _logger.e('Error fetching facilities: $e');
-      return _getMockFacilities(searchQuery, county);
+      return _getMockFacilities(searchQuery, county, facilityType);
     }
   }
 
-  // Get private facilities using CKAN API
-  Future<List<Facility>> getPrivateFacilities({
-    String? searchQuery,
-    String? county,
-    int limit = 20,
-  }) async {
+  // Load facilities from CSV file
+  Future<void> _loadFacilitiesFromCsv() async {
     try {
-      Map<String, String> queryParams = {
-        'resource_id': _privateHospitalsResourceId,
-        'limit': limit.toString(),
-      };
-      
-      // Add search query if provided
-      if (searchQuery != null && searchQuery.isNotEmpty) {
-        queryParams['q'] = searchQuery;
-      }
-      
-      // For county filter, we'll use SQL query if county is provided
-      if (county != null && county.isNotEmpty) {
-        final Uri sqlUri = Uri.parse('$_ckanBaseUrl/datastore_search_sql');
-        final String sqlQuery = 'SELECT * FROM "$_privateHospitalsResourceId" WHERE county LIKE \'%$county%\' LIMIT $limit';
-        
-        final Uri uri = sqlUri.replace(
-          queryParameters: {'sql': sqlQuery},
-        );
-        
-        _logger.i('Fetching private facilities with SQL from: $uri');
-        
-        final response = await http.get(uri);
-        
-        if (response.statusCode == 200) {
-          return _parseCkanResponse(response.body);
-        } else {
-          _logger.e('Failed to load private facilities: ${response.statusCode}');
-          return _getMockPrivateFacilities(searchQuery, county);
+      // Load CSV file from assets
+      final String csvData = await rootBundle.loadString(_csvFilePath);
+
+      // Parse CSV data
+      List<List<dynamic>> csvTable =
+          const CsvToListConverter().convert(csvData);
+
+      // Extract headers (first row)
+      List<String> headers =
+          csvTable.first.map((item) => item.toString()).toList();
+
+      // Convert CSV rows to maps with headers as keys
+      _facilitiesCache = [];
+      for (int i = 1; i < csvTable.length; i++) {
+        Map<String, dynamic> row = {};
+        for (int j = 0; j < headers.length; j++) {
+          if (j < csvTable[i].length) {
+            row[headers[j]] = csvTable[i][j];
+          } else {
+            row[headers[j]] = ''; // Handle missing values
+          }
         }
-      } else {
-        // Regular search without county filter
-        final Uri uri = Uri.parse('$_ckanBaseUrl/datastore_search').replace(
-          queryParameters: queryParams,
-        );
-        
-        _logger.i('Fetching private facilities from: $uri');
-        
-        final response = await http.get(uri);
-        
-        if (response.statusCode == 200) {
-          return _parseCkanResponse(response.body);
-        } else {
-          _logger.e('Failed to load private facilities: ${response.statusCode}');
-          return _getMockPrivateFacilities(searchQuery, county);
-        }
+        _facilitiesCache!.add(row);
       }
+
+      _logger.i('Loaded ${_facilitiesCache!.length} facilities from CSV');
     } catch (e) {
-      _logger.e('Error fetching private facilities: $e');
-      return _getMockPrivateFacilities(searchQuery, county);
+      _logger.e('Error loading facilities from CSV: $e');
+      _facilitiesCache = []; // Set to empty list on error
     }
   }
-  
-  // Parse CKAN API response
-  List<Facility> _parseCkanResponse(String responseBody) {
-    try {
-      final Map<String, dynamic> data = json.decode(responseBody);
-      
-      if (data['success'] == true && data['result'] != null) {
-        final List<dynamic> records = data['result']['records'] ?? [];
-        
-        return records.map((record) {
-          // Map CKAN fields to Facility model fields
-          // Adjust field mappings according to the actual API response
-          return Facility(
-            id: record['_id']?.toString() ?? '',
-            code: record['code']?.toString() ?? '',
-            name: record['name']?.toString() ?? record['facility_name']?.toString() ?? '',
-            facilityType: record['facility_type']?.toString() ?? 'Private Hospital',
-            county: record['county']?.toString() ?? 'Unknown',
-            subCounty: record['sub_county']?.toString() ?? 'Unknown',
-            ward: record['ward']?.toString() ?? 'Unknown',
-            owner: record['owner']?.toString() ?? 'Private',
-            operationalStatus: record['status']?.toString() ?? 'Operational',
-            latitude: record['latitude'] != null ? double.tryParse(record['latitude'].toString()) : null,
-            longitude: record['longitude'] != null ? double.tryParse(record['longitude'].toString()) : null,
-            phone: record['phone']?.toString() ?? record['phone_number']?.toString(),
-            email: record['email']?.toString(),
-            website: record['website']?.toString(),
-            postalAddress: record['postal_address']?.toString() ?? record['address']?.toString(),
-            description: record['description']?.toString(),
-            services: record['services'] is List 
-                ? List<String>.from(record['services']) 
-                : (record['services']?.toString() != null 
-                   ? record['services'].toString().split(',').map((s) => s.trim()).toList() 
-                   : []),
-          );
-        }).toList();
-      }
-      
-      return [];
-    } catch (e) {
-      _logger.e('Error parsing CKAN response: $e');
-      return [];
-    }
+
+  // Convert CSV row to Facility object
+  Facility _convertCsvRowToFacility(Map<String, dynamic> data) {
+    return Facility(
+      id: data['OBJECTID']?.toString() ?? '',
+      code: data['OBJECTID']?.toString() ?? '',
+      name: data['Facility_N']?.toString() ?? '',
+      facilityType: data['Type']?.toString() ?? 'Unknown',
+      county: data['County']?.toString() ?? 'Unknown',
+      subCounty: data['Sub_County']?.toString() ?? 'Unknown',
+      ward: data['Division']?.toString() ?? 'Unknown',
+      owner: data['Owner']?.toString() ?? 'Unknown',
+      operationalStatus: 'Operational', // Default value as it's not in CSV
+      latitude: data['Latitude'] != null
+          ? double.tryParse(data['Latitude'].toString())
+          : null,
+      longitude: data['Longitude'] != null
+          ? double.tryParse(data['Longitude'].toString())
+          : null,
+      phone: null, // Not available in CSV
+      email: null, // Not available in CSV
+      website: null, // Not available in CSV
+      postalAddress: null, // Not available in CSV
+      description:
+          'Located near ${data['Nearest_To']?.toString() ?? 'local area'}',
+      services: [], // Not available in CSV
+    );
   }
 
   // Get detailed information about a specific facility
   Future<Facility> getFacilityDetails(String facilityId) async {
     try {
-      final Uri uri = Uri.parse('$_baseUrl$_facilityDetailsEndpoint$facilityId/');
-      
-      _logger.i('Fetching facility details from: $uri');
-      
-      final response = await http.get(uri, headers: _headers);
-      
-      if (response.statusCode == 200) {
-        try {
-          final Map<String, dynamic> data = json.decode(response.body);
-          return Facility.fromJson(data);
-        } catch (e) {
-          _logger.e('Error parsing facility details: $e');
-          // Return a mock facility if parsing fails
-          return _getMockFacility(facilityId);
-        }
+      // Load facilities if not already loaded
+      if (_facilitiesCache == null) {
+        await _loadFacilitiesFromCsv();
+      }
+
+      // Find the facility by ID
+      final facility = _facilitiesCache!.firstWhere(
+        (f) => f['OBJECTID'].toString() == facilityId,
+        orElse: () => {},
+      );
+
+      if (facility.isNotEmpty) {
+        return _convertCsvRowToFacility(facility);
       } else {
-        _logger.e('Failed to load facility details: ${response.statusCode}');
+        _logger.e('Facility not found: $facilityId');
         return _getMockFacility(facilityId);
       }
     } catch (e) {
@@ -235,29 +185,9 @@ class HospitalService {
   // Get doctors for a specific facility
   Future<List<Doctor>> getDoctorsForFacility(String facilityId) async {
     try {
-      // Note: This is an approximation as the actual endpoint for doctors might be different
-      final Uri uri = Uri.parse('$_baseUrl$_facilityDetailsEndpoint$facilityId/doctors/');
-      
-      _logger.i('Fetching doctors from: $uri');
-      
-      final response = await http.get(uri, headers: _headers);
-      
-      if (response.statusCode == 200) {
-        try {
-          final Map<String, dynamic> data = json.decode(response.body);
-          final List<dynamic> results = data['results'] ?? [];
-          
-          return results
-              .map((doctorData) => Doctor.fromJson(doctorData))
-              .toList();
-        } catch (e) {
-          _logger.e('Error parsing doctor data: $e');
-          return _getMockDoctors();
-        }
-      } else {
-        _logger.e('Failed to load doctors: ${response.statusCode}');
-        return _getMockDoctors();
-      }
+      // In a real implementation, we would query a database or API for doctors
+      // Since the CSV doesn't contain doctor information, we'll use mock data
+      return _getMockDoctors();
     } catch (e) {
       _logger.e('Error fetching doctors: $e');
       return _getMockDoctors();
@@ -267,121 +197,175 @@ class HospitalService {
   // Get list of counties in Kenya
   Future<List<String>> getCounties() async {
     try {
-      final Uri uri = Uri.parse('$_baseUrl$_countiesEndpoint');
-      
-      _logger.i('Fetching counties from: $uri');
-      
-      final response = await http.get(uri, headers: _headers);
-      
-      if (response.statusCode == 200) {
-        try {
-          final Map<String, dynamic> data = json.decode(response.body);
-          final List<dynamic> results = data['results'] ?? [];
-          
-          return results
-              .map((county) => county['name'] as String)
-              .toList();
-        } catch (e) {
-          _logger.e('Error parsing county data: $e');
-          return _getMockCounties();
-        }
-      } else {
-        _logger.e('Failed to load counties: ${response.statusCode}');
-        return _getMockCounties();
+      // Load facilities if not already loaded
+      if (_facilitiesCache == null) {
+        await _loadFacilitiesFromCsv();
       }
+
+      // Extract unique counties from the CSV data
+      Set<String> counties = {};
+      for (var facility in _facilitiesCache!) {
+        String county = facility['County']?.toString() ?? '';
+        if (county.isNotEmpty) {
+          counties.add(county);
+        }
+      }
+
+      // Sort counties alphabetically
+      List<String> sortedCounties = counties.toList()..sort();
+      return sortedCounties;
     } catch (e) {
       _logger.e('Error fetching counties: $e');
       return _getMockCounties();
     }
   }
-  
+
   // Mock data methods for fallback when API fails
-  
+
   // Return mock facilities
-  List<Facility> _getMockFacilities(String? searchQuery, String? county) {
-    List<Facility> mockFacilities = [
-      Facility(
-        id: '1',
-        code: 'KNH001',
-        name: 'Kenyatta National Hospital',
-        facilityType: 'National Referral Hospital',
-        county: 'Nairobi',
-        subCounty: 'Dagoretti',
-        ward: 'Kilimani',
-        owner: 'Ministry of Health',
-        operationalStatus: 'Operational',
-        latitude: -1.3017,
-        longitude: 36.8069,
-        phone: '+254 020 2726300',
-        email: 'info@knh.or.ke',
-        website: 'https://knh.or.ke',
-        services: ['Gynecology', 'Obstetrics', 'Surgery', 'Pediatrics'],
-      ),
-      Facility(
-        id: '2',
-        code: 'MSA001',
-        name: 'Coast General Hospital',
-        facilityType: 'Provincial Hospital',
-        county: 'Mombasa',
-        subCounty: 'Mvita',
-        ward: 'Tudor',
-        owner: 'Ministry of Health',
-        operationalStatus: 'Operational',
-        phone: '+254 722123456',
-        services: ['Gynecology', 'Obstetrics', 'Surgery'],
-      ),
-      Facility(
-        id: '3',
-        code: 'ELD001',
-        name: 'Moi Teaching and Referral Hospital',
-        facilityType: 'National Referral Hospital',
-        county: 'Uasin Gishu',
-        subCounty: 'Eldoret East',
-        ward: 'Langas',
-        owner: 'Ministry of Health',
-        operationalStatus: 'Operational',
-        phone: '+254 722123457',
-        email: 'info@mtrh.go.ke',
-        website: 'https://mtrh.go.ke',
-        services: ['Gynecology', 'Obstetrics', 'Surgery', 'Oncology'],
-      ),
-      Facility(
-        id: '4',
-        code: 'KSM001',
-        name: 'Jaramogi Oginga Odinga Teaching and Referral Hospital',
-        facilityType: 'Provincial Hospital',
-        county: 'Kisumu',
-        subCounty: 'Kisumu Central',
-        ward: 'Milimani',
-        owner: 'Ministry of Health',
-        operationalStatus: 'Operational',
-        phone: '+254 722123458',
-        services: ['Gynecology', 'Obstetrics', 'Surgery'],
-      ),
-      Facility(
-        id: '5',
-        code: 'NKR001',
-        name: 'Nakuru County Referral Hospital',
-        facilityType: 'County Referral Hospital',
-        county: 'Nakuru',
-        subCounty: 'Nakuru Town East',
-        ward: 'Biashara',
-        owner: 'County Government',
-        operationalStatus: 'Operational',
-        phone: '+254 722123459',
-        services: ['Gynecology', 'Obstetrics', 'Surgery'],
-      ),
-    ];
-    
+  List<Facility> _getMockFacilities(
+      String? searchQuery, String? county, FacilityType facilityType) {
+    List<Facility> mockFacilities = [];
+
+    switch (facilityType) {
+      case FacilityType.ministry:
+        mockFacilities = [
+          Facility(
+            id: '1',
+            code: 'KNH001',
+            name: 'Kenyatta National Hospital',
+            facilityType: 'National Referral Hospital',
+            county: 'Nairobi',
+            subCounty: 'Dagoretti',
+            ward: 'Kilimani',
+            owner: 'Ministry of Health',
+            operationalStatus: 'Operational',
+            latitude: -1.3017,
+            longitude: 36.8069,
+            phone: '+254 020 2726300',
+            email: 'info@knh.or.ke',
+            website: 'https://knh.or.ke',
+            services: ['Gynecology', 'Obstetrics', 'Surgery', 'Pediatrics'],
+          ),
+          Facility(
+            id: '2',
+            code: 'MSA001',
+            name: 'Coast General Hospital',
+            facilityType: 'Provincial Hospital',
+            county: 'Mombasa',
+            subCounty: 'Mvita',
+            ward: 'Tudor',
+            owner: 'Ministry of Health',
+            operationalStatus: 'Operational',
+            phone: '+254 722123456',
+            services: ['Gynecology', 'Obstetrics', 'Surgery'],
+          ),
+          Facility(
+            id: '3',
+            code: 'ELD001',
+            name: 'Moi Teaching and Referral Hospital',
+            facilityType: 'National Referral Hospital',
+            county: 'Uasin Gishu',
+            subCounty: 'Eldoret East',
+            ward: 'Langas',
+            owner: 'Ministry of Health',
+            operationalStatus: 'Operational',
+            phone: '+254 722123457',
+            email: 'info@mtrh.go.ke',
+            website: 'https://mtrh.go.ke',
+            services: ['Gynecology', 'Obstetrics', 'Surgery', 'Oncology'],
+          ),
+        ];
+        break;
+
+      case FacilityType.privatePractice:
+        mockFacilities = [
+          Facility(
+            id: 'pp1',
+            code: 'NRB-PP-001',
+            name: 'Dr. Kimani Specialist Clinic',
+            facilityType: 'Specialist Clinic',
+            county: 'Nairobi',
+            subCounty: 'Westlands',
+            ward: 'Parklands',
+            owner: 'Private Practice - Specialist',
+            operationalStatus: 'Operational',
+            latitude: -1.2631,
+            longitude: 36.8081,
+            phone: '+254 722 123 456',
+            email: 'drkimani@example.com',
+            services: ['Gynecology', 'Women\'s Health'],
+          ),
+          Facility(
+            id: 'pp2',
+            code: 'MSA-PP-001',
+            name: 'Dr. Ochieng Medical Practice',
+            facilityType: 'Medical Clinic',
+            county: 'Mombasa',
+            subCounty: 'Nyali',
+            ward: 'Nyali',
+            owner: 'Private Practice - General Practitioner',
+            operationalStatus: 'Operational',
+            phone: '+254 722 123 457',
+            services: ['General Medicine', 'Women\'s Health'],
+          ),
+        ];
+        break;
+
+      case FacilityType.privateEnterprise:
+        mockFacilities = [
+          Facility(
+            id: 'pe1',
+            code: 'NRB-PE-001',
+            name: 'Aga Khan University Hospital',
+            facilityType: 'Private Hospital',
+            county: 'Nairobi',
+            subCounty: 'Westlands',
+            ward: 'Parklands',
+            owner: 'Private Enterprise (Institution)',
+            operationalStatus: 'Operational',
+            latitude: -1.2631,
+            longitude: 36.8081,
+            phone: '+254 20 366 2000',
+            email: 'info@aku.edu',
+            website: 'https://hospitals.aku.edu/nairobi',
+            services: [
+              'Gynecology',
+              'Obstetrics',
+              'Radiology',
+              'Surgery',
+              'Oncology'
+            ],
+          ),
+          Facility(
+            id: 'pe2',
+            code: 'NRB-PE-002',
+            name: 'Nairobi Hospital',
+            facilityType: 'Private Hospital',
+            county: 'Nairobi',
+            subCounty: 'Nairobi Central',
+            ward: 'Kilimani',
+            owner: 'Private Enterprise (Institution)',
+            operationalStatus: 'Operational',
+            latitude: -1.2930,
+            longitude: 36.7916,
+            phone: '+254 20 284 5000',
+            email: 'info@nairobihospital.org',
+            website: 'https://www.nairobihospital.org',
+            services: ['Gynecology', 'Obstetrics', 'Surgery', 'Pediatrics'],
+          ),
+        ];
+        break;
+    }
+
     // Filter by search query if provided
     if (searchQuery != null && searchQuery.isNotEmpty) {
       mockFacilities = mockFacilities
-          .where((facility) => facility.name
-              .toLowerCase()
-              .contains(searchQuery.toLowerCase()))
+          .where((facility) =>
+              facility.name.toLowerCase().contains(searchQuery.toLowerCase()))
           .toList();
     }
-    
+
     // Filter by county if provided
     if (county != null && county.isNotEmpty) {
       mockFacilities = mockFacilities
@@ -389,19 +373,29 @@ class HospitalService {
               facility.county.toLowerCase() == county.toLowerCase())
           .toList();
     }
-    
+
     return mockFacilities;
   }
-  
+
   // Return a mock facility for a specific ID
   Facility _getMockFacility(String facilityId) {
-    final mockFacilities = _getMockFacilities(null, null);
+    // First try to match by prefix to determine facility type
+    FacilityType facilityType;
+    if (facilityId.startsWith('pp')) {
+      facilityType = FacilityType.privatePractice;
+    } else if (facilityId.startsWith('pe')) {
+      facilityType = FacilityType.privateEnterprise;
+    } else {
+      facilityType = FacilityType.ministry;
+    }
+
+    final mockFacilities = _getMockFacilities(null, null, facilityType);
     return mockFacilities.firstWhere(
       (facility) => facility.id == facilityId,
       orElse: () => mockFacilities.first,
     );
   }
-  
+
   // Return mock doctors
   List<Doctor> _getMockDoctors() {
     return [
@@ -430,11 +424,12 @@ class HospitalService {
         qualification: 'MD, PhD',
         phone: '0734567890',
         email: 'mary.ochieng@example.com',
-        description: 'Specializes in cancer treatment related to women\'s reproductive system',
+        description:
+            'Specializes in cancer treatment related to women\'s reproductive system',
       ),
     ];
   }
-  
+
   // Return mock counties
   List<String> _getMockCounties() {
     return [
@@ -454,107 +449,5 @@ class HospitalService {
       'Bomet',
       'Kericho'
     ];
-  }
-
-  // Return mock private facilities
-  List<Facility> _getMockPrivateFacilities(String? searchQuery, String? county) {
-    List<Facility> mockPrivateFacilities = [
-      Facility(
-        id: 'p1',
-        code: 'NRB-PVT-001',
-        name: 'Aga Khan University Hospital',
-        facilityType: 'Private Hospital',
-        county: 'Nairobi',
-        subCounty: 'Westlands',
-        ward: 'Parklands',
-        owner: 'Aga Khan Foundation',
-        operationalStatus: 'Operational',
-        latitude: -1.2631,
-        longitude: 36.8081,
-        phone: '+254 20 366 2000',
-        email: 'info@aku.edu',
-        website: 'https://hospitals.aku.edu/nairobi',
-        services: ['Gynecology', 'Obstetrics', 'Radiology', 'Surgery', 'Oncology'],
-      ),
-      Facility(
-        id: 'p2',
-        code: 'NRB-PVT-002',
-        name: 'Nairobi Hospital',
-        facilityType: 'Private Hospital',
-        county: 'Nairobi',
-        subCounty: 'Nairobi Central',
-        ward: 'Kilimani',
-        owner: 'Kenya Hospital Association',
-        operationalStatus: 'Operational',
-        latitude: -1.2930,
-        longitude: 36.7916,
-        phone: '+254 20 284 5000',
-        email: 'info@nairobihospital.org',
-        website: 'https://www.nairobihospital.org',
-        services: ['Gynecology', 'Obstetrics', 'Surgery', 'Pediatrics'],
-      ),
-      Facility(
-        id: 'p3',
-        code: 'MSA-PVT-001',
-        name: 'Mombasa Hospital',
-        facilityType: 'Private Hospital',
-        county: 'Mombasa',
-        subCounty: 'Mvita',
-        ward: 'Ganjoni',
-        owner: 'Mombasa Hospital',
-        operationalStatus: 'Operational',
-        latitude: -4.0435,
-        longitude: 39.6682,
-        phone: '+254 722 123 456',
-        services: ['Gynecology', 'Obstetrics', 'Surgery'],
-      ),
-      Facility(
-        id: 'p4',
-        code: 'KSM-PVT-001',
-        name: 'Aga Khan Hospital Kisumu',
-        facilityType: 'Private Hospital',
-        county: 'Kisumu',
-        subCounty: 'Kisumu Central',
-        ward: 'Milimani',
-        owner: 'Aga Khan Foundation',
-        operationalStatus: 'Operational',
-        latitude: -0.1022,
-        longitude: 34.7617,
-        phone: '+254 57 202 0701',
-        services: ['Gynecology', 'Obstetrics', 'Surgery'],
-      ),
-      Facility(
-        id: 'p5',
-        code: 'NKR-PVT-001',
-        name: 'Mediheal Hospital Nakuru',
-        facilityType: 'Private Hospital',
-        county: 'Nakuru',
-        subCounty: 'Nakuru East',
-        ward: 'Nakuru East',
-        owner: 'Mediheal Group',
-        operationalStatus: 'Operational',
-        phone: '+254 722 123 459',
-        services: ['Gynecology', 'Obstetrics', 'Surgery', 'Fertility'],
-      ),
-    ];
-    
-    // Filter by search query if provided
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      mockPrivateFacilities = mockPrivateFacilities
-          .where((facility) => facility.name
-              .toLowerCase()
-              .contains(searchQuery.toLowerCase()))
-          .toList();
-    }
-    
-    // Filter by county if provided
-    if (county != null && county.isNotEmpty) {
-      mockPrivateFacilities = mockPrivateFacilities
-          .where((facility) =>
-              facility.county.toLowerCase() == county.toLowerCase())
-          .toList();
-    }
-    
-    return mockPrivateFacilities;
   }
 }

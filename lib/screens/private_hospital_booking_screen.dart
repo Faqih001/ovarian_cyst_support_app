@@ -7,9 +7,9 @@ class PrivateHospitalBookingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Simply return KenyanHospitalBookingScreen with private hospital type
+    // Simply return KenyanHospitalBookingScreen with private enterprise type
     return const KenyanHospitalBookingScreen(
-      initialFacilityType: FacilityType.private,
+      initialFacilityType: FacilityType.privateEnterprise,
     );
   }
 }
