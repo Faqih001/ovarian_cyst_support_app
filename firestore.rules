@@ -1,0 +1,98 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isValidUser() {
+      return request.auth.uid != null 
+        && request.auth.token.email_verified == true;
+    }
+
+    // User profiles - only readable by authenticated users, writable by owner
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) 
+        && request.resource.data.keys().hasAll(['name', 'email', 'createdAt'])
+        && request.resource.data.createdAt == request.time;
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['name', 'photoUrl', 'preferences', 'settings']);
+      allow delete: if false; // Prevent user deletion through client
+    }
+
+    // Medical records - strict privacy
+    match /users/{userId}/medicalRecords/{document} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Symptoms tracking
+    match /users/{userId}/symptoms/{symptomId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Appointments
+    match /users/{userId}/appointments/{appointmentId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Medications
+    match /users/{userId}/medications/{medicationId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Community posts - public but with restrictions
+    match /communityPosts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isValidUser() 
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll(['content', 'createdAt', 'userId'])
+        && request.resource.data.createdAt == request.time;
+      allow update: if isValidUser() 
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['content', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if resource.data.userId == request.auth.uid;
+    }
+
+    // Comments on posts
+    match /communityPosts/{postId}/comments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isValidUser()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll(['content', 'createdAt', 'userId'])
+        && request.resource.data.createdAt == request.time;
+      allow update: if isValidUser()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['content', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if resource.data.userId == request.auth.uid;
+    }
+
+    // Educational content - read-only for authenticated users
+    match /educationalContent/{contentId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only admins can modify via backend
+    }
+
+    // Healthcare providers - public directory
+    match /healthcareProviders/{providerId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only admins can modify via backend
+    }
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
