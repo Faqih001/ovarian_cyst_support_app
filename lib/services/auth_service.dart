@@ -1,10 +1,11 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:ovarian_cyst_support_app/models/user_agreement.dart';
+import 'package:ovarian_cyst_support_app/widgets/app_toast.dart' as toast;
 
 enum AuthStatus { unknown, authenticated, unauthenticated, disabled }
 
@@ -79,68 +80,71 @@ class AuthService with ChangeNotifier {
   }
 
   // Register a new user with email and password
-  Future<User?> registerWithEmailAndPassword(
-    String email,
-    String password,
-    String name, {
-    bool acceptTerms = false,
-    bool acceptPrivacy = false,
+  Future<User?> registerWithEmailAndPassword({
+    required String email,
+    required String password,
+    required String name,
+    required BuildContext context,
   }) async {
-    _setLoading(true);
-    _clearError();
-
     try {
-      // Create a RecaptchaVerifier instance
-      await _auth!.setSettings(
-        appVerificationDisabledForTesting:
-            false, // Set to true only for testing
-        forceRecaptchaFlow: true,
+      _isLoading = true;
+      notifyListeners();
+
+      // Create user account
+      final UserCredential result = await _auth!.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
       );
+      _user = result.user;
 
-      // Create the user with Firebase Auth
-      final UserCredential userCredential = await _auth!
-          .createUserWithEmailAndPassword(email: email, password: password);
+      // Send email verification
+      await _user?.sendEmailVerification();
 
-      // Update display name
-      await userCredential.user?.updateDisplayName(name);
-
-      // Create user document in Firestore
-      if (userCredential.user != null) {
-        await _createUserDocument(userCredential.user!.uid, {
+      // Create user profile in Firestore
+      if (_user != null) {
+        await _firestore!.collection('users').doc(_user!.uid).set({
           'name': name,
           'email': email,
           'createdAt': FieldValue.serverTimestamp(),
-          'lastLogin': FieldValue.serverTimestamp(),
-          'verified': false, // Add verification status
         });
 
-        // Send email verification
-        await userCredential.user!.sendEmailVerification();
-
         // Store user agreement
-        if (acceptTerms || acceptPrivacy) {
-          await storeUserAgreement(
-            userCredential.user!.uid,
-            acceptTerms,
-            acceptPrivacy,
+        await _firestore!.collection('user_agreements').doc(_user!.uid).set({
+          'agreedToTerms': true,
+          'agreedToPrivacyPolicy': true,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
+        // Save credentials for auto-login after verification
+        await _storage.write(key: _emailKey, value: email);
+        await _storage.write(key: _passwordKey, value: password);
+
+        // Show success notification using AppToast if context is still valid
+        if (context.mounted) {
+          toast.AppToast.showSuccess(
+            context,
+            'Registration successful! Please check your email to verify your account.',
           );
         }
       }
 
-      return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'operation-not-allowed') {
-        _setError(
-            'Email/password accounts are not enabled. Please enable it in the Firebase Console.');
-      } else {
-        _handleAuthError(e);
-      }
-      return null;
+      _isLoading = false;
+      notifyListeners();
+      return _user;
     } catch (e) {
-      _setError('An unexpected error occurred: ${e.toString()}');
+      _isLoading = false;
+      _errorMessage = _getReadableErrorMessage(e);
+      notifyListeners();
+
+      // Show error notification if context is still valid
+      if (context.mounted) {
+        toast.AppToast.showError(
+          context,
+          _errorMessage ?? 'Registration failed. Please try again.',
+        );
+      }
+
       return null;
-    } finally {
-      _setLoading(false);
     }
   }
 
@@ -235,14 +239,6 @@ class AuthService with ChangeNotifier {
     } finally {
       _setLoading(false);
     }
-  }
-
-  // Create user document in Firestore
-  Future<void> _createUserDocument(
-    String uid,
-    Map<String, dynamic> data,
-  ) async {
-    await _firestore!.collection('users').doc(uid).set(data);
   }
 
   // Get user document from Firestore
@@ -381,6 +377,63 @@ class AuthService with ChangeNotifier {
     }
   }
 
+  // Check email verification status
+  Future<bool> checkEmailVerification(BuildContext context) async {
+    try {
+      if (!context.mounted) return false;
+
+      await _auth!.currentUser?.reload();
+      final user = _auth!.currentUser;
+
+      if (user != null && user.emailVerified) {
+        if (context.mounted) {
+          toast.AppToast.showSuccess(
+            context,
+            'Email verified successfully! You can now access all features.',
+          );
+        }
+        return true;
+      } else if (user != null) {
+        if (context.mounted) {
+          toast.AppToast.showSuccess(
+            context,
+            'Please verify your email to access all features.',
+          );
+        }
+        return false;
+      }
+      return false;
+    } catch (e) {
+      if (context.mounted) {
+        toast.AppToast.showError(
+          context,
+          'Failed to check email verification status.',
+        );
+      }
+      return false;
+    }
+  }
+
+  // Resend verification email
+  Future<void> resendVerificationEmail(BuildContext context) async {
+    try {
+      await _auth!.currentUser?.sendEmailVerification();
+      if (context.mounted) {
+        toast.AppToast.showSuccess(
+          context,
+          'Verification email sent! Please check your inbox.',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        toast.AppToast.showError(
+          context,
+          'Failed to send verification email. Please try again later.',
+        );
+      }
+    }
+  }
+
   // Handle Firebase Auth errors
   void _handleAuthError(FirebaseAuthException e) {
     String message;
@@ -430,5 +483,29 @@ class AuthService with ChangeNotifier {
   void _setLoading(bool isLoading) {
     _isLoading = isLoading;
     notifyListeners();
+  }
+
+  // Convert error to readable message
+  String _getReadableErrorMessage(dynamic error) {
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'invalid-email':
+          return 'The email address is not valid.';
+        case 'user-disabled':
+          return 'This user has been disabled. Please contact support.';
+        case 'user-not-found':
+          return 'No user found with this email.';
+        case 'wrong-password':
+          return 'Incorrect password. Please try again.';
+        case 'email-already-in-use':
+          return 'An account already exists with this email.';
+        case 'weak-password':
+          return 'The password provided is too weak.';
+        default:
+          return 'An unknown error occurred. Please try again.';
+      }
+    } else {
+      return 'An error occurred. Please try again.';
+    }
   }
 }

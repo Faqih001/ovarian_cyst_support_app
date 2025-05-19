@@ -26,7 +26,7 @@ class _SignupScreenState extends State<SignupScreen>
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _acceptedTerms = false;
-  bool _acceptedPrivacy = false;
+  bool _isLoading = false;
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
 
@@ -232,8 +232,6 @@ class _SignupScreenState extends State<SignupScreen>
                         onChanged: (value) {
                           setState(() {
                             _acceptedTerms = value ?? false;
-                            _acceptedPrivacy =
-                                value ?? false; // Keep both values in sync
                           });
                         },
                       ),
@@ -282,15 +280,15 @@ class _SignupScreenState extends State<SignupScreen>
 
                   // Sign up button
                   ElevatedButton(
-                    onPressed: _acceptedTerms
-                        ? () {
-                            if (_formKey.currentState!.validate()) {
-                              _handleSignup();
-                            }
-                          }
-                        : null,
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            _handleSignup();
+                          },
                     style: AppStyles.primaryButton,
-                    child: const Text('Sign Up', style: AppStyles.buttonText),
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Sign Up', style: AppStyles.buttonText),
                   ),
 
                   const SizedBox(height: 20),
@@ -311,42 +309,29 @@ class _SignupScreenState extends State<SignupScreen>
   }
 
   // Extract the signup logic to a separate method with proper mounted checks
-  Future<void> _handleSignup() async {
+  void _handleSignup() async {
+    if (!_formKey.currentState!.validate() || !_acceptedTerms) {
+      return;
+    }
+
+    // Show loading
+    setState(() => _isLoading = true);
+
     final authService = Provider.of<AuthService>(context, listen: false);
-    final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    // Check if widget is still mounted before showing dialog
-    if (!mounted) return;
-
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const Center(child: CircularProgressIndicator());
-      },
-    );
 
     try {
-      // Clear any previous error messages
-      ScaffoldMessenger.of(context).clearSnackBars();
-
       // Attempt registration
       final user = await authService.registerWithEmailAndPassword(
-        email,
-        password,
-        name,
-        acceptTerms: _acceptedTerms,
-        acceptPrivacy: _acceptedPrivacy,
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        name: _nameController.text.trim(),
+        context: context,
       );
 
-      // Check if widget is still mounted before continuing
       if (!mounted) return;
 
-      // Close loading dialog
-      Navigator.of(context).pop();
+      // Hide loading
+      setState(() => _isLoading = false);
 
       if (user != null) {
         // Navigate to home on success
@@ -365,8 +350,8 @@ class _SignupScreenState extends State<SignupScreen>
     } catch (e) {
       if (!mounted) return;
 
-      // Close loading dialog
-      Navigator.of(context).pop();
+      // Hide loading
+      setState(() => _isLoading = false);
 
       // Show a more user-friendly error message
       String errorMessage = 'Registration failed';

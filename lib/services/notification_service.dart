@@ -4,8 +4,18 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_init;
+import 'package:logger/logger.dart';
 import 'package:ovarian_cyst_support_app/models/medication.dart';
 import 'package:ovarian_cyst_support_app/models/appointment.dart';
+
+final _logger = Logger();
+
+enum NotificationType { medication, appointment }
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  _logger.d('Handling a background message: ${message.messageId}');
+}
 
 class NotificationService {
   static const String _keyNotificationsEnabled = 'notifications_enabled';
@@ -14,534 +24,319 @@ class NotificationService {
 
   // Singleton instance
   static final NotificationService _instance = NotificationService._internal();
+  factory NotificationService() => _instance;
 
-  factory NotificationService() {
-    return _instance;
-  }
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  bool _initialized = false;
 
+  // Private constructor
   NotificationService._internal();
 
-  // Flutter Local Notifications Plugin
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  Future<void> initialize() async {
+    if (_initialized) return;
 
-  // Firebase Messaging instance
-  final FirebaseMessaging firebaseMessaging = FirebaseMessaging.instance;
-
-  // Notification Settings
-  NotificationSettings? settings;
-
-  // Initialize notification service
-  static Future<void> initialize() async {
-    // Get instance
-    final instance = NotificationService();
-
-    // Initialize timezone database
+    // Initialize timezone data
     tz_init.initializeTimeZones();
 
-    // Initialize Firebase Messaging
-    await instance._initializeFirebaseMessaging();
+    await _initializeFirebaseMessaging();
+    await _initializeLocalNotifications();
+    await _setupNotificationTapActions();
 
-    // Initialize local notifications
-    await instance._initializeLocalNotifications();
-
-    // Handle notification tap
-    instance._setupNotificationTapActions();
-
-    debugPrint(
-      'Enhanced notification service initialized with Firebase Cloud Messaging',
-    );
+    _initialized = true;
+    _logger.i('Notification service initialized');
   }
 
-  // Check if notifications are enabled
-  static Future<bool> areNotificationsEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyNotificationsEnabled) ?? false;
-  }
-
-  // Toggle notifications on/off
-  static Future<void> setNotificationsEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyNotificationsEnabled, enabled);
-  }
-
-  // Initialize Firebase Cloud Messaging
   Future<void> _initializeFirebaseMessaging() async {
-    // Request permission
-    settings = await firebaseMessaging.requestPermission(
+    final settings = await _firebaseMessaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
       provisional: false,
     );
 
-    // Configure Firebase Messaging handlers
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+    _logger.i(
+        'Firebase Messaging authorization status: ${settings.authorizationStatus}');
 
-    // Get FCM token
-    String? token = await firebaseMessaging.getToken();
-    debugPrint('FCM Token: $token');
+    // Handle background messages
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-    // Subscribe to topics
-    await firebaseMessaging.subscribeToTopic('all_users');
-    await firebaseMessaging.subscribeToTopic('ovarian_cyst_updates');
+    // Handle foreground messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      _logger.d('Got a message whilst in the foreground!');
+      _logger.d('Message data: ${message.data}');
+
+      if (message.notification != null) {
+        _logger.d(
+            'Message contained notification: ${message.notification!.title}');
+      }
+    });
   }
 
-  // Initialize local notifications
   Future<void> _initializeLocalNotifications() async {
-    const AndroidInitializationSettings androidSettings =
+    const initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const DarwinInitializationSettings iosSettings =
-        DarwinInitializationSettings(
+    const initializationSettingsIOS = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    const InitializationSettings initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
+    const initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
     );
 
-    await flutterLocalNotificationsPlugin.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: _onLocalNotificationTap,
-    );
-  }
-
-  // Setup notification tap actions
-  void _setupNotificationTapActions() {
-    // Check if app was opened from a notification
-    FirebaseMessaging.instance.getInitialMessage().then((message) {
-      if (message != null) {
-        _handleNotificationTap(message);
-      }
-    });
-  }
-
-  // Handle foreground message
-  void _handleForegroundMessage(RemoteMessage message) {
-    debugPrint('Foreground message received: ${message.notification?.title}');
-
-    // Show local notification
-    _showLocalNotification(
-      title: message.notification?.title ?? 'New Notification',
-      body: message.notification?.body ?? '',
-      payload: message.data.toString(),
+    await _localNotifications.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: _onNotificationTapped,
     );
   }
 
-  // Handle notification tap
-  void _handleNotificationTap(RemoteMessage message) {
-    debugPrint('Notification tapped: ${message.notification?.title}');
-
-    // Parse data payload
-    final Map<String, dynamic> data = message.data;
-
-    // Handle navigation based on notification type
-    if (data.containsKey('type')) {
-      _navigateBasedOnNotificationType(data['type'], data);
-    }
-  }
-
-  // Handle local notification tap
-  void _onLocalNotificationTap(NotificationResponse response) {
-    debugPrint('Local notification tapped: ${response.payload}');
-
-    // Parse payload
+  void _onNotificationTapped(NotificationResponse response) {
     if (response.payload != null) {
-      try {
-        // Convert string payload to map and navigate
-        // In a real app, this would be proper JSON parsing
-        final payload = response.payload!;
-        if (payload.contains('type')) {
-          final type = payload.split('type:')[1].split(',')[0].trim();
-          _navigateBasedOnNotificationType(type, {});
-        }
-      } catch (e) {
-        debugPrint('Error parsing notification payload: $e');
+      _logger.d('Notification payload: ${response.payload}');
+      // Handle notification tap here
+    }
+  }
+
+  Future<void> _setupNotificationTapActions() async {
+    final NotificationAppLaunchDetails? notificationAppLaunchDetails =
+        await _localNotifications.getNotificationAppLaunchDetails();
+
+    if (notificationAppLaunchDetails?.didNotificationLaunchApp ?? false) {
+      final payload =
+          notificationAppLaunchDetails!.notificationResponse?.payload;
+      if (payload != null) {
+        _logger.d('App launched from notification: $payload');
       }
     }
   }
 
-  // Navigate based on notification type
-  void _navigateBasedOnNotificationType(
-    String type,
-    Map<String, dynamic> data,
-  ) {
-    // This would be implemented to push navigation routes based on notification type
-    switch (type) {
-      case 'appointment_reminder':
-        // Navigate to appointments page
-        break;
-      case 'medication_reminder':
-        // Navigate to medication page
-        break;
-      case 'symptom_alert':
-        // Navigate to symptom tracking page
-        break;
-      case 'new_message':
-        // Navigate to community chat
-        break;
-      case 'new_article':
-        // Navigate to education page
-        break;
-      default:
-        // Navigate to home page
-        break;
-    }
+  Future<bool> get isNotificationsEnabled async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyNotificationsEnabled) ?? true;
   }
 
-  // Show a local notification
-  Future<void> _showLocalNotification({
-    required String title,
-    required String body,
-    String? payload,
-  }) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'ovarian_cyst_support_channel',
-      'Ovarian Cyst Support',
-      channelDescription: 'Notifications for the Ovarian Cyst Support app',
-      importance: Importance.high,
-      priority: Priority.high,
-      showWhen: true,
-    );
-
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecond, // Unique ID
-      title,
-      body,
-      notificationDetails,
-      payload: payload,
-    );
+  Future<void> setNotificationsEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyNotificationsEnabled, enabled);
+    _logger.i('Notifications ${enabled ? 'enabled' : 'disabled'}');
   }
 
-  // Schedule a notification at a future time
   Future<void> _scheduleNotification({
-    required String title,
-    required String body,
-    required DateTime scheduledTime,
-    String? payload,
-  }) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'ovarian_cyst_reminder_channel',
-      'Reminders',
-      channelDescription: 'Scheduled reminders',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
-
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    // Convert DateTime to TZDateTime
-    final tz.TZDateTime tzScheduledTime = tz.TZDateTime.from(
-      scheduledTime,
-      tz.local,
-    );
-
-    // Schedule notification
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      scheduledTime.millisecond, // Unique ID
-      title,
-      body,
-      tzScheduledTime,
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-      payload: payload,
-    );
-  }
-
-  // Public method to schedule notifications
-  Future<void> scheduleNotification({
     required int id,
     required String title,
     required String body,
     required DateTime scheduledDate,
     String? payload,
   }) async {
-    final bool notificationsEnabled = await areNotificationsEnabled();
-    if (!notificationsEnabled) {
-      return;
-    }
+    final androidDetails = AndroidNotificationDetails(
+      'reminders_channel',
+      'Reminders',
+      channelDescription: 'Channel for scheduled reminders',
+      importance: Importance.high,
+      priority: Priority.high,
+      enableLights: true,
+      enableVibration: true,
+    );
 
-    await _scheduleNotification(
-      title: title,
-      body: body,
-      scheduledTime: scheduledDate,
+    final iosDetails = const DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    final scheduledTime = tz.TZDateTime.from(scheduledDate, tz.local);
+
+    await _localNotifications.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduledTime,
+      platformDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
       payload: payload,
     );
   }
 
-  // Schedule medication reminder
-  static Future<void> scheduleMedicationReminder(Medication medication) async {
-    if (!medication.reminderEnabled) {
+  // Public method to schedule a notification
+  Future<void> scheduleNotification({
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    String? payload,
+  }) async {
+    if (!await isNotificationsEnabled) {
+      _logger.i('Notifications are disabled, skipping scheduling');
       return;
     }
 
-    final bool notificationsEnabled = await areNotificationsEnabled();
-    if (!notificationsEnabled) {
-      return;
-    }
+    final int notificationId = DateTime.now().millisecondsSinceEpoch % 100000;
 
-    // Store in SharedPreferences (for compatibility)
+    await _scheduleNotification(
+      id: notificationId,
+      title: title,
+      body: body,
+      scheduledDate: scheduledDate,
+      payload: payload,
+    );
+    _logger.i('Scheduled notification: $title for ${scheduledDate.toString()}');
+  }
+
+  Future<void> scheduleMedicationReminder(Medication medication) async {
+    if (!medication.reminderEnabled || !await isNotificationsEnabled) return;
+
     final prefs = await SharedPreferences.getInstance();
-    final reminders = prefs.getStringList(_keyMedicationReminders) ?? [];
+    final List<String> existingReminders =
+        prefs.getStringList(_keyMedicationReminders) ?? [];
 
-    final reminderData = {
-      'id':
-          '${medication.name}_${medication.time.hour}_${medication.time.minute}',
-      'title': 'Medication Reminder',
-      'body': 'Time to take ${medication.name} (${medication.dosage})',
-      'hour': medication.time.hour,
-      'minute': medication.time.minute,
-      'frequency': medication.frequency,
-    };
+    final int notificationId = medication.hashCode;
+    await _localNotifications.cancel(notificationId);
 
-    reminders.add(reminderData.toString());
-    await prefs.setStringList(_keyMedicationReminders, reminders);
-
-    // Schedule with enhanced notification service
-    final instance = NotificationService();
-    final now = DateTime.now();
-    final scheduledTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
+    final DateTime scheduledDate = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
       medication.time.hour,
       medication.time.minute,
     );
 
-    // If the time has already passed today, schedule for tomorrow
-    final actualScheduledTime = scheduledTime.isBefore(now)
-        ? scheduledTime.add(const Duration(days: 1))
-        : scheduledTime;
-
-    await instance._scheduleNotification(
-      title: reminderData['title'] as String,
-      body: reminderData['body'] as String,
-      scheduledTime: actualScheduledTime,
+    await _scheduleNotification(
+      id: notificationId,
+      title: 'Medication Reminder',
+      body: 'Time to take ${medication.name}',
+      scheduledDate: scheduledDate,
       payload: 'type: medication_reminder, medication: ${medication.name}',
     );
 
-    debugPrint(
-      'Enhanced medication reminder scheduled: ${reminderData['title']} at ${reminderData['hour']}:${reminderData['minute']}',
-    );
-  }
-
-  // Cancel medication reminder
-  static Future<void> cancelMedicationReminder(Medication medication) async {
-    // Update SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final reminders = prefs.getStringList(_keyMedicationReminders) ?? [];
-
-    final reminderId =
+    final String reminderId =
         '${medication.name}_${medication.time.hour}_${medication.time.minute}';
-    final updatedReminders =
-        reminders.where((reminder) => !reminder.contains(reminderId)).toList();
-
-    await prefs.setStringList(_keyMedicationReminders, updatedReminders);
-
-    // Cancel with enhanced notification service
-    // This is a simplified approach - in a real app you'd store the exact notification ID
-    final notificationId = (medication.name.hashCode +
-            medication.time.hour +
-            medication.time.minute) %
-        10000;
-    final instance = NotificationService();
-    await instance.flutterLocalNotificationsPlugin.cancel(notificationId);
-
-    debugPrint('Canceled medication reminder for ${medication.name}');
+    if (!existingReminders.contains(reminderId)) {
+      existingReminders.add(reminderId);
+      await prefs.setStringList(_keyMedicationReminders, existingReminders);
+    }
   }
 
-  // Schedule appointment reminder using Appointment model
-  static Future<void> scheduleAppointmentReminderWithModel(
-    Appointment appointment,
-  ) async {
-    if (!appointment.reminderEnabled) {
-      return;
-    }
+  Future<void> scheduleAppointmentReminderWithModel(
+      Appointment appointment) async {
+    if (!appointment.reminderEnabled) return;
 
-    final bool notificationsEnabled = await areNotificationsEnabled();
-    if (!notificationsEnabled) {
-      return;
-    }
-
-    // Store in SharedPreferences (for compatibility)
     final prefs = await SharedPreferences.getInstance();
-    final reminders = prefs.getStringList(_keyAppointmentReminders) ?? [];
+    final List<String> existingReminders =
+        prefs.getStringList(_keyAppointmentReminders) ?? [];
 
-    // Schedule reminder for 1 day before appointment
-    final reminderTime = appointment.dateTime.subtract(const Duration(days: 1));
+    final int notificationId = appointment.hashCode;
+    await _localNotifications.cancel(notificationId);
 
-    final reminderData = {
-      'id':
-          '${appointment.purpose}_${appointment.dateTime.millisecondsSinceEpoch}',
-      'title': 'Appointment Reminder',
-      'body':
-          'You have an appointment for ${appointment.purpose} with Dr. ${appointment.doctorName} tomorrow',
-      'year': reminderTime.year,
-      'month': reminderTime.month,
-      'day': reminderTime.day,
-      'hour': reminderTime.hour,
-      'minute': reminderTime.minute,
-    };
-
-    reminders.add(reminderData.toString());
-    await prefs.setStringList(_keyAppointmentReminders, reminders);
-
-    // Schedule with enhanced notification service
-    final instance = NotificationService();
-
-    // Schedule one day before
-    await instance._scheduleNotification(
-      title: reminderData['title'] as String,
-      body: reminderData['body'] as String,
-      scheduledTime: reminderTime,
+    // One day before reminder
+    final oneDayBefore = appointment.dateTime.subtract(const Duration(days: 1));
+    await _scheduleNotification(
+      id: notificationId,
+      title: 'Appointment Tomorrow',
+      body: 'You have an appointment for ${appointment.purpose} tomorrow',
+      scheduledDate: oneDayBefore,
       payload:
           'type: appointment_reminder, appointment: ${appointment.purpose}',
     );
 
-    // Also schedule one hour before
-    final hourBeforeReminder = appointment.dateTime.subtract(
-      const Duration(hours: 1),
-    );
-    await instance._scheduleNotification(
+    // One hour before reminder
+    final oneHourBefore =
+        appointment.dateTime.subtract(const Duration(hours: 1));
+    await _scheduleNotification(
+      id: notificationId + 1,
       title: 'Upcoming Appointment',
-      body:
-          'Your appointment for ${appointment.purpose} with Dr. ${appointment.doctorName} is in 1 hour',
-      scheduledTime: hourBeforeReminder,
+      body: 'You have an appointment for ${appointment.purpose} in 1 hour',
+      scheduledDate: oneHourBefore,
       payload:
           'type: appointment_reminder, appointment: ${appointment.purpose}',
     );
 
-    debugPrint(
-      'Enhanced appointment reminders scheduled for ${appointment.purpose}',
-    );
-  }
-
-  // Cancel appointment reminder
-  static Future<void> cancelAppointmentReminder(Appointment appointment) async {
-    // Update SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final reminders = prefs.getStringList(_keyAppointmentReminders) ?? [];
-
-    final reminderId =
+    final String reminderId =
         '${appointment.purpose}_${appointment.dateTime.millisecondsSinceEpoch}';
-    final updatedReminders =
-        reminders.where((reminder) => !reminder.contains(reminderId)).toList();
-
-    await prefs.setStringList(_keyAppointmentReminders, updatedReminders);
-
-    // Cancel with enhanced notification service
-    // This is a simplified approach - in a real app you'd store the exact notification IDs
-    final notificationId = appointment.dateTime.millisecondsSinceEpoch % 10000;
-    final instance = NotificationService();
-    await instance.flutterLocalNotificationsPlugin.cancel(notificationId);
-    await instance.flutterLocalNotificationsPlugin.cancel(notificationId + 1);
-
-    debugPrint('Canceled appointment reminders for ${appointment.purpose}');
+    if (!existingReminders.contains(reminderId)) {
+      existingReminders.add(reminderId);
+      await prefs.setStringList(_keyAppointmentReminders, existingReminders);
+    }
   }
 
-  // Cancel all reminders
-  static Future<void> cancelAllReminders() async {
-    // Update SharedPreferences
+  Future<void> cancelAllReminders() async {
     final prefs = await SharedPreferences.getInstance();
+    await _localNotifications.cancelAll();
     await prefs.remove(_keyMedicationReminders);
     await prefs.remove(_keyAppointmentReminders);
+    _logger.i('All reminders cancelled');
+  }
+}
 
-    // Cancel all notifications
-    final instance = NotificationService();
-    await instance.flutterLocalNotificationsPlugin.cancelAll();
-
-    debugPrint('Canceled all reminders');
+// Keep AppToast separate - it's used by other services
+class AppToast {
+  static void showSuccess(BuildContext context, String message) {
+    _show(
+      context: context,
+      message: message,
+      isError: false,
+    );
   }
 
-  // Schedule appointment reminder
-  static Future<void> scheduleAppointmentReminder(
-    String appointmentId,
-    DateTime appointmentDateTime,
-    String providerName,
-    String appointmentPurpose,
-    String location,
-  ) async {
-    // Get notification settings
-    final bool notificationsEnabled = await areNotificationsEnabled();
-    if (!notificationsEnabled) {
-      debugPrint(
-        'Notifications are disabled. Skipping appointment reminder scheduling.',
-      );
-      return;
-    }
-
-    // Store in SharedPreferences (for compatibility)
-    final prefs = await SharedPreferences.getInstance();
-    final reminders = prefs.getStringList(_keyAppointmentReminders) ?? [];
-
-    // Schedule reminder for 1 day before appointment
-    final reminderTime = appointmentDateTime.subtract(const Duration(days: 1));
-
-    final reminderData = {
-      'id':
-          '${appointmentPurpose}_${appointmentDateTime.millisecondsSinceEpoch}',
-      'title': 'Appointment Reminder',
-      'body':
-          'You have an appointment for $appointmentPurpose with $providerName tomorrow at $location',
-      'year': reminderTime.year,
-      'month': reminderTime.month,
-      'day': reminderTime.day,
-      'hour': reminderTime.hour,
-      'minute': reminderTime.minute,
-    };
-
-    reminders.add(reminderData.toString());
-    await prefs.setStringList(_keyAppointmentReminders, reminders);
-
-    // Schedule with enhanced notification service
-    final instance = NotificationService();
-
-    // Schedule one day before
-    await instance._scheduleNotification(
-      title: reminderData['title'] as String,
-      body: reminderData['body'] as String,
-      scheduledTime: reminderTime,
-      payload: 'type: appointment_reminder, appointment: $appointmentPurpose',
+  static void showError(BuildContext context, String message) {
+    _show(
+      context: context,
+      message: message,
+      isError: true,
     );
+  }
 
-    // Also schedule one hour before
-    final hourBeforeReminder = appointmentDateTime.subtract(
-      const Duration(hours: 1),
-    );
-    await instance._scheduleNotification(
-      title: 'Upcoming Appointment',
-      body:
-          'Your appointment for $appointmentPurpose with $providerName is in 1 hour',
-      scheduledTime: hourBeforeReminder,
-      payload: 'type: appointment_reminder, appointment: $appointmentPurpose',
-    );
+  static void _show({
+    required BuildContext context,
+    required String message,
+    required bool isError,
+    Duration duration = const Duration(seconds: 3),
+  }) {
+    if (!context.mounted) return;
 
-    debugPrint(
-      'Enhanced appointment reminders scheduled for $appointmentPurpose',
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isError ? Colors.red.shade800 : Colors.green.shade800,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 100,
+          right: 20,
+          left: 20,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        duration: duration,
+      ),
     );
   }
 }

@@ -44,8 +44,10 @@ service cloud.firestore {
     // User profiles with admin access
     match /users/{userId} {
       allow read: if isAuthenticated() || isAdmin();
-      allow create: if isOwner(userId) 
+      allow create: if isAuthenticated() 
+        && request.auth.uid == userId
         && hasRequiredFields(['name', 'email', 'createdAt'])
+        && request.resource.data.email == request.auth.token.email
         && isValidTimestamp();
       allow update: if isOwner(userId)
         && onlyFieldsChanged(['name', 'photoUrl', 'preferences', 'settings', 'updatedAt'])
@@ -56,7 +58,8 @@ service cloud.firestore {
     // User agreements
     match /user_agreements/{userId} {
       allow read: if isOwner(userId);
-      allow create, update: if isOwner(userId) 
+      allow create, update: if isAuthenticated()
+        && request.auth.uid == userId
         && hasRequiredFields(['agreedToTerms', 'agreedToPrivacyPolicy', 'timestamp'])
         && request.resource.data.timestamp == request.time;
       allow delete: if false;

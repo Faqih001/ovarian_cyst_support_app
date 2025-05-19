@@ -88,7 +88,6 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     );
 
     await _notificationService.scheduleNotification(
-      id: payload.hashCode,
       title: title,
       body: body,
       payload: payload,
@@ -125,7 +124,6 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
       await _firestoreService.addAppointment(_userId, appointmentData);
 
       if (_reminderEnabled) {
-
         await _scheduleAppointmentReminder(
           _selectedDate,
           widget.provider['name'],
