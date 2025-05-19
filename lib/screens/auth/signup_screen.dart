@@ -6,7 +6,6 @@ import 'package:ovarian_cyst_support_app/screens/home_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/screens/legal/privacy_policy_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/legal/terms_of_service_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -98,7 +97,7 @@ class _SignupScreenState extends State<SignupScreen>
                   const SizedBox(height: 10),
 
                   Text(
-                    'Join OvaCare for personalized support',
+                    'Join Ovarian Cyst for personalized support',
                     style: AppStyles.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -249,7 +248,7 @@ class _SignupScreenState extends State<SignupScreen>
                           );
                         },
                         child: const Text(
-                          'Terms of Servicez',
+                          'Terms',
                           style: TextStyle(
                             color: AppColors.primary,
                             decoration: TextDecoration.underline,
@@ -317,13 +316,11 @@ class _SignupScreenState extends State<SignupScreen>
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // Get the navigator and scaffold messenger before async operations
-    final navigator = Navigator.of(context);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    // Show loading dialog
+    // Check if widget is still mounted before showing dialog
     if (!mounted) return;
-    await showDialog<void>(
+
+    // Show loading indicator
+    showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
@@ -341,26 +338,21 @@ class _SignupScreenState extends State<SignupScreen>
         acceptPrivacy: _acceptedPrivacy,
       );
 
+      // Check if widget is still mounted before continuing
       if (!mounted) return;
 
       // Close loading dialog
-      await navigator.maybePop();
+      Navigator.of(context).pop();
 
       if (user != null) {
-        // Set the account creation flag
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('has_created_account', true);
-
-        if (!mounted) return;
-
         // Navigate to home on success
-        await navigator.pushAndRemoveUntil(
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
           (route) => false,
         );
       } else {
-        if (!mounted) return;
-        scaffoldMessenger.showSnackBar(
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(authService.errorMessage ?? 'Registration failed'),
             backgroundColor: Colors.red,
@@ -370,11 +362,11 @@ class _SignupScreenState extends State<SignupScreen>
     } catch (e) {
       if (!mounted) return;
 
-      // Close loading dialog if there's an error
-      await navigator.maybePop();
+      // Close loading dialog
+      Navigator.of(context).pop();
 
       // Show error message
-      scaffoldMessenger.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Registration failed: ${e.toString()}'),
           backgroundColor: Colors.red,

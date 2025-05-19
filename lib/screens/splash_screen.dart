@@ -1,15 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/onboarding_screen.dart';
-import 'package:ovarian_cyst_support_app/screens/home_screen.dart';
-import 'package:ovarian_cyst_support_app/screens/auth/login_screen.dart';
-import 'package:ovarian_cyst_support_app/screens/auth/signup_screen.dart';
-import 'package:ovarian_cyst_support_app/services/preferences_service.dart';
-import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -41,51 +34,15 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _handleNavigation() async {
-    // Get navigator before any async operations
-    if (!mounted) return;
-    final navigator = Navigator.of(context);
-
     // Wait for animation and loading
     await Future.delayed(const Duration(seconds: 3));
 
     if (!mounted) return;
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final bool onboardingComplete =
-          await PreferencesService.isOnboardingComplete();
-      final bool hasCreatedAccount =
-          prefs.getBool('has_created_account') ?? false;
-
-      if (!mounted) return;
-
-      final authService = Provider.of<AuthService>(context, listen: false);
-      Widget nextScreen;
-
-      // Determine the next screen based on app state
-      if (!onboardingComplete) {
-        nextScreen = const OnboardingScreen();
-      } else if (!hasCreatedAccount) {
-        nextScreen = const SignupScreen();
-      } else if (authService.status == AuthStatus.authenticated) {
-        nextScreen = const HomeScreen();
-      } else {
-        nextScreen = const LoginScreen();
-      }
-
-      // Final mounted check before navigation
-      if (!mounted) return;
-
-      await navigator.pushReplacement(
-        MaterialPageRoute(builder: (context) => nextScreen),
-      );
-    } catch (e) {
-      // Handle any errors during navigation setup
-      if (!mounted) return;
-      await navigator.pushReplacement(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    }
+    // Always navigate to onboarding screen
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+    );
   }
 
   @override
