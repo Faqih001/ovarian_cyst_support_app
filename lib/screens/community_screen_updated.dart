@@ -279,7 +279,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error updating like: $e')),
-      );
+        );
       }
     }
   }
