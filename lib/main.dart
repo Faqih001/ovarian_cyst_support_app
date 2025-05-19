@@ -3,7 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:logger/logger.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
-import 'package:ovarian_cyst_support_app/screens/cost_estimation_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/splash_screen.dart';
+import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/payment_service.dart';
 import 'package:ovarian_cyst_support_app/firebase_options.dart';
 
@@ -12,10 +13,13 @@ void main() async {
   final logger = Logger();
 
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    logger.i('Firebase initialized successfully');
+    // Check if Firebase is already initialized
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      logger.i('Firebase initialized successfully');
+    }
   } catch (e) {
     logger.e('Failed to initialize Firebase: $e');
     // App will continue without Firebase functionality
@@ -31,8 +35,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Include only the services needed for cost estimation
         Provider(create: (_) => PaymentService()),
+        ChangeNotifierProvider(create: (_) => AuthService()),
       ],
       child: MaterialApp(
         title: 'OvaCare',
@@ -52,8 +56,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        // Go directly to the cost estimation screen
-        home: const CostEstimationScreen(),
+        home: const SplashScreen(), // Start with the splash screen
       ),
     );
   }

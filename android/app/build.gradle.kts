@@ -51,8 +51,8 @@ dependencies {
     // Add coreLibraryDesugaring for Java 8+ APIs on Android 7 and below
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
-    // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
+    // Import the Firebase BoM with a version compatible with Kotlin 1.8
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
 
     // Add Firebase Analytics
     implementation("com.google.firebase:firebase-analytics")
@@ -61,6 +61,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth") // For authentication
     implementation("com.google.firebase:firebase-firestore") // For Cloud Firestore
     implementation("com.google.firebase:firebase-messaging") // For Cloud Messaging
+    implementation("com.google.android.gms:play-services-safetynet:17.0.1") // For reCAPTCHA
 
     // Add Kotlin standard library with explicit version matching plugin version
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.8.22")

@@ -48,6 +48,22 @@ class DatabaseService {
       )
     ''');
 
+    // Create payment attempts table
+    await db.execute('''
+      CREATE TABLE payment_attempts(
+        id TEXT PRIMARY KEY,
+        appointmentId TEXT,
+        amount REAL,
+        phoneNumber TEXT,
+        status TEXT,
+        description TEXT,
+        transactionId TEXT,
+        createdAt TEXT,
+        updatedAt TEXT,
+        FOREIGN KEY (appointmentId) REFERENCES appointments(id)
+      )
+    ''');
+
     // Create medications table
     await db.execute('''
       CREATE TABLE medications(
@@ -190,17 +206,20 @@ class DatabaseService {
   Future<void> saveSymptomEntry(SymptomEntry entry) async {
     final db = await database;
 
-    await db.insert('symptom_entries', {
-      'id': entry.date.toIso8601String(),
-      'date': entry.date.toIso8601String(),
-      'painLevel': entry.painLevel,
-      'bloatingLevel': entry.bloatingLevel,
-      'mood': entry.mood,
-      'symptoms': entry.symptoms.join(','),
-      'notes': entry.notes,
-      'isUploaded': 0,
-      'updatedAt': DateTime.now().toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'symptom_entries',
+        {
+          'id': entry.date.toIso8601String(),
+          'date': entry.date.toIso8601String(),
+          'painLevel': entry.painLevel,
+          'bloatingLevel': entry.bloatingLevel,
+          'mood': entry.mood,
+          'symptoms': entry.symptoms.join(','),
+          'notes': entry.notes,
+          'isUploaded': 0,
+          'updatedAt': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
 
     // Add sync entry
     await _addToSyncQueue('symptom_entries', entry.date.toIso8601String());
@@ -317,8 +336,7 @@ class DatabaseService {
 
   Future<void> saveAppointment(Map<String, dynamic> appointmentMap) async {
     final db = await database;
-    final id =
-        appointmentMap['id'] ??
+    final id = appointmentMap['id'] ??
         '${appointmentMap['purpose']}_${DateTime.now().millisecondsSinceEpoch}';
 
     final Map<String, dynamic> dbMap = {
@@ -426,21 +444,24 @@ class DatabaseService {
   Future<void> saveTreatmentItem(TreatmentItem item) async {
     final db = await database;
 
-    await db.insert('treatment_items', {
-      'id': item.id,
-      'name': item.name,
-      'type': item.type.toString().split('.').last,
-      'description': item.description,
-      'cost': item.cost,
-      'requiresPrescription': item.requiresPrescription ? 1 : 0,
-      'stockLevel': item.stockLevel,
-      'facilityId': item.facilityId,
-      'manufacturer': item.manufacturer,
-      'dosageInfo': item.dosageInfo,
-      'sideEffects': item.sideEffects?.join(','),
-      'isUploaded': 0,
-      'updatedAt': DateTime.now().toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'treatment_items',
+        {
+          'id': item.id,
+          'name': item.name,
+          'type': item.type.toString().split('.').last,
+          'description': item.description,
+          'cost': item.cost,
+          'requiresPrescription': item.requiresPrescription ? 1 : 0,
+          'stockLevel': item.stockLevel,
+          'facilityId': item.facilityId,
+          'manufacturer': item.manufacturer,
+          'dosageInfo': item.dosageInfo,
+          'sideEffects': item.sideEffects?.join(','),
+          'isUploaded': 0,
+          'updatedAt': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
 
     // Add sync entry
     await _addToSyncQueue('treatment_items', item.id);
@@ -502,17 +523,21 @@ class DatabaseService {
     final db = await database;
     final id = prediction.predictionDate.toIso8601String();
 
-    await db.insert('symptom_predictions', {
-      'id': id,
-      'predictionDate': prediction.predictionDate.toIso8601String(),
-      'severityScore': prediction.severityScore,
-      'riskLevel': prediction.riskLevel,
-      'potentialIssues': prediction.potentialIssues.join(','),
-      'recommendation': prediction.recommendation,
-      'requiresMedicalAttention': prediction.requiresMedicalAttention ? 1 : 0,
-      'isUploaded': 0,
-      'updatedAt': DateTime.now().toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'symptom_predictions',
+        {
+          'id': id,
+          'predictionDate': prediction.predictionDate.toIso8601String(),
+          'severityScore': prediction.severityScore,
+          'riskLevel': prediction.riskLevel,
+          'potentialIssues': prediction.potentialIssues.join(','),
+          'recommendation': prediction.recommendation,
+          'requiresMedicalAttention':
+              prediction.requiresMedicalAttention ? 1 : 0,
+          'isUploaded': 0,
+          'updatedAt': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
 
     // Add sync entry
     await _addToSyncQueue('symptom_predictions', id);
@@ -522,13 +547,16 @@ class DatabaseService {
   Future<void> _addToSyncQueue(String entityType, String entityId) async {
     final db = await database;
 
-    await db.insert('sync_status', {
-      'entityType': entityType,
-      'entityId': entityId,
-      'syncStatus': 'pending',
-      'lastSyncAttempt': DateTime.now().toIso8601String(),
-      'syncError': null,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'sync_status',
+        {
+          'entityType': entityType,
+          'entityId': entityId,
+          'syncStatus': 'pending',
+          'lastSyncAttempt': DateTime.now().toIso8601String(),
+          'syncError': null,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> _removeFromSyncQueue(String entityType, String entityId) async {

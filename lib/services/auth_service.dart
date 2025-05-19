@@ -95,12 +95,21 @@ class AuthService with ChangeNotifier {
           'email': email,
           'createdAt': FieldValue.serverTimestamp(),
           'lastLogin': FieldValue.serverTimestamp(),
+          'verified': false, // Add verification status
         });
+
+        // Send email verification
+        await userCredential.user!.sendEmailVerification();
       }
 
       return userCredential.user;
     } on FirebaseAuthException catch (e) {
-      _handleAuthError(e);
+      if (e.code == 'operation-not-allowed') {
+        _setError(
+            'Email/password accounts are not enabled. Please enable it in the Firebase Console.');
+      } else {
+        _handleAuthError(e);
+      }
       return null;
     } catch (e) {
       _setError('An unexpected error occurred: ${e.toString()}');
