@@ -19,10 +19,13 @@ void main() async {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       logger.i('Firebase initialized successfully');
+    } else {
+      logger.i('Firebase already initialized, using existing instance');
+      Firebase.app(); // Get the already initialized instance
     }
   } catch (e) {
-    logger.e('Failed to initialize Firebase: $e');
-    // App will continue without Firebase functionality
+    logger.e('Error during Firebase initialization: $e');
+    // Consider showing a user-friendly error message or fallback behavior
   }
 
   runApp(const MyApp());

@@ -5,7 +5,8 @@
     <application
         android:label="ovarian_cyst_support_app"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
         
         <!-- Add reCAPTCHA meta-data -->
         <meta-data

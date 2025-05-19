@@ -67,6 +67,9 @@ dependencies:
   fl_chart: ^0.66.0
   syncfusion_flutter_charts: ^24.1.41
   
+  # Security and Storage
+  flutter_secure_storage: ^9.0.0  # Added for remember me functionality
+  
   # Utilities
   intl: ^0.18.0  # Updated to be compatible with other packages
   url_launcher: ^6.2.5

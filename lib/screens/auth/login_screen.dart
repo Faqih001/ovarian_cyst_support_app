@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen>
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  bool _rememberMe = false;
   late AnimationController _animationController;
   late Animation<double> _fadeInAnimation;
 
@@ -35,6 +36,19 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     _animationController.forward();
+    _checkSavedCredentials();
+  }
+
+  Future<void> _checkSavedCredentials() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (await authService.hasPersistedCredentials()) {
+      setState(() {
+        _rememberMe = true;
+      });
+      final credentials = await authService.getPersistedCredentials();
+      _emailController.text = credentials['email'] ?? '';
+      _passwordController.text = credentials['password'] ?? '';
+    }
   }
 
   @override
@@ -150,21 +164,42 @@ class _LoginScreenState extends State<LoginScreen>
 
                   const SizedBox(height: 16),
 
-                  // Forgot password button
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        // Handle forgot password
-                      },
-                      child: Text(
-                        'Forgot Password?',
-                        style: AppStyles.bodyMedium.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
+                  // Remember me and Forgot password row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _rememberMe,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                _rememberMe = value ?? false;
+                              });
+                            },
+                            activeColor: AppColors.primary,
+                          ),
+                          Text(
+                            'Remember me',
+                            style: AppStyles.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // Handle forgot password
+                        },
+                        child: Text(
+                          'Forgot Password?',
+                          style: AppStyles.bodyMedium.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
 
                   const SizedBox(height: 30),
@@ -222,6 +257,13 @@ class _LoginScreenState extends State<LoginScreen>
     final authService = Provider.of<AuthService>(context, listen: false);
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+
+    // Save credentials if remember me is checked
+    if (_rememberMe) {
+      await authService.persistLoginCredentials(email, password);
+    } else {
+      await authService.clearPersistedCredentials();
+    }
 
     // Show loading indicator
     if (!mounted) return;

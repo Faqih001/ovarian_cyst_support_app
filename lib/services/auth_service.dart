@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -9,11 +10,16 @@ enum AuthStatus { unknown, authenticated, unauthenticated, disabled }
 class AuthService with ChangeNotifier {
   final FirebaseAuth? _auth;
   final FirebaseFirestore? _firestore;
+  final _storage = const FlutterSecureStorage();
   AuthStatus _status = AuthStatus.unknown;
   User? _user;
   String? _errorMessage;
   bool _isLoading = false;
   final _logger = Logger();
+
+  // Storage keys for credentials
+  static const String _emailKey = 'auth_email';
+  static const String _passwordKey = 'auth_password';
 
   // Constructor that handles Firebase errors
   AuthService()
@@ -266,6 +272,54 @@ class AuthService with ChangeNotifier {
       _setError('Error updating profile: ${e.toString()}');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // Persist login credentials securely
+  Future<void> persistLoginCredentials(String email, String password) async {
+    try {
+      await _storage.write(key: _emailKey, value: email);
+      await _storage.write(key: _passwordKey, value: password);
+      _logger.i('Credentials saved successfully');
+    } catch (e) {
+      _logger.e('Error saving credentials: $e');
+    }
+  }
+
+  // Clear persisted credentials
+  Future<void> clearPersistedCredentials() async {
+    try {
+      await _storage.delete(key: _emailKey);
+      await _storage.delete(key: _passwordKey);
+      _logger.i('Credentials cleared successfully');
+    } catch (e) {
+      _logger.e('Error clearing credentials: $e');
+    }
+  }
+
+  // Check if credentials are saved
+  Future<bool> hasPersistedCredentials() async {
+    try {
+      final email = await _storage.read(key: _emailKey);
+      return email != null;
+    } catch (e) {
+      _logger.e('Error checking credentials: $e');
+      return false;
+    }
+  }
+
+  // Get saved credentials
+  Future<Map<String, String?>> getPersistedCredentials() async {
+    try {
+      final email = await _storage.read(key: _emailKey);
+      final password = await _storage.read(key: _passwordKey);
+      return {
+        'email': email,
+        'password': password,
+      };
+    } catch (e) {
+      _logger.e('Error retrieving credentials: $e');
+      return {};
     }
   }
 
