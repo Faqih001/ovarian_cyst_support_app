@@ -956,10 +956,10 @@ class _SymptomTrackingScreenState extends State<SymptomTrackingScreen>
     String mostCommonMood = '';
     int highestCount = 0;
 
-    moodCounts.forEach((mood, count) {
-      if (count > highestCount) {
+    moodCounts.forEach((mood, occurrences) {
+      if (occurrences > highestCount) {
         mostCommonMood = mood;
-        highestCount = count;
+        highestCount = occurrences;
       }
     });
 

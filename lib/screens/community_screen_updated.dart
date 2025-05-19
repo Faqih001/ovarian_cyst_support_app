@@ -276,9 +276,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
         },
       ]);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating like: $e')),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating like: $e')),
       );
+      }
     }
   }
 }
