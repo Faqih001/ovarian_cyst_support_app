@@ -16,81 +16,139 @@ service cloud.firestore {
         && request.auth.token.email_verified == true;
     }
 
-    // User profiles - only readable by authenticated users, writable by owner
+    function hasRequiredFields(requiredFields) {
+      return request.resource.data.keys().hasAll(requiredFields);
+    }
+
+    function isValidTimestamp() {
+      return request.resource.data.createdAt == request.time;
+    }
+
+    function onlyFieldsChanged(allowedFields) {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(allowedFields);
+    }
+
+    // User profiles
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId) 
-        && request.resource.data.keys().hasAll(['name', 'email', 'createdAt'])
-        && request.resource.data.createdAt == request.time;
+        && hasRequiredFields(['name', 'email', 'createdAt'])
+        && isValidTimestamp();
       allow update: if isOwner(userId)
-        && request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['name', 'photoUrl', 'preferences', 'settings']);
-      allow delete: if false; // Prevent user deletion through client
+        && onlyFieldsChanged(['name', 'photoUrl', 'preferences', 'settings', 'updatedAt']);
+      allow delete: if false;
     }
 
-    // Medical records - strict privacy
+    // User agreements
+    match /user_agreements/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) 
+        && hasRequiredFields(['agreedToTerms', 'agreedToPrivacyPolicy', 'timestamp'])
+        && request.resource.data.timestamp == request.time;
+      allow delete: if false;
+    }
+
+    // Medical records with enhanced privacy
     match /users/{userId}/medicalRecords/{document} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && hasRequiredFields(['type', 'date', 'details', 'createdAt'])
+        && isValidTimestamp();
+      allow update: if isOwner(userId)
+        && onlyFieldsChanged(['details', 'updatedAt', 'attachments']);
+      allow delete: if isOwner(userId);
     }
 
-    // Symptoms tracking
+    // Symptoms tracking with timestamps
     match /users/{userId}/symptoms/{symptomId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && hasRequiredFields(['type', 'severity', 'timestamp', 'description'])
+        && request.resource.data.timestamp == request.time;
+      allow update: if isOwner(userId)
+        && onlyFieldsChanged(['severity', 'description', 'updatedAt']);
+      allow delete: if isOwner(userId);
     }
 
-    // Appointments
+    // Appointments with reminders
     match /users/{userId}/appointments/{appointmentId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && hasRequiredFields(['date', 'time', 'doctor', 'location', 'type', 'createdAt'])
+        && isValidTimestamp();
+      allow update: if isOwner(userId)
+        && onlyFieldsChanged(['date', 'time', 'doctor', 'location', 'notes', 'reminder', 'updatedAt']);
+      allow delete: if isOwner(userId);
     }
 
-    // Medications
+    // Medications tracking
     match /users/{userId}/medications/{medicationId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && hasRequiredFields(['name', 'dosage', 'frequency', 'startDate', 'createdAt'])
+        && isValidTimestamp();
+      allow update: if isOwner(userId)
+        && onlyFieldsChanged(['dosage', 'frequency', 'endDate', 'notes', 'reminder', 'updatedAt']);
+      allow delete: if isOwner(userId);
     }
 
-    // Community posts - public but with restrictions
+    // Community posts with moderation
     match /communityPosts/{postId} {
       allow read: if isAuthenticated();
-      allow create: if isValidUser() 
+      allow create: if isValidUser()
+        && hasRequiredFields(['content', 'createdAt', 'userId', 'title', 'category'])
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.keys().hasAll(['content', 'createdAt', 'userId'])
-        && request.resource.data.createdAt == request.time;
-      allow update: if isValidUser() 
-        && resource.data.userId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['content', 'updatedAt'])
-        && request.resource.data.updatedAt == request.time;
+        && isValidTimestamp()
+        && request.resource.data.reportCount == 0
+        && request.resource.data.isBlocked == false;
+      allow update: if isValidUser()
+        && (resource.data.userId == request.auth.uid
+            && onlyFieldsChanged(['content', 'title', 'category', 'updatedAt'])
+            || (isAuthenticated() && onlyFieldsChanged(['reportCount', 'reports'])));
       allow delete: if resource.data.userId == request.auth.uid;
     }
 
-    // Comments on posts
+    // Comments with moderation
     match /communityPosts/{postId}/comments/{commentId} {
       allow read: if isAuthenticated();
       allow create: if isValidUser()
+        && hasRequiredFields(['content', 'createdAt', 'userId'])
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.keys().hasAll(['content', 'createdAt', 'userId'])
-        && request.resource.data.createdAt == request.time;
+        && isValidTimestamp()
+        && request.resource.data.reportCount == 0
+        && request.resource.data.isBlocked == false;
       allow update: if isValidUser()
-        && resource.data.userId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['content', 'updatedAt'])
-        && request.resource.data.updatedAt == request.time;
+        && (resource.data.userId == request.auth.uid
+            && onlyFieldsChanged(['content', 'updatedAt'])
+            || (isAuthenticated() && onlyFieldsChanged(['reportCount', 'reports'])));
       allow delete: if resource.data.userId == request.auth.uid;
     }
 
-    // Educational content - read-only for authenticated users
+    // Educational content - read-only for users
     match /educationalContent/{contentId} {
       allow read: if isAuthenticated();
-      allow write: if false; // Only admins can modify via backend
+      allow write: if false;
     }
 
-    // Healthcare providers - public directory
+    // Healthcare providers directory
     match /healthcareProviders/{providerId} {
       allow read: if isAuthenticated();
-      allow write: if false; // Only admins can modify via backend
+      allow write: if false;
     }
 
-    // Default deny all
+    // User notifications
+    match /users/{userId}/notifications/{notificationId} {
+      allow read: if isOwner(userId);
+      allow create: if isValidUser()
+        && hasRequiredFields(['type', 'message', 'createdAt', 'isRead'])
+        && isValidTimestamp();
+      allow update: if isOwner(userId)
+        && onlyFieldsChanged(['isRead', 'readAt']);
+      allow delete: if isOwner(userId);
+    }
+
+    // Default deny
     match /{document=**} {
       allow read, write: if false;
     }
