@@ -216,7 +216,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 children: post.tags
                     .map((tag) => Chip(
                           label: Text('#$tag'),
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          backgroundColor: AppColors.primary.withAlpha(26),
                           labelStyle: TextStyle(color: AppColors.primary),
                         ))
                     .toList(),
@@ -261,7 +261,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withAlpha(51),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, -1),
