@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
-import 'package:ovarian_cyst_support_app/screens/splash_screen.dart';
-import 'package:ovarian_cyst_support_app/services/auth_service.dart';
-import 'package:ovarian_cyst_support_app/services/database_service.dart';
-import 'package:ovarian_cyst_support_app/services/sync_service.dart';
-import 'package:ovarian_cyst_support_app/services/notification_service.dart';
-import 'package:ovarian_cyst_support_app/services/provider_service.dart';
+import 'package:ovarian_cyst_support_app/screens/cost_estimation_screen.dart';
 import 'package:ovarian_cyst_support_app/services/payment_service.dart';
-import 'package:ovarian_cyst_support_app/services/user_profile_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  // Try to initialize Firebase, but continue even if it fails
+  try {
+    await Firebase.initializeApp();
+    print('Firebase initialized successfully');
+  } catch (e) {
+    print('Failed to initialize Firebase: $e');
+    // App will continue without Firebase functionality
+  }
+
   runApp(const MyApp());
 }
 
@@ -24,12 +27,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
-        ChangeNotifierProvider(create: (_) => UserProfileService()),
-        Provider(create: (_) => DatabaseService()),
-        Provider(create: (_) => SyncService()),
-        Provider(create: (_) => NotificationService()),
-        Provider(create: (_) => ProviderService()),
+        // Include only the services needed for cost estimation
         Provider(create: (_) => PaymentService()),
       ],
       child: MaterialApp(
@@ -50,7 +48,8 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const SplashScreen(),
+        // Go directly to the cost estimation screen
+        home: const CostEstimationScreen(),
       ),
     );
   }

@@ -3,15 +3,51 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-enum AuthStatus { unknown, authenticated, unauthenticated }
+enum AuthStatus { unknown, authenticated, unauthenticated, disabled }
 
 class AuthService with ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth? _auth;
+  final FirebaseFirestore? _firestore;
   AuthStatus _status = AuthStatus.unknown;
   User? _user;
   String? _errorMessage;
   bool _isLoading = false;
+
+  // Constructor that handles Firebase errors
+  AuthService()
+    : _auth = _tryGetFirebaseAuth(),
+      _firestore = _tryGetFirestore() {
+    // If Firebase services are not available, mark as disabled
+    if (_auth == null || _firestore == null) {
+      _status = AuthStatus.disabled;
+      _errorMessage = "Firebase services are not available";
+      notifyListeners();
+      return;
+    }
+
+    // Otherwise initialize normally
+    _init();
+  }
+
+  // Try to get Firebase Auth safely
+  static FirebaseAuth? _tryGetFirebaseAuth() {
+    try {
+      return FirebaseAuth.instance;
+    } catch (e) {
+      print('Error initializing FirebaseAuth: $e');
+      return null;
+    }
+  }
+
+  // Try to get Firestore safely
+  static FirebaseFirestore? _tryGetFirestore() {
+    try {
+      return FirebaseFirestore.instance;
+    } catch (e) {
+      print('Error initializing Firestore: $e');
+      return null;
+    }
+  }
 
   // Getters
   AuthStatus get status => _status;
@@ -19,13 +55,17 @@ class AuthService with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
 
-  // Constructor to initialize and listen to auth changes
-  AuthService() {
-    // Listen for authentication state changes
-    _auth.authStateChanges().listen((User? user) {
+  // Initialize auth state changes
+  void _init() {
+    _auth?.authStateChanges().listen((User? user) {
       _user = user;
-      _status =
-          user != null ? AuthStatus.authenticated : AuthStatus.unauthenticated;
+
+      if (user == null) {
+        _status = AuthStatus.unauthenticated;
+      } else {
+        _status = AuthStatus.authenticated;
+      }
+
       notifyListeners();
     });
   }
@@ -41,7 +81,7 @@ class AuthService with ChangeNotifier {
 
     try {
       // Create the user with Firebase Auth
-      final UserCredential userCredential = await _auth
+      final UserCredential userCredential = await _auth!
           .createUserWithEmailAndPassword(email: email, password: password);
 
       // Update display name
@@ -78,7 +118,7 @@ class AuthService with ChangeNotifier {
     _clearError();
 
     try {
-      final UserCredential userCredential = await _auth
+      final UserCredential userCredential = await _auth!
           .signInWithEmailAndPassword(email: email, password: password);
 
       if (userCredential.user != null) {
@@ -105,7 +145,7 @@ class AuthService with ChangeNotifier {
   Future<void> signOut() async {
     _setLoading(true);
     try {
-      await _auth.signOut();
+      await _auth!.signOut();
     } catch (e) {
       _setError('Error signing out: ${e.toString()}');
     } finally {
@@ -119,7 +159,7 @@ class AuthService with ChangeNotifier {
     _clearError();
 
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      await _auth!.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
       _handleAuthError(e);
     } catch (e) {
@@ -167,7 +207,7 @@ class AuthService with ChangeNotifier {
     String uid,
     Map<String, dynamic> data,
   ) async {
-    await _firestore.collection('users').doc(uid).set(data);
+    await _firestore!.collection('users').doc(uid).set(data);
   }
 
   // Get user document from Firestore
@@ -176,7 +216,7 @@ class AuthService with ChangeNotifier {
 
     try {
       DocumentSnapshot doc =
-          await _firestore.collection('users').doc(_user!.uid).get();
+          await _firestore!.collection('users').doc(_user!.uid).get();
       return doc.data() as Map<String, dynamic>?;
     } catch (e) {
       _setError('Error getting user data: ${e.toString()}');
@@ -207,7 +247,7 @@ class AuthService with ChangeNotifier {
 
       // Update additional data in Firestore if provided
       if (additionalData != null && additionalData.isNotEmpty) {
-        await _firestore.collection('users').doc(_user!.uid).update({
+        await _firestore!.collection('users').doc(_user!.uid).update({
           ...additionalData,
           'updatedAt': FieldValue.serverTimestamp(),
         });
