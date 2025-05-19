@@ -156,9 +156,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           spacing: 8,
                           activeDotColor: AppColors.primary,
                           dotColor: Color.fromRGBO(
-                            AppColors.primary.red,
-                            AppColors.primary.green,
-                            AppColors.primary.blue,
+                            AppColors.primary.r.toInt(),
+                            AppColors.primary.g.toInt(),
+                            AppColors.primary.b.toInt(),
                             0.3,
                           ),
                         ),
