@@ -10,13 +10,14 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
+
   # Firebase Services
   firebase_core: ^2.24.2
   firebase_auth: ^4.15.3
   cloud_firestore: ^4.13.6
   firebase_analytics: ^10.8.5
   firebase_messaging: ^14.7.10
-  
+
   # Core Dependencies
   provider: ^6.1.1
   shared_preferences: ^2.2.2
@@ -26,7 +27,7 @@ dependencies:
   # Security and Storage
   flutter_secure_storage: ^9.0.0
   encrypt: ^5.0.3
-  
+
   # UI Components and Animation
   smooth_page_indicator: ^1.1.0
   lottie: ^3.1.0
@@ -38,34 +39,34 @@ dependencies:
   flutter_screenutil: ^5.8.4
   timeline_tile: ^2.0.0
   animated_text_kit: ^4.2.2
-  webview_flutter: ^4.5.0  # Added for reCAPTCHA support
-  
+  webview_flutter: ^4.5.0
+
   # State Management
   flutter_riverpod: ^2.4.10
-  
+
   # Data Persistence and Offline Support
   sqflite: ^2.3.2
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.2
-  
+
   # Networking and API
   http: ^1.2.0
   dio: ^5.4.0
   connectivity_plus: ^5.0.2
-  
+
   # Location and Maps
   geolocator: ^11.0.0
   google_maps_flutter: ^2.5.3
-  
+
   # AI and ML
   tflite_flutter: ^0.10.4
   flutter_local_notifications: ^19.2.1
-  
-  # Chart and visualization
+
+  # Chart and Visualization
   fl_chart: ^0.66.0
   syncfusion_flutter_charts: ^24.1.41
-  
+
   # Utilities
   intl: ^0.18.0
   url_launcher: ^6.2.5
