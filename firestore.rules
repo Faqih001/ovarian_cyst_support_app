@@ -2,10 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    function isAuthenticated() {
+      return request.auth != null;
     }
-  }
+
+    function isOwner(userId) {
       return request.auth.uid == userId;
     }
     
@@ -43,12 +44,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated() || isAdmin();
       allow create: if isAuthenticated() 
-        && request.auth.uid == userId
-        && hasRequiredFields(['name', 'email', 'createdAt'])
-        && request.resource.data.email == request.auth.token.email
-        && isValidTimestamp();
+        && request.auth.uid == userId;
       allow update: if isOwner(userId)
-        && onlyFieldsChanged(['name', 'photoUrl', 'preferences', 'settings', 'updatedAt'])
         || isAdmin();
       allow delete: if isAdmin();
     }

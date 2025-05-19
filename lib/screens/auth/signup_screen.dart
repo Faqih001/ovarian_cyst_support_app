@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
-import 'package:ovarian_cyst_support_app/screens/home_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/auth/login_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/screens/legal/privacy_policy_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/legal/terms_of_service_screen.dart';
@@ -334,11 +334,22 @@ class _SignupScreenState extends State<SignupScreen>
       setState(() => _isLoading = false);
 
       if (user != null) {
-        // Navigate to home on success
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-          (route) => false,
+        // Navigate to login screen after successful signup
+        NotificationUtils.showTopCenterNotification(
+          context,
+          'Account created successfully! Please login with your credentials.',
+          isError: false,
+          duration: const Duration(seconds: 3),
         );
+        
+        // Add a slight delay before navigation to allow the notification to be seen
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            );
+          }
+        });
       } else {
         // Show error message
         NotificationUtils.showTopCenterNotification(

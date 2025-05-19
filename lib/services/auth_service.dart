@@ -164,11 +164,30 @@ class AuthService with ChangeNotifier {
           .signInWithEmailAndPassword(email: email, password: password);
 
       if (userCredential.user != null) {
-        // Update last login timestamp
-        await _firestore!
+        // Check if the user document exists
+        DocumentSnapshot docSnapshot = await _firestore!
             .collection('users')
             .doc(userCredential.user!.uid)
-            .update({'lastLogin': FieldValue.serverTimestamp()});
+            .get();
+            
+        if (docSnapshot.exists) {
+          // Update last login timestamp
+          await _firestore!
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .update({'lastLogin': FieldValue.serverTimestamp()});
+        } else {
+          // Create a new user document if it doesn't exist
+          await _firestore!
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .set({
+                'email': userCredential.user!.email,
+                'name': userCredential.user!.displayName ?? 'User',
+                'createdAt': FieldValue.serverTimestamp(),
+                'lastLogin': FieldValue.serverTimestamp(),
+              });
+        }
       }
 
       return userCredential.user;

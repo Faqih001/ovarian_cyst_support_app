@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:ovarian_cyst_support_app/screens/medication_tracking_screen.dart';
@@ -125,7 +124,7 @@ class _TrackingScreenState extends State<TrackingScreen>
             Icon(
               Icons.event_note_outlined,
               size: 64,
-              color: AppColors.textLight.withOpacity(0.5),
+              color: AppColors.textLight.withAlpha(128), // 0.5 * 255
             ),
             const SizedBox(height: 16),
             Text(
@@ -162,7 +161,7 @@ class _TrackingScreenState extends State<TrackingScreen>
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withAlpha(26), // 0.1 * 255
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -183,7 +182,7 @@ class _TrackingScreenState extends State<TrackingScreen>
                                   size: 12,
                                   color: index < (event['intensity'] as int)
                                       ? AppColors.primary
-                                      : AppColors.secondary.withOpacity(0.3),
+                                      : AppColors.secondary.withAlpha(77), // 0.3 * 255
                                 )),
                       ),
                     ],
@@ -225,7 +224,7 @@ class _TrackingScreenState extends State<TrackingScreen>
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.secondary.withOpacity(0.1),
+                      color: AppColors.secondary.withAlpha(26), // 0.1 * 255
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -541,7 +540,7 @@ class _TrackingScreenState extends State<TrackingScreen>
                 shape: BoxShape.circle,
               ),
               todayDecoration: BoxDecoration(
-                color: AppColors.secondary.withOpacity(0.5),
+                color: AppColors.secondary.withAlpha(128), // 0.5 * 255
                 shape: BoxShape.circle,
               ),
               outsideDaysVisible: false,

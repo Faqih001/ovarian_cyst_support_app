@@ -907,7 +907,7 @@ class _HomeContentState extends State<HomeContent>
       width: 24,
       height: 24,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: (255 * 0.2).toInt()),
+        color: color.withAlpha(51), // 0.2 * 255 ≈ 51
         shape: BoxShape.circle,
       ),
       child: Center(
