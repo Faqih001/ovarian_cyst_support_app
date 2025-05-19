@@ -90,6 +90,13 @@ class AuthService with ChangeNotifier {
     _clearError();
 
     try {
+      // Create a RecaptchaVerifier instance
+      await _auth!.setSettings(
+        appVerificationDisabledForTesting:
+            false, // Set to true only for testing
+        forceRecaptchaFlow: true,
+      );
+
       // Create the user with Firebase Auth
       final UserCredential userCredential = await _auth!
           .createUserWithEmailAndPassword(email: email, password: password);

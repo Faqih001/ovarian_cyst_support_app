@@ -329,6 +329,9 @@ class _SignupScreenState extends State<SignupScreen>
     );
 
     try {
+      // Clear any previous error messages
+      ScaffoldMessenger.of(context).clearSnackBars();
+
       // Attempt registration
       final user = await authService.registerWithEmailAndPassword(
         email,
@@ -365,11 +368,32 @@ class _SignupScreenState extends State<SignupScreen>
       // Close loading dialog
       Navigator.of(context).pop();
 
-      // Show error message
+      // Show a more user-friendly error message
+      String errorMessage = 'Registration failed';
+      if (e.toString().contains('CONFIGURATION_NOT_FOUND')) {
+        errorMessage = 'Verification error. Please try again.';
+      } else if (e.toString().contains('email-already-in-use')) {
+        errorMessage = 'This email is already registered.';
+      } else if (e.toString().contains('weak-password')) {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (e.toString().contains('invalid-email')) {
+        errorMessage = 'Please enter a valid email address.';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Registration failed: ${e.toString()}'),
+          content: Text(errorMessage),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                _handleSignup();
+              }
+            },
+          ),
         ),
       );
     }
