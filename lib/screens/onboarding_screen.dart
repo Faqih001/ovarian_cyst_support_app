@@ -23,21 +23,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Welcome to OvaCare',
       description:
           'Your personal companion for ovarian cyst management, support, and education.',
-      icon: Icons.health_and_safety,
     ),
     OnboardingData(
       image: 'assets/images/onboarding/tracking.svg',
       title: 'Track Your Health',
       description:
           'Monitor symptoms, appointments, and medication with personalized tracking tools.',
-      icon: Icons.track_changes,
     ),
     OnboardingData(
       image: 'assets/images/onboarding/community.svg',
       title: 'Community Support',
       description:
           'Connect with others on similar journeys and access expert-backed resources.',
-      icon: Icons.people,
     ),
   ];
 
@@ -97,13 +94,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // Icon
-                            Icon(
-                              _onboardingData[index].icon,
-                              size: 64,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(height: 24),
                             // Image
                             SvgPicture.asset(
                               _onboardingData[index].image,
@@ -168,7 +158,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: _completeOnboardingAndNavigate,
+                          onPressed: () {
+                            if (_currentPage == _numPages - 1) {
+                              _completeOnboardingAndNavigate();
+                            } else {
+                              _pageController.nextPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            }
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
@@ -207,12 +206,10 @@ class OnboardingData {
   final String image;
   final String title;
   final String description;
-  final IconData icon;
 
   OnboardingData({
     required this.image,
     required this.title,
     required this.description,
-    required this.icon,
   });
 }

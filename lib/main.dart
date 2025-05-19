@@ -32,7 +32,7 @@ void main() async {
     runApp(
       MultiProvider(
         providers: [
-          Provider<AuthService>(create: (_) => AuthService()),
+          ChangeNotifierProvider<AuthService>(create: (_) => AuthService()),
           Provider<PaymentService>(create: (_) => PaymentService()),
           Provider<FirestoreService>(create: (_) => firestoreService),
         ],
