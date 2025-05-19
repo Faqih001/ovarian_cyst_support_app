@@ -6,7 +6,8 @@ import 'package:ovarian_cyst_support_app/screens/edit_profile_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/edit_health_info_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/settings_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
-import 'package:ovarian_cyst_support_app/services/user_profile_service.dart';
+import 'package:ovarian_cyst_support_app/services/firestore_service.dart';
+import 'package:ovarian_cyst_support_app/models/user_profile.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,13 +17,45 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  UserProfile? _userProfile;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final firestoreService =
+        Provider.of<FirestoreService>(context, listen: false);
+
+    if (authService.user == null) return;
+
+    try {
+      final profile =
+          await firestoreService.getUserProfile(authService.user!.uid);
+      if (mounted) {
+        setState(() {
+          _userProfile = profile;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error loading profile')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
-    final userProfileService = Provider.of<UserProfileService>(context);
     final user = authService.user;
-    final userProfile = userProfileService.userProfile;
-    final isLoading = userProfileService.isLoading;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -43,209 +76,201 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      body:
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Profile header
-                    Center(
-                      child: Column(
-                        children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: AppColors.secondary,
-                            backgroundImage:
-                                userProfile?.photoUrl != null
-                                    ? NetworkImage(userProfile!.photoUrl!)
-                                    : null,
-                            child:
-                                userProfile?.photoUrl == null
-                                    ? const Icon(
-                                      Icons.person,
-                                      size: 50,
-                                      color: Colors.white,
-                                    )
-                                    : null,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            userProfile?.name ?? user?.displayName ?? 'User',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            userProfile?.email ?? user?.email ?? 'No email',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => const EditProfileScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.edit),
-                            label: const Text('Edit Profile'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              side: const BorderSide(color: AppColors.primary),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Health Information
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Profile header
+                  Center(
+                    child: Column(
                       children: [
-                        const Text(
-                          'Health Information',
-                          style: TextStyle(
-                            fontSize: 18,
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: AppColors.secondary,
+                          backgroundImage: _userProfile?.photoUrl != null
+                              ? NetworkImage(_userProfile!.photoUrl!)
+                              : null,
+                          ),
+                          child: _userProfile?.photoUrl == null
+                              ? const Icon(
+                                  Icons.person,
+                                  size: 50,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _userProfile?.name ?? user?.displayName ?? 'User',
+                          style: const TextStyle(
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        TextButton(
+                        const SizedBox(height: 4),
+                        Text(
+                          _userProfile?.email ?? user?.email ?? 'No email',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder:
-                                    (context) => const EditHealthInfoScreen(),
+                                builder: (context) => const EditProfileScreen(),
                               ),
                             );
                           },
-                          child: const Text('Edit'),
+                          icon: const Icon(Icons.edit),
+                          label: const Text('Edit Profile'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: const BorderSide(color: AppColors.primary),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                  ),
 
-                    _buildInfoCard(
-                      icon: Icons.calendar_today,
-                      title: 'Diagnosis Date',
-                      value:
-                          userProfile?.healthInfo != null &&
-                                  userProfile!.healthInfo!['diagnosisDate'] !=
-                                      null
-                              ? userProfile.healthInfo!['diagnosisDate']
-                              : 'Not specified',
-                    ),
+                  const SizedBox(height: 32),
 
-                    _buildInfoCard(
-                      icon: Icons.local_hospital,
-                      title: 'Primary Doctor',
-                      value:
-                          userProfile?.healthInfo != null &&
-                                  userProfile!.healthInfo!['doctorName'] != null
-                              ? userProfile.healthInfo!['doctorName']
-                              : 'Not specified',
-                    ),
-
-                    _buildInfoCard(
-                      icon: Icons.medication,
-                      title: 'Current Medications',
-                      value:
-                          userProfile?.healthInfo != null &&
-                                  userProfile!.healthInfo!['medications'] !=
-                                      null &&
-                                  (userProfile.healthInfo!['medications']
-                                          as List)
-                                      .isNotEmpty
-                              ? '${(userProfile.healthInfo!['medications'] as List).length} Active Medications'
-                              : 'No medications',
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // App Settings
-                    const Text(
-                      'App Settings',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildSettingTile(
-                      icon: Icons.notifications,
-                      title: 'Notifications',
-                      subtitle: 'Manage app notifications',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-
-                    _buildSettingTile(
-                      icon: Icons.privacy_tip,
-                      title: 'Privacy',
-                      subtitle: 'Manage your data and privacy settings',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-
-                    _buildSettingTile(
-                      icon: Icons.help_outline,
-                      title: 'Help & Support',
-                      subtitle: 'FAQs and contact information',
-                      onTap: () {},
-                    ),
-
-                    _buildSettingTile(
-                      icon: Icons.info_outline,
-                      title: 'About OvaCare',
-                      subtitle: 'Version 1.0.0',
-                      onTap: () {},
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: () {
-                          _showLogoutConfirmation();
-                        },
-                        icon: const Icon(Icons.logout, color: Colors.red),
-                        label: const Text(
-                          'Log Out',
-                          style: TextStyle(color: Colors.red),
+                  // Health Information
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Health Information',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const EditHealthInfoScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text('Edit'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-                    const SizedBox(height: 40),
-                  ],
-                ),
+                  _buildInfoCard(
+                    icon: Icons.calendar_today,
+                    title: 'Diagnosis Date',
+                    value: _userProfile?.healthInfo != null &&
+                            _userProfile!.healthInfo!['diagnosisDate'] != null
+                        ? _userProfile.healthInfo!['diagnosisDate']
+                        : 'Not specified',
+                  ),
+
+                  _buildInfoCard(
+                    icon: Icons.local_hospital,
+                    title: 'Primary Doctor',
+                    value: _userProfile?.healthInfo != null &&
+                            _userProfile!.healthInfo!['doctorName'] != null
+                        ? _userProfile.healthInfo!['doctorName']
+                        : 'Not specified',
+                  ),
+
+                  _buildInfoCard(
+                    icon: Icons.medication,
+                    title: 'Current Medications',
+                    value: _userProfile?.healthInfo != null &&
+                            _userProfile!.healthInfo!['medications'] != null &&
+                            (_userProfile.healthInfo!['medications']
+                                    as List)
+                                .isNotEmpty
+                        ? '${(_userProfile.healthInfo!['medications'] as List).length} Active Medications'
+                        : 'No medications',
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // App Settings
+                  const Text(
+                    'App Settings',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _buildSettingTile(
+                    icon: Icons.notifications,
+                    title: 'Notifications',
+                    subtitle: 'Manage app notifications',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  _buildSettingTile(
+                    icon: Icons.privacy_tip,
+                    title: 'Privacy',
+                    subtitle: 'Manage your data and privacy settings',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  _buildSettingTile(
+                    icon: Icons.help_outline,
+                    title: 'Help & Support',
+                    subtitle: 'FAQs and contact information',
+                    onTap: () {},
+                  ),
+
+                  _buildSettingTile(
+                    icon: Icons.info_outline,
+                    title: 'About OvaCare',
+                    subtitle: 'Version 1.0.0',
+                    onTap: () {},
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        _showLogoutConfirmation();
+                      },
+                      icon: const Icon(Icons.logout, color: Colors.red),
+                      label: const Text(
+                        'Log Out',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+                ],
               ),
+            ),
     );
   }
 

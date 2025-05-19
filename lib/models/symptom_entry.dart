@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class SymptomEntry {
   final String id;
   final DateTime date;
-  final DateTime timestamp; // Added timestamp field
-  final String description; // Added description field
+  final DateTime timestamp;
+  final String description;
   final String mood;
   final int painLevel;
   final int bloatingLevel;
@@ -25,33 +27,75 @@ class SymptomEntry {
     required this.updatedAt,
   }) : timestamp = timestamp ?? date;
 
-  // Convert from Map to SymptomEntry object
+  // Convert from Firestore DocumentSnapshot
+  factory SymptomEntry.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return SymptomEntry(
+      id: doc.id,
+      date: (data['date'] as Timestamp).toDate(),
+      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ??
+          (data['date'] as Timestamp).toDate(),
+      description: data['description'] ?? '',
+      mood: data['mood'] ?? 'Neutral',
+      painLevel: data['painLevel'] ?? 0,
+      bloatingLevel: data['bloatingLevel'] ?? 0,
+      symptoms: List<String>.from(data['symptoms'] ?? []),
+      notes: data['notes'] ?? '',
+      isUploaded: true,
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ??
+          (data['date'] as Timestamp).toDate(),
+    );
+  }
+
+  // Convert to Map for Firestore
+  Map<String, dynamic> toFirestore() {
+    return {
+      'date': Timestamp.fromDate(date),
+      'timestamp': Timestamp.fromDate(timestamp),
+      'description': description,
+      'mood': mood,
+      'painLevel': painLevel,
+      'bloatingLevel': bloatingLevel,
+      'symptoms': symptoms,
+      'notes': notes,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    };
+  }
+
+  // Convert from Map (for local storage compatibility)
   factory SymptomEntry.fromMap(Map<String, dynamic> map) {
     return SymptomEntry(
       id: map['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      date: map['date'] is String ? DateTime.parse(map['date']) : map['date'],
-      timestamp:
-          map['timestamp'] != null
-              ? (map['timestamp'] is String
-                  ? DateTime.parse(map['timestamp'])
+      date: map['date'] is String
+          ? DateTime.parse(map['date'])
+          : map['date'] is Timestamp
+              ? (map['date'] as Timestamp).toDate()
+              : map['date'],
+      timestamp: map['timestamp'] != null
+          ? (map['timestamp'] is String
+              ? DateTime.parse(map['timestamp'])
+              : map['timestamp'] is Timestamp
+                  ? (map['timestamp'] as Timestamp).toDate()
                   : map['timestamp'])
-              : (map['date'] is String
-                  ? DateTime.parse(map['date'])
+          : (map['date'] is String
+              ? DateTime.parse(map['date'])
+              : map['date'] is Timestamp
+                  ? (map['date'] as Timestamp).toDate()
                   : map['date']),
       description: map['description'] ?? map['notes'] ?? '',
       mood: map['mood'],
       painLevel: map['painLevel'],
       bloatingLevel: map['bloatingLevel'] ?? 0,
-      symptoms:
-          map['symptoms'] is List<String>
-              ? map['symptoms']
-              : (map['symptoms'] as String).split(','),
+      symptoms: map['symptoms'] is List<String>
+          ? map['symptoms']
+          : (map['symptoms'] as String?)?.split(',') ?? [],
       notes: map['notes'] ?? '',
       isUploaded: map['isUploaded'] == 1 || map['isUploaded'] == true,
-      updatedAt:
-          map['updatedAt'] != null && map['updatedAt'] is String
-              ? DateTime.parse(map['updatedAt'])
-              : DateTime.now(),
+      updatedAt: map['updatedAt'] is String
+          ? DateTime.parse(map['updatedAt'])
+          : map['updatedAt'] is Timestamp
+              ? (map['updatedAt'] as Timestamp).toDate()
+              : map['updatedAt'] ?? DateTime.now(),
     );
   }
 

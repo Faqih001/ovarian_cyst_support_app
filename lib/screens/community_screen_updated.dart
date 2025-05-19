@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/models/community_post.dart';
-import 'package:ovarian_cyst_support_app/services/data_persistence_service.dart';
+import 'package:ovarian_cyst_support_app/services/auth_service.dart';
+import 'package:ovarian_cyst_support_app/services/firestore_service.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -11,54 +15,60 @@ class CommunityScreen extends StatefulWidget {
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
-  late List<CommunityPost> _posts = [];
+  late Stream<QuerySnapshot> _postsStream;
   bool _isLoading = true;
+  final TextEditingController _newPostController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadPosts();
+    _initializeStream();
   }
 
-  Future<void> _loadPosts() async {
-    setState(() {
-      _isLoading = true;
-    });
+  void _initializeStream() {
+    final firestoreService =
+        Provider.of<FirestoreService>(context, listen: false);
+    _postsStream = firestoreService.getCommunityPosts();
+    setState(() => _isLoading = false);
+  }
+
+  @override
+  void dispose() {
+    _newPostController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createPost(String content) async {
+    if (content.trim().isEmpty) return;
+
+    final firestoreService =
+        Provider.of<FirestoreService>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.user;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be signed in to post')),
+      );
+      return;
+    }
 
     try {
-      // Try to load posts from local storage
-      final localPosts = await DataPersistenceService.getCommunityPosts();
-
-      if (localPosts.isNotEmpty) {
-        // If we have local posts, use them
-        setState(() {
-          _posts =
-              localPosts
-                  .map((postMap) => CommunityPost.fromMap(postMap))
-                  .toList();
-          _isLoading = false;
-        });
-      } else {
-        // Otherwise use mock data (in a real app, you'd fetch from a server)
-        final mockPosts = CommunityPost.getMockPosts();
-
-        // Save mock posts to local storage for offline access
-        await DataPersistenceService.saveCommunityPosts(
-          mockPosts.map((post) => post.toMap()).toList(),
-        );
-
-        setState(() {
-          _posts = mockPosts;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      // If all else fails, use mock data without saving
-      setState(() {
-        _posts = CommunityPost.getMockPosts();
-        _isLoading = false;
+      await firestoreService.createCommunityPost({
+        'userId': user.uid,
+        'userName': user.displayName ?? 'Anonymous',
+        'userPhotoUrl': user.photoURL,
+        'content': content.trim(),
+        'likes': 0,
+        'likedBy': [],
+        'comments': [],
       });
-      debugPrint('Error loading posts: $e');
+
+      _newPostController.clear();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error creating post: $e')),
+      );
     }
   }
 
@@ -69,150 +79,87 @@ class _CommunityScreenState extends State<CommunityScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         title: const Text(
-          'Community Support',
+          'Community',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: AppColors.primary.withAlpha(
-              25,
-            ), // Replaced withOpacity(0.1) with withAlpha
-            child: Column(
-              children: [
-                const Text(
-                  'Connect with others on a similar journey',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Share experiences, ask questions, and provide support in a safe space',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
           Expanded(
-            child:
-                _isLoading
-                    ? const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.primary,
-                        ),
-                      ),
-                    )
-                    : RefreshIndicator(
-                      onRefresh: _loadPosts,
-                      color: AppColors.primary,
-                      child:
-                          _posts.isEmpty
-                              ? const Center(
-                                child: Text(
-                                  'No posts yet. Be the first to share!',
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              )
-                              : ListView.builder(
-                                padding: const EdgeInsets.all(8.0),
-                                itemCount: _posts.length,
-                                itemBuilder: (context, index) {
-                                  return _buildPostCard(_posts[index]);
-                                },
-                              ),
-                    ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : StreamBuilder<QuerySnapshot>(
+                    stream: _postsStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text('Error: ${snapshot.error}'),
+                        );
+                      }
+
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      final posts = snapshot.data?.docs
+                              .map((doc) => CommunityPost.fromFirestore(doc))
+                              .toList() ??
+                          [];
+
+                      if (posts.isEmpty) {
+                        return const Center(
+                          child: Text('No posts yet. Be the first to share!'),
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: posts.length,
+                        itemBuilder: (context, index) {
+                          final post = posts[index];
+                          return _buildPostCard(post);
+                        },
+                      );
+                    },
+                  ),
           ),
+          _buildNewPostComposer(),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showCreatePostDialog();
-        },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
   Widget _buildPostCard(CommunityPost post) {
-    // Calculate relative time
-    final now = DateTime.now();
-    final difference = now.difference(post.timestamp);
-
-    String timeAgo;
-    if (difference.inDays > 7) {
-      timeAgo =
-          '${post.timestamp.day}/${post.timestamp.month}/${post.timestamp.year}';
-    } else if (difference.inDays > 0) {
-      timeAgo =
-          '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
-    } else if (difference.inHours > 0) {
-      timeAgo =
-          '${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
-    } else if (difference.inMinutes > 0) {
-      timeAgo =
-          '${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
-    } else {
-      timeAgo = 'Just now';
-    }
-
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppColors.primary,
-                  backgroundImage:
-                      post.userAvatar.startsWith('http')
-                          ? NetworkImage(post.userAvatar) as ImageProvider
-                          : null,
-                  child:
-                      post.userAvatar.startsWith('http')
-                          ? null
-                          : Text(
-                            post.username.substring(0, 1).toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                  backgroundImage: post.userPhotoUrl != null
+                      ? NetworkImage(post.userPhotoUrl!)
+                      : null,
+                  child: post.userPhotoUrl == null
+                      ? Text(post.userName[0].toUpperCase())
+                      : null,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      post.username,
+                      post.userName,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
                       ),
                     ),
                     Text(
-                      timeAgo,
-                      style: TextStyle(
-                        color: AppColors.textLight,
+                      timeago.format(post.createdAt),
+                      style: const TextStyle(
+                        color: Colors.grey,
                         fontSize: 12,
                       ),
                     ),
@@ -220,33 +167,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Text(post.content, style: const TextStyle(fontSize: 15)),
-            if (post.tags.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                children:
-                    post.tags.map((tag) {
-                      return Chip(
-                        label: Text(
-                          '#$tag',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.accent,
-                          ),
-                        ),
-                        backgroundColor: AppColors.accent.withAlpha(
-                          25,
-                        ), // Replaced withOpacity(0.1)
-                        padding: EdgeInsets.zero,
-                        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      );
-                    }).toList(),
-              ),
-            ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            Text(post.content),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -254,49 +177,24 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   children: [
                     IconButton(
                       icon: Icon(
-                        post.isLikedByCurrentUser
+                        post.likedBy.contains(
+                          Provider.of<AuthService>(context).user?.uid,
+                        )
                             ? Icons.favorite
                             : Icons.favorite_border,
-                        color:
-                            post.isLikedByCurrentUser
-                                ? AppColors.primary
-                                : AppColors.primary.withAlpha(
-                                  179,
-                                ), // Replaced withOpacity(0.7)
-                        size: 20,
+                        color: post.likedBy.contains(
+                          Provider.of<AuthService>(context).user?.uid,
+                        )
+                            ? Colors.red
+                            : null,
                       ),
-                      onPressed: () {
-                        // In a real app, you would implement liking functionality
-                      },
-                      constraints: const BoxConstraints(),
-                      padding: EdgeInsets.zero,
-                      iconSize: 20,
+                      onPressed: () => _handleLike(post),
                     ),
+                    Text('${post.likes}'),
+                    const SizedBox(width: 16),
+                    const Icon(Icons.comment_outlined),
                     const SizedBox(width: 4),
-                    Text(
-                      '${post.likes}',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.comment, color: AppColors.textLight, size: 20),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${post.comments}',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.share, color: AppColors.textLight, size: 20),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Share',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
+                    Text('${post.comments.length}'),
                   ],
                 ),
               ],
@@ -307,94 +205,78 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  void _showCreatePostDialog() {
-    final TextEditingController postController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Create Post'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Share your thoughts with the community',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: postController,
-                maxLines: 5,
-                decoration: InputDecoration(
-                  hintText: 'What\'s on your mind?',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary),
-                  ),
-                ),
-              ),
-            ],
+  Widget _buildNewPostComposer() {
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, -1),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (postController.text.isNotEmpty) {
-                  // Create a new post
-                  final newPost = CommunityPost(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    userId: 'current_user_id', // Add the required userId field
-                    username: 'You',
-                    userAvatar: '',
-                    content: postController.text,
-                    timestamp: DateTime.now(),
-                    tags: ['support'],
-                    isLikedByCurrentUser: false,
-                  );
-
-                  // Add to local list
-                  setState(() {
-                    _posts.insert(0, newPost);
-                  });
-
-                  // Save to local storage and close dialog
-                  _savePostAndCloseDialog(newPost);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _newPostController,
+              decoration: const InputDecoration(
+                hintText: 'Share your thoughts...',
+                border: InputBorder.none,
               ),
-              child: const Text('Post'),
+              maxLines: null,
             ),
-          ],
-        );
-      },
+          ),
+          IconButton(
+            icon: const Icon(Icons.send),
+            onPressed: () => _createPost(_newPostController.text),
+          ),
+        ],
+      ),
     );
   }
 
-  Future<void> _savePostAndCloseDialog(CommunityPost post) async {
-    try {
-      // Save to local storage
-      await DataPersistenceService.saveCommunityPosts(
-        _posts.map((post) => post.toMap()).toList(),
+  Future<void> _handleLike(CommunityPost post) async {
+    final firestoreService =
+        Provider.of<FirestoreService>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.user;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be signed in to like posts')),
       );
-    } catch (e) {
-      debugPrint('Error saving post: $e');
+      return;
     }
 
-    // Check if widget is still mounted after async operation
-    if (!mounted) return;
+    try {
+      final isLiked = post.likedBy.contains(user.uid);
+      final newLikedBy = List<String>.from(post.likedBy);
+      if (isLiked) {
+        newLikedBy.remove(user.uid);
+      } else {
+        newLikedBy.add(user.uid);
+      }
 
-    // Close the dialog
-    Navigator.of(context).pop();
+      await firestoreService.batchUpdate([
+        {
+          'ref': FirebaseFirestore.instance
+              .collection('communityPosts')
+              .doc(post.id),
+          'data': {
+            'likes': isLiked ? post.likes - 1 : post.likes + 1,
+            'likedBy': newLikedBy,
+          },
+        },
+      ]);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating like: $e')),
+      );
+    }
   }
 }

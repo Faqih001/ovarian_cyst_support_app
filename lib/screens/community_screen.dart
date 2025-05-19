@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
-import '../models/community_post.dart';
-import 'package:ovarian_cyst_support_app/services/data_persistence_service.dart';
+import 'package:ovarian_cyst_support_app/models/community_post.dart';
+import 'package:ovarian_cyst_support_app/services/auth_service.dart';
+import 'package:ovarian_cyst_support_app/services/firestore_service.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -11,53 +14,55 @@ class CommunityScreen extends StatefulWidget {
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
-  late List<CommunityPost> _posts;
-  bool _isLoading = true;
+  late Stream<QuerySnapshot> _postsStream;
+  final TextEditingController _postController = TextEditingController();
+  bool _isComposing = false;
 
   @override
   void initState() {
     super.initState();
-    _loadPosts();
+    final firestoreService =
+        Provider.of<FirestoreService>(context, listen: false);
+    _postsStream = firestoreService.getCommunityPosts();
   }
 
-  Future<void> _loadPosts() async {
-    setState(() {
-      _isLoading = true;
-    });
+  @override
+  void dispose() {
+    _postController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitPost() async {
+    if (_postController.text.trim().isEmpty) return;
+
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final firestoreService =
+        Provider.of<FirestoreService>(context, listen: false);
+    final currentUser = authService.user;
+
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to post')),
+      );
+      return;
+    }
 
     try {
-      // Try to load posts from local storage first
-      final localPosts = await DataPersistenceService.getCommunityPosts();
-
-      if (localPosts.isNotEmpty) {
-        // If we have local posts, use them
-        setState(() {
-          _posts =
-              localPosts
-                  .map((postMap) => CommunityPost.fromMap(postMap))
-                  .toList();
-          _isLoading = false;
-        });
-      } else {
-        // Otherwise use mock data (in a real app, you'd fetch from a server)
-        final mockPosts = CommunityPost.getMockPosts();
-
-        // Save mock posts to local storage for offline access
-        await DataPersistenceService.saveCommunityPosts(
-          mockPosts.map((post) => post.toMap()).toList(),
-        );
-
-        setState(() {
-          _posts = mockPosts;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      // If all else fails, use mock data without saving
-      setState(() {
-        _posts = CommunityPost.getMockPosts();
-        _isLoading = false;
+      await firestoreService.createCommunityPost({
+        'content': _postController.text.trim(),
+        'userId': currentUser.uid,
+        'userName': currentUser.displayName ?? 'Anonymous',
+        'userPhotoUrl': currentUser.photoURL,
+        'likes': 0,
+        'comments': [],
       });
+
+      _postController.clear();
+      setState(() => _isComposing = false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error posting: $e')),
+      );
     }
   }
 
@@ -68,79 +73,49 @@ class _CommunityScreenState extends State<CommunityScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         title: const Text(
-          'Community Support',
+          'Community',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: AppColors.primary.withAlpha((0.1 * 255).round()),
-            child: Column(
-              children: [
-                const Text(
-                  'Connect with others on a similar journey',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Share experiences, ask questions, and provide support in a safe space',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _postsStream,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error: ${snapshot.error}'),
+                  );
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(
+                    child: Text('No posts yet. Be the first to share!'),
+                  );
+                }
+
+                final posts = snapshot.data!.docs
+                    .map((doc) => CommunityPost.fromFirestore(doc))
+                    .toList();
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: posts.length,
+                  itemBuilder: (context, index) {
+                    final post = posts[index];
+                    return _buildPostCard(post);
+                  },
+                );
+              },
             ),
           ),
-          Expanded(
-            child:
-                _isLoading
-                    ? const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.primary,
-                        ),
-                      ),
-                    )
-                    : RefreshIndicator(
-                      onRefresh: _loadPosts,
-                      color: AppColors.primary,
-                      child:
-                          _posts.isEmpty
-                              ? const Center(
-                                child: Text(
-                                  'No posts yet. Be the first to share!',
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              )
-                              : ListView.builder(
-                                padding: const EdgeInsets.all(8.0),
-                                itemCount: _posts.length,
-                                itemBuilder: (context, index) {
-                                  return _buildPostCard(_posts[index]);
-                                },
-                              ),
-                    ),
-          ),
+          _buildComposer(),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showCreatePostDialog();
-        },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -180,20 +155,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
               children: [
                 CircleAvatar(
                   backgroundColor: AppColors.primary,
-                  backgroundImage:
-                      post.userAvatar.startsWith('http')
-                          ? NetworkImage(post.userAvatar) as ImageProvider
-                          : null,
-                  child:
-                      post.userAvatar.startsWith('http')
-                          ? null
-                          : Text(
-                            post.username.substring(0, 1).toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                  backgroundImage: post.userAvatar.startsWith('http')
+                      ? NetworkImage(post.userAvatar) as ImageProvider
+                      : null,
+                  child: post.userAvatar.startsWith('http')
+                      ? null
+                      : Text(
+                          post.username.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Column(
@@ -223,24 +196,23 @@ class _CommunityScreenState extends State<CommunityScreen> {
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
-                children:
-                    post.tags.map((tag) {
-                      return Chip(
-                        label: Text(
-                          '#$tag',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.accent,
-                          ),
-                        ),
-                        backgroundColor: AppColors.accent.withAlpha(
-                          (0.1 * 255).round(),
-                        ),
-                        padding: EdgeInsets.zero,
-                        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      );
-                    }).toList(),
+                children: post.tags.map((tag) {
+                  return Chip(
+                    label: Text(
+                      '#$tag',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                    backgroundColor: AppColors.accent.withAlpha(
+                      (0.1 * 255).round(),
+                    ),
+                    padding: EdgeInsets.zero,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  );
+                }).toList(),
               ),
             ],
             const SizedBox(height: 16),
@@ -254,12 +226,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         post.isLikedByCurrentUser
                             ? Icons.favorite
                             : Icons.favorite_border,
-                        color:
-                            post.isLikedByCurrentUser
-                                ? AppColors.primary
-                                : AppColors.primary.withAlpha(
-                                  (0.7 * 255).round(),
-                                ),
+                        color: post.isLikedByCurrentUser
+                            ? AppColors.primary
+                            : AppColors.primary.withAlpha(
+                                (0.7 * 255).round(),
+                              ),
                         size: 20,
                       ),
                       onPressed: () {
@@ -304,75 +275,39 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  void _showCreatePostDialog() {
-    final TextEditingController postController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Create Post'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Share your thoughts with the community',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: postController,
-                maxLines: 5,
-                decoration: InputDecoration(
-                  hintText: 'What\'s on your mind?',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary),
-                  ),
+  Widget _buildComposer() {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _postController,
+              onChanged: (text) {
+                setState(() {
+                  _isComposing = text.isNotEmpty;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'What\'s on your mind?',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.primary),
                 ),
               ),
-            ],
+              maxLines: 5,
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (postController.text.isNotEmpty) {
-                  setState(() {
-                    _posts.insert(
-                      0,
-                      CommunityPost(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        userId: 'current_user',
-                        username: 'You',
-                        userAvatar: 'Y',
-                        content: postController.text,
-                        timestamp: DateTime.now(),
-                        likes: 0,
-                        comments: 0,
-                      ),
-                    );
-                  });
-                  Navigator.of(context).pop();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Post'),
-            ),
-          ],
-        );
-      },
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.send, color: AppColors.primary),
+            onPressed: _isComposing ? _submitPost : null,
+          ),
+        ],
+      ),
     );
   }
 }
