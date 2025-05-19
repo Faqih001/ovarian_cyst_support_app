@@ -61,4 +61,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth") // For authentication
     implementation("com.google.firebase:firebase-firestore") // For Cloud Firestore
     implementation("com.google.firebase:firebase-messaging") // For Cloud Messaging
+
+    // Add Kotlin standard library with explicit version matching plugin version
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.8.22")
 }
