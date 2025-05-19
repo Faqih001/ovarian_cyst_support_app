@@ -21,6 +21,27 @@ class _SymptomTrackingScreenState extends State<SymptomTrackingScreen>
   Stream<QuerySnapshot>? _entriesStream;
   bool _isLoading = true;
 
+  // Symptom options
+  final List<String> _moodOptions = [
+    'Great',
+    'Good',
+    'Okay',
+    'Not Good',
+    'Terrible'
+  ];
+  
+  final List<String> _symptomOptions = [
+    'Pelvic Pain',
+    'Bloating',
+    'Nausea',
+    'Fatigue',
+    'Back Pain',
+    'Irregular Bleeding',
+    'Pressure',
+    'Cramping',
+    'Other'
+  ];
+
   // For new symptom entry
   final _formKey = GlobalKey<FormState>();
   DateTime _selectedDate = DateTime.now();

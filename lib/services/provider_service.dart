@@ -49,14 +49,12 @@ class ProviderService {
       }
 
       // Make API call
-      final response = await http
-          .get(
-            Uri.parse(
-              '$baseUrl$providersEndpoint',
-            ).replace(queryParameters: queryParams),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(
+        Uri.parse(
+          '$baseUrl$providersEndpoint',
+        ).replace(queryParameters: queryParams),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -99,14 +97,12 @@ class ProviderService {
       };
 
       // Make API call
-      final response = await http
-          .get(
-            Uri.parse(
-              '$baseUrl$availabilityEndpoint',
-            ).replace(queryParameters: queryParams),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(
+        Uri.parse(
+          '$baseUrl$availabilityEndpoint',
+        ).replace(queryParameters: queryParams),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -127,39 +123,91 @@ class ProviderService {
     }
   }
 
-  // Get available time slots for a specific provider and date
-  Future<List<String>> getAvailableTimeSlots(
-    String providerId,
-    DateTime date,
-  ) async {
-    // Simplified version - just return hardcoded time slots
-    return [
-      '09:00',
-      '09:30',
-      '10:00',
-      '10:30',
-      '11:00',
-      '11:30',
-      '14:00',
-      '14:30',
-      '15:00',
-      '15:30',
-      '16:00',
-      '16:30',
-    ];
+  // Get available time slots for a provider on a specific date
+  Future<List<String>> getAvailableTimeSlots({
+    required String providerId,
+    required DateTime date,
+  }) async {
+    final availability = await getProviderAvailability(
+      providerId,
+      date,
+      date,
+    );
+
+    if (availability.isEmpty) {
+      return [];
+    }
+
+    // Convert availability to time slots (30-minute intervals)
+    List<String> slots = [];
+    for (DateTime dt in availability) {
+      int hour = dt.hour;
+      int minute = dt.minute;
+      slots.add(
+        '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
+      );
+    }
+
+    return slots;
   }
 
   // Get services offered by a provider
   Future<List<Map<String, dynamic>>> getProviderServices(
     String providerId,
   ) async {
-    // Return mock provider services
-    return [
-      {'id': '1', 'name': 'General Consultation', 'cost': 50, 'duration': 30},
-      {'id': '2', 'name': 'Ultrasound', 'cost': 120, 'duration': 45},
-      {'id': '3', 'name': 'Follow-up Visit', 'cost': 35, 'duration': 20},
-      {'id': '4', 'name': 'Treatment Discussion', 'cost': 60, 'duration': 45},
-    ];
+    // Check for internet connectivity
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
+      debugPrint('No internet connection. Using cached services data.');
+      return _getCachedProviderServices(providerId);
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl$providersEndpoint/$providerId/services'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final List<Map<String, dynamic>> services =
+            data.cast<Map<String, dynamic>>();
+
+        // Cache data for offline use
+        await _cacheProviderServices(providerId, services);
+
+        return services;
+      } else {
+        debugPrint('Error from provider services API: ${response.statusCode}');
+        return _getCachedProviderServices(providerId);
+      }
+    } catch (e) {
+      debugPrint('Exception in provider services API call: $e');
+      return _getCachedProviderServices(providerId);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _getCachedProviderServices(
+    String providerId,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? cachedData = prefs.getString('provider_services_$providerId');
+    if (cachedData != null) {
+      final List<dynamic> data = jsonDecode(cachedData);
+      return data.cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
+
+  Future<void> _cacheProviderServices(
+    String providerId,
+    List<Map<String, dynamic>> services,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'provider_services_$providerId',
+      jsonEncode(services),
+    );
   }
 
   // Book an appointment
@@ -207,14 +255,12 @@ class ProviderService {
       };
 
       // Make API call
-      final response = await http
-          .get(
-            Uri.parse(
-              '$baseUrl$costEstimateEndpoint',
-            ).replace(queryParameters: queryParams),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(
+        Uri.parse(
+          '$baseUrl$costEstimateEndpoint',
+        ).replace(queryParameters: queryParams),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -290,21 +336,18 @@ class ProviderService {
 
     try {
       // Make API call to get appointments from server
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl$appointmentsEndpoint'),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(
+        Uri.parse('$baseUrl$appointmentsEndpoint'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        final List<Appointment> serverAppointments =
-            data
-                .map(
-                  (item) => Appointment.fromMap(item as Map<String, dynamic>),
-                )
-                .toList();
+        final List<Appointment> serverAppointments = data
+            .map(
+              (item) => Appointment.fromMap(item as Map<String, dynamic>),
+            )
+            .toList();
 
         // Merge server and local appointments, with preference to server data
         final List<Appointment> mergedAppointments = _mergeAppointments(
@@ -517,8 +560,7 @@ class ProviderService {
     // Add all server appointments
     for (var appointment in serverAppointments) {
       mergedMap[appointment.doctorName +
-              appointment.dateTime.toIso8601String()] =
-          appointment;
+          appointment.dateTime.toIso8601String()] = appointment;
     }
 
     // Add local appointments that don't exist on server (these might be pending sync)

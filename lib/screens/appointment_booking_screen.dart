@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/services/provider_service.dart';
-import 'package:ovarian_cyst_support_app/services/payment_service.dart';
 import 'package:ovarian_cyst_support_app/services/notification_service.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/firestore_service.dart';
+import 'package:ovarian_cyst_support_app/services/payment_service.dart';
 import 'package:intl/intl.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:ovarian_cyst_support_app/models/appointment.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AppointmentBookingScreen extends StatefulWidget {
@@ -28,8 +26,8 @@ class AppointmentBookingScreen extends StatefulWidget {
 class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   late final FirestoreService _firestoreService;
   final ProviderService _providerService = ProviderService();
-  final PaymentService _paymentService = PaymentService();
   late final String _userId;
+  final NotificationService _notificationService = NotificationService();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _purposeController = TextEditingController();
@@ -39,9 +37,9 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   String _selectedTimeSlot = '';
   List<String> _availableTimeSlots = [];
+  List<Map<String, dynamic>> _availableServices = [];
+  Set<String> _selectedServices = {};
   bool _isLoading = false;
-  bool _isOffline = false;
-  String _errorMessage = '';
   bool _reminderEnabled = true;
 
   // Payment details
@@ -49,191 +47,64 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   double _servicesFee = 0;
   double _totalCost = 0;
 
-  // Selected services
-  List<Map<String, dynamic>> _availableServices = [];
-  final List<String> _selectedServices = [];
-
   @override
   void initState() {
     super.initState();
     _firestoreService = Provider.of<FirestoreService>(context, listen: false);
     _userId = Provider.of<AuthService>(context, listen: false).user?.uid ?? '';
     _initializeScreen();
-    _checkConnectivity();
   }
 
   Future<void> _initializeScreen() async {
     if (widget.initialDate != null) {
-      setState(() => _selectedDate = widget.initialDate!);
+      setState(() {
+        _selectedDate = widget.initialDate!;
+      });
     }
     await _loadAvailableTimeSlots();
     await _loadProviderServices();
   }
 
-  Future<void> _checkConnectivity() async {
-    var connectivityResult = await Connectivity().checkConnectivity();
-    setState(() {
-      _isOffline = connectivityResult == ConnectivityResult.none;
-    });
+  Future<void> _scheduleAppointmentReminder(
+    DateTime appointmentDate,
+    String providerName,
+    String timeSlot,
+  ) async {
+    if (!_reminderEnabled) return;
 
-    // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
-      setState(() {
-        _isOffline = result == ConnectivityResult.none;
-      });
+    final title = 'Appointment Reminder';
+    final body = 'You have an appointment with $providerName at $timeSlot';
+    final payload = 'appointment_${DateTime.now().millisecondsSinceEpoch}';
 
-      if (!_isOffline) {
-        // Refresh data when back online
-        _loadAvailableTimeSlots();
-      }
-    });
-  }
+    // Schedule reminder for 1 day before
+    final reminderDate = appointmentDate.subtract(const Duration(days: 1));
+    final reminderTime = DateFormat('HH:mm').parse(timeSlot);
+    final scheduleDate = DateTime(
+      reminderDate.year,
+      reminderDate.month,
+      reminderDate.day,
+      reminderTime.hour,
+      reminderTime.minute,
+    );
 
-  Future<void> _loadAvailableTimeSlots() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-      _availableTimeSlots = [];
-      _selectedTimeSlot = '';
-    });
-
-    try {
-      if (_isOffline) {
-        setState(() {
-          _availableTimeSlots = [
-            '09:00',
-            '10:00',
-            '11:00',
-            '14:00',
-            '15:00',
-            '16:00',
-          ];
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final timeSlots = await _providerService.getAvailableTimeSlots(
-        widget.provider['id'],
-        _selectedDate,
-      );
-
-      setState(() {
-        _availableTimeSlots = timeSlots;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load availability. Please try again.';
-        _isLoading = false;
-
-        // Fallback timeSlots
-        _availableTimeSlots = [
-          '8:00 AM',
-          '9:00 AM',
-          '10:00 AM',
-          '11:00 AM',
-          '2:00 PM',
-          '3:00 PM',
-          '4:00 PM',
-        ];
-      });
-    }
-  }
-
-  Future<void> _loadProviderServices() async {
-    setState(() {
-      _availableServices = [];
-    });
-
-    try {
-      if (_isOffline) {
-        setState(() {
-          _availableServices = [
-            {
-              'name': 'Regular Checkup',
-              'cost': 0.0,
-              'description': 'Standard gynecological examination',
-            },
-            {
-              'name': 'Ultrasound',
-              'cost': 2000.0,
-              'description': 'Pelvic ultrasound scan',
-            },
-            {
-              'name': 'Lab Tests',
-              'cost': 1500.0,
-              'description': 'Basic lab work including hormonal tests',
-            },
-            {
-              'name': 'Treatment Consultation',
-              'cost': 1000.0,
-              'description': 'Discussion of treatment options and plan',
-            },
-          ];
-        });
-        return;
-      }
-
-      final services = await _providerService.getProviderServices(
-        widget.provider['id'],
-      );
-
-      setState(() {
-        _availableServices = services;
-      });
-    } catch (e) {
-      // Use fallback services
-      setState(() {
-        _availableServices = [
-          {
-            'name': 'Regular Checkup',
-            'cost': 0.0,
-            'description': 'Standard gynecological examination',
-          },
-          {
-            'name': 'Ultrasound',
-            'cost': 2000.0,
-            'description': 'Pelvic ultrasound scan',
-          },
-          {
-            'name': 'Lab Tests',
-            'cost': 1500.0,
-            'description': 'Basic lab work including hormonal tests',
-          },
-          {
-            'name': 'Treatment Consultation',
-            'cost': 1000.0,
-            'description': 'Discussion of treatment options and plan',
-          },
-        ];
-      });
-    }
-  }
-
-  void _updateTotalCost() {
-    _servicesFee = 0;
-    for (var serviceName in _selectedServices) {
-      final service = _availableServices.firstWhere(
-        (s) => s['name'] == serviceName,
-        orElse: () => {'cost': 0.0},
-      );
-      _servicesFee += service['cost'] ?? 0;
-    }
-
-    _totalCost = _consultationFee + _servicesFee;
+    await _notificationService.scheduleNotification(
+      id: payload.hashCode,
+      title: title,
+      body: body,
+      payload: payload,
+      scheduledDate: scheduleDate,
+    );
   }
 
   Future<void> _bookAppointment() async {
     if (!_formKey.currentState!.validate() || _selectedTimeSlot.isEmpty) {
-      setState(() => _errorMessage = 'Please fill all required fields');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all required fields')),
+      );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    setState(() => _isLoading = true);
 
     try {
       final appointmentData = {
@@ -245,7 +116,6 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
         'purpose': _purposeController.text,
         'notes': _notesController.text,
         'phone': _phoneController.text,
-        'services': _selectedServices,
         'status': 'pending',
         'totalCost': _totalCost,
         'reminderEnabled': _reminderEnabled,
@@ -255,7 +125,8 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
       await _firestoreService.addAppointment(_userId, appointmentData);
 
       if (_reminderEnabled) {
-        await NotificationService.scheduleAppointmentReminder(
+        final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
+        await _scheduleAppointmentReminder(
           _selectedDate,
           widget.provider['name'],
           _selectedTimeSlot,
@@ -266,7 +137,11 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Failed to book appointment: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to book appointment: $e')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -274,10 +149,64 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     }
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-    );
+  Future<void> _loadAvailableTimeSlots() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final slots = await _providerService.getAvailableTimeSlots(
+        providerId: widget.provider['id'],
+        date: _selectedDate,
+      );
+      if (mounted) {
+        setState(() {
+          _availableTimeSlots = slots;
+          _selectedTimeSlot = '';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading time slots: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadProviderServices() async {
+    try {
+      final services = await _providerService.getProviderServices(
+        widget.provider['id'],
+      );
+      if (mounted) {
+        setState(() {
+          _availableServices = List<Map<String, dynamic>>.from(services);
+          _consultationFee = widget.provider['consultationFee'] ?? 0;
+          _updateTotalCost();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading services: $e')),
+        );
+      }
+    }
+  }
+
+  void _updateTotalCost() {
+    double servicesCost = 0;
+    for (var service in _availableServices) {
+      if (_selectedServices.contains(service['name'])) {
+        servicesCost += (service['cost'] ?? 0);
+      }
+    }
+
+    setState(() {
+      _servicesFee = servicesCost;
+      _totalCost = _consultationFee + _servicesFee;
+    });
   }
 
   @override
@@ -346,9 +275,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                                         setState(() {
                                           _selectedDate = previousMonth;
                                         });
-                                        _loadAvailableTimeSlots(
-                                          _selectedDate,
-                                        );
+                                        _loadAvailableTimeSlots();
                                       }
                                     },
                                   ),
@@ -368,9 +295,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                                         setState(() {
                                           _selectedDate = nextMonth;
                                         });
-                                        _loadAvailableTimeSlots(
-                                          _selectedDate,
-                                        );
+                                        _loadAvailableTimeSlots();
                                       }
                                     },
                                   ),
@@ -394,7 +319,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                                   _selectedDate = pickedDate;
                                   _selectedTimeSlot = '';
                                 });
-                                _loadAvailableTimeSlots(pickedDate);
+                                _loadAvailableTimeSlots();
                               }
                             },
                             child: Container(
@@ -635,7 +560,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
               radius: 30,
               backgroundColor: Theme.of(
                 context,
-              ).primaryColor.withAlpha(51), // Replaced withOpacity(0.2)
+              ).primaryColor.withAlpha(51),
               child: Text(
                 widget.provider['name'].substring(0, 1),
                 style: TextStyle(

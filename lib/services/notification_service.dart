@@ -95,10 +95,10 @@ class NotificationService {
 
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
-        );
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
 
     const InitializationSettings initSettings = InitializationSettings(
       android: androidSettings,
@@ -202,13 +202,13 @@ class NotificationService {
   }) async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-          'ovarian_cyst_support_channel',
-          'Ovarian Cyst Support',
-          channelDescription: 'Notifications for the Ovarian Cyst Support app',
-          importance: Importance.high,
-          priority: Priority.high,
-          showWhen: true,
-        );
+      'ovarian_cyst_support_channel',
+      'Ovarian Cyst Support',
+      channelDescription: 'Notifications for the Ovarian Cyst Support app',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+    );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -239,12 +239,12 @@ class NotificationService {
   }) async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-          'ovarian_cyst_reminder_channel',
-          'Reminders',
-          channelDescription: 'Scheduled reminders',
-          importance: Importance.high,
-          priority: Priority.high,
-        );
+      'ovarian_cyst_reminder_channel',
+      'Reminders',
+      channelDescription: 'Scheduled reminders',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
 
@@ -268,6 +268,27 @@ class NotificationService {
       notificationDetails,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
+      payload: payload,
+    );
+  }
+
+  // Public method to schedule notifications
+  Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    String? payload,
+  }) async {
+    final bool notificationsEnabled = await areNotificationsEnabled();
+    if (!notificationsEnabled) {
+      return;
+    }
+
+    await _scheduleNotification(
+      title: title,
+      body: body,
+      scheduledTime: scheduledDate,
       payload: payload,
     );
   }
@@ -312,10 +333,9 @@ class NotificationService {
     );
 
     // If the time has already passed today, schedule for tomorrow
-    final actualScheduledTime =
-        scheduledTime.isBefore(now)
-            ? scheduledTime.add(const Duration(days: 1))
-            : scheduledTime;
+    final actualScheduledTime = scheduledTime.isBefore(now)
+        ? scheduledTime.add(const Duration(days: 1))
+        : scheduledTime;
 
     await instance._scheduleNotification(
       title: reminderData['title'] as String,
@@ -344,8 +364,7 @@ class NotificationService {
 
     // Cancel with enhanced notification service
     // This is a simplified approach - in a real app you'd store the exact notification ID
-    final notificationId =
-        (medication.name.hashCode +
+    final notificationId = (medication.name.hashCode +
             medication.time.hour +
             medication.time.minute) %
         10000;

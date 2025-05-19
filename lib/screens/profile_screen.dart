@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
-import 'package:ovarian_cyst_support_app/screens/auth/login_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/edit_profile_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/edit_health_info_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/settings_screen.dart';
@@ -149,7 +148,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             const Divider(),
                             _buildHealthInfoRow(
                               'Medications',
-                              (_userProfile?.healthInfo?['medications'] as List?)
+                              (_userProfile?.healthInfo?['medications']
+                                              as List?)
                                           ?.isNotEmpty ==
                                       true
                                   ? '${(_userProfile?.healthInfo?['medications'] as List).length} Active Medications'

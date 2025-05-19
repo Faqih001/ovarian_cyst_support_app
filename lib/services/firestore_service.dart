@@ -1,10 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logger/logger.dart';
 import 'package:ovarian_cyst_support_app/models/user_profile.dart';
-import 'package:ovarian_cyst_support_app/models/symptom_entry.dart';
-import 'package:ovarian_cyst_support_app/models/medication.dart';
-import 'package:ovarian_cyst_support_app/models/appointment.dart';
-import 'package:ovarian_cyst_support_app/models/community_post.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -19,8 +15,7 @@ class FirestoreService {
     try {
       await users.doc(profile.uid).set(profile.toMap());
     } catch (e) {
-      _logger.e('Error creating user profile: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -30,8 +25,7 @@ class FirestoreService {
       if (!doc.exists) return null;
       return UserProfile.fromMap(doc.data() as Map<String, dynamic>, doc.id);
     } catch (e) {
-      _logger.e('Error getting user profile: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -42,8 +36,7 @@ class FirestoreService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      _logger.e('Error updating user profile: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -56,8 +49,7 @@ class FirestoreService {
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      _logger.e('Error adding medical record: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -78,8 +70,7 @@ class FirestoreService {
         'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      _logger.e('Error adding symptom entry: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -100,8 +91,7 @@ class FirestoreService {
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      _logger.e('Error adding appointment: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -117,8 +107,7 @@ class FirestoreService {
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      _logger.e('Error creating community post: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -134,6 +123,18 @@ class FirestoreService {
     }
   }
 
+  // Enable offline support
+  Future<void> enableOfflineSupport() async {
+    try {
+      _firestore.settings = Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // Batch Operations
   Future<void> batchUpdate(List<Map<String, dynamic>> operations) async {
     final batch = _firestore.batch();
@@ -146,7 +147,7 @@ class FirestoreService {
       await batch.commit();
     } catch (e) {
       _logger.e('Error in batch update: $e');
-      throw e;
+      rethrow;
     }
   }
 }
