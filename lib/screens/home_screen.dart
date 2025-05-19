@@ -9,6 +9,7 @@ import 'package:ovarian_cyst_support_app/screens/educational_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/provider_search_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/medication_tracking_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/kenyan_hospital_booking_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/private_hospital_booking_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
 
@@ -721,23 +722,44 @@ class _HomeContentState extends State<HomeContent>
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
                           const Text(
-                            'Choose Hospital Type',
+                            'Book an Appointment',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+                          const Text(
+                            'Select the type of healthcare facility you want to book with:',
+                            style: TextStyle(
+                              color: AppColors.textLight,
+                            ),
+                          ),
                           const SizedBox(height: 20),
                           ListTile(
                             leading: const Icon(Icons.local_hospital),
-                            title: const Text('Kenyan Hospitals'),
-                            subtitle: const Text('Browse hospitals in Kenya'),
+                            title: const Text('Public Hospitals'),
+                            subtitle: const Text('Browse public hospitals in Kenya'),
                             onTap: () {
                               Navigator.pop(context); // Close the modal
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) =>
                                       const KenyanHospitalBookingScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.business),
+                            title: const Text('Private Hospitals'),
+                            subtitle: const Text('Browse private hospitals in Kenya'),
+                            onTap: () {
+                              Navigator.pop(context); // Close the modal
+                              
+                              // Navigate to KenyanHospitalBookingScreen with private facility pre-selected
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const PrivateHospitalBookingScreen(),
                                 ),
                               );
                             },

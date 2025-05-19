@@ -11,15 +11,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ovarian_cyst_support_app/widgets/app_toast.dart' as toast;
 
 class KenyanHospitalBookingScreen extends StatefulWidget {
-  const KenyanHospitalBookingScreen({super.key});
+  final FacilityType initialFacilityType;
+  
+  const KenyanHospitalBookingScreen({
+    super.key, 
+    this.initialFacilityType = FacilityType.public,
+  });
 
   @override
   State<KenyanHospitalBookingScreen> createState() =>
       _KenyanHospitalBookingScreenState();
 }
 
-class _KenyanHospitalBookingScreenState
-    extends State<KenyanHospitalBookingScreen> {
+class _KenyanHospitalBookingScreenState extends State<KenyanHospitalBookingScreen> {
   final HospitalService _hospitalService = HospitalService();
   final AppointmentService _appointmentService = AppointmentService();
 
@@ -30,11 +34,14 @@ class _KenyanHospitalBookingScreenState
   List<String> _counties = [];
   List<Facility> _facilities = [];
   List<Doctor> _doctors = [];
-
+  
   bool _isLoadingCounties = false;
   bool _isLoadingFacilities = false;
   bool _isLoadingDoctors = false;
   bool _isSubmitting = false;
+  
+  // Facility type selection
+  FacilityType _selectedFacilityType = FacilityType.public;
 
   // Form controllers
   final _formKey = GlobalKey<FormState>();
@@ -67,6 +74,11 @@ class _KenyanHospitalBookingScreenState
   void initState() {
     super.initState();
     _loadCounties();
+    
+    // Set initial facility type from widget parameter
+    setState(() {
+      _selectedFacilityType = widget.initialFacilityType;
+    });
 
     // Pre-fill name from auth service if available
     final authService = Provider.of<AuthService>(context, listen: false);
@@ -129,6 +141,7 @@ class _KenyanHospitalBookingScreenState
       final facilities = await _hospitalService.getFacilities(
         searchQuery: _searchController.text.trim(),
         county: _selectedCounty,
+        facilityType: _selectedFacilityType,
       );
 
       setState(() {
@@ -268,7 +281,7 @@ class _KenyanHospitalBookingScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Book Appointment - Kenya Hospitals'),
+        title: Text('Book Appointment - ${_selectedFacilityType == FacilityType.public ? 'Public' : 'Private'} Hospitals'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
@@ -319,6 +332,50 @@ class _KenyanHospitalBookingScreenState
               ),
             ),
             const SizedBox(height: 16),
+            
+            // Facility type selector
+            const Text('Select hospital type:'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<FacilityType>(
+                    title: const Text('Public'),
+                    value: FacilityType.public,
+                    groupValue: _selectedFacilityType,
+                    onChanged: (FacilityType? value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedFacilityType = value;
+                          // Clear previous results when changing facility type
+                          _facilities = [];
+                          _selectedFacility = null;
+                        });
+                      }
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: RadioListTile<FacilityType>(
+                    title: const Text('Private'),
+                    value: FacilityType.private,
+                    groupValue: _selectedFacilityType,
+                    onChanged: (FacilityType? value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedFacilityType = value;
+                          // Clear previous results when changing facility type
+                          _facilities = [];
+                          _selectedFacility = null;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
