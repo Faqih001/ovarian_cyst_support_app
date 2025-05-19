@@ -5,6 +5,7 @@ import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/auth/signup_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/home_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
+import 'package:ovarian_cyst_support_app/utils/notification_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -291,11 +292,10 @@ class _LoginScreenState extends State<LoginScreen>
       );
     } else {
       // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authService.errorMessage ?? 'Login failed'),
-          backgroundColor: Colors.red,
-        ),
+      NotificationUtils.showTopCenterNotification(
+        context,
+        authService.errorMessage ?? 'Login failed',
+        isError: true,
       );
     }
   }

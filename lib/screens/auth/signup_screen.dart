@@ -6,6 +6,7 @@ import 'package:ovarian_cyst_support_app/screens/home_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/screens/legal/privacy_policy_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/legal/terms_of_service_screen.dart';
+import 'package:ovarian_cyst_support_app/utils/notification_utils.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -355,11 +356,10 @@ class _SignupScreenState extends State<SignupScreen>
         );
       } else {
         // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authService.errorMessage ?? 'Registration failed'),
-            backgroundColor: Colors.red,
-          ),
+        NotificationUtils.showTopCenterNotification(
+          context,
+          authService.errorMessage ?? 'Registration failed',
+          isError: true,
         );
       }
     } catch (e) {
@@ -380,21 +380,11 @@ class _SignupScreenState extends State<SignupScreen>
         errorMessage = 'Please enter a valid email address.';
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'Retry',
-            textColor: Colors.white,
-            onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                _handleSignup();
-              }
-            },
-          ),
-        ),
+      NotificationUtils.showTopCenterNotification(
+        context,
+        errorMessage,
+        isError: true,
+        duration: const Duration(seconds: 5),
       );
     }
   }
