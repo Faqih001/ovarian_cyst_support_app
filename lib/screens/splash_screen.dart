@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/onboarding_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/home_screen.dart';
@@ -35,34 +36,53 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _animationController.forward();
+    _handleNavigation();
+  }
 
-    // Check if onboarding is completed and auth status before navigating
-    final authService = Provider.of<AuthService>(context, listen: false);
-    Timer(const Duration(seconds: 3), () async {
+  Future<void> _handleNavigation() async {
+    // Get navigator before any async operations
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+
+    // Wait for animation
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
       final bool onboardingComplete =
           await PreferencesService.isOnboardingComplete();
+      final bool hasCreatedAccount =
+          prefs.getBool('has_created_account') ?? false;
 
-      if (mounted) {
-        // If onboarding is not complete, show onboarding
-        if (!onboardingComplete) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-          );
-        }
-        // If user is already authenticated, go to home
-        else if (authService.status == AuthStatus.authenticated) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        }
-        // Otherwise, go to login
-        else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-          );
-        }
+      if (!mounted) return;
+
+      final authService = Provider.of<AuthService>(context, listen: false);
+      Widget nextScreen;
+
+      if (!onboardingComplete || !hasCreatedAccount) {
+        nextScreen = const OnboardingScreen();
+      } else if (authService.status == AuthStatus.authenticated) {
+        nextScreen = const HomeScreen();
+      } else {
+        nextScreen = const LoginScreen();
       }
-    });
+
+      // Final mounted check before navigation
+      if (!mounted) return;
+
+      await navigator.pushReplacement(
+        MaterialPageRoute(builder: (context) => nextScreen),
+      );
+    } catch (e) {
+      // Handle any errors during navigation setup
+      if (!mounted) return;
+
+      await navigator.pushReplacement(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    }
   }
 
   @override

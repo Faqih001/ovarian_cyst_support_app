@@ -6,6 +6,7 @@ import 'package:ovarian_cyst_support_app/screens/home_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/screens/legal/privacy_policy_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/legal/terms_of_service_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -223,17 +224,21 @@ class _SignupScreenState extends State<SignupScreen>
                   const SizedBox(height: 20),
 
                   // Terms and conditions checkbox
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Checkbox(
                         value: _acceptedTerms,
                         onChanged: (value) {
                           setState(() {
-                            _acceptedTerms = value!;
+                            _acceptedTerms = value ?? false;
+                            _acceptedPrivacy =
+                                value ?? false; // Keep both values in sync
                           });
                         },
                       ),
-                      const Text('I accept the '),
+                      const Text('I accept the ',
+                          style: TextStyle(fontSize: 14)),
                       GestureDetector(
                         onTap: () {
                           Navigator.of(context).push(
@@ -244,14 +249,15 @@ class _SignupScreenState extends State<SignupScreen>
                           );
                         },
                         child: const Text(
-                          'Terms of Service',
+                          'Terms of Servicez',
                           style: TextStyle(
                             color: AppColors.primary,
                             decoration: TextDecoration.underline,
+                            fontSize: 14,
                           ),
                         ),
                       ),
-                      const Text(' and '),
+                      const Text(' and ', style: TextStyle(fontSize: 14)),
                       GestureDetector(
                         onTap: () {
                           Navigator.of(context).push(
@@ -265,84 +271,9 @@ class _SignupScreenState extends State<SignupScreen>
                           style: TextStyle(
                             color: AppColors.primary,
                             decoration: TextDecoration.underline,
+                            fontSize: 14,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Terms and Privacy Policy
-                  Column(
-                    children: [
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: _acceptedTerms,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                _acceptedTerms = value ?? false;
-                              });
-                            },
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const TermsOfServiceScreen(),
-                                  ),
-                                );
-                              },
-                              child: Text(
-                                'I agree to the Terms of Service',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      color: AppColors.textPrimary,
-                                    ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: _acceptedPrivacy,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                _acceptedPrivacy = value ?? false;
-                              });
-                            },
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const PrivacyPolicyScreen(),
-                                  ),
-                                );
-                              },
-                              child: Text(
-                                'I agree to the Privacy Policy',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      color: AppColors.textPrimary,
-                                    ),
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -351,7 +282,7 @@ class _SignupScreenState extends State<SignupScreen>
 
                   // Sign up button
                   ElevatedButton(
-                    onPressed: (_acceptedTerms && _acceptedPrivacy)
+                    onPressed: _acceptedTerms
                         ? () {
                             if (_formKey.currentState!.validate()) {
                               _handleSignup();
@@ -386,11 +317,13 @@ class _SignupScreenState extends State<SignupScreen>
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // Check if widget is still mounted before showing dialog
-    if (!mounted) return;
+    // Get the navigator and scaffold messenger before async operations
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-    // Show loading indicator
-    showDialog(
+    // Show loading dialog
+    if (!mounted) return;
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
@@ -398,32 +331,52 @@ class _SignupScreenState extends State<SignupScreen>
       },
     );
 
-    // Attempt registration
-    final user = await authService.registerWithEmailAndPassword(
-      email,
-      password,
-      name,
-      acceptTerms: _acceptedTerms,
-      acceptPrivacy: _acceptedPrivacy,
-    );
-
-    // Check if widget is still mounted before continuing
-    if (!mounted) return;
-
-    // Close loading dialog
-    Navigator.of(context).pop();
-
-    if (user != null) {
-      // Navigate to home on success
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-        (route) => false,
+    try {
+      // Attempt registration
+      final user = await authService.registerWithEmailAndPassword(
+        email,
+        password,
+        name,
+        acceptTerms: _acceptedTerms,
+        acceptPrivacy: _acceptedPrivacy,
       );
-    } else {
+
+      if (!mounted) return;
+
+      // Close loading dialog
+      await navigator.maybePop();
+
+      if (user != null) {
+        // Set the account creation flag
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('has_created_account', true);
+
+        if (!mounted) return;
+
+        // Navigate to home on success
+        await navigator.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      } else {
+        if (!mounted) return;
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(authService.errorMessage ?? 'Registration failed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      // Close loading dialog if there's an error
+      await navigator.maybePop();
+
       // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'Registration failed'),
+          content: Text('Registration failed: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
