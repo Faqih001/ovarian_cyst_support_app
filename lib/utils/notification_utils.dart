@@ -15,7 +15,8 @@ class NotificationUtils {
         style: const TextStyle(color: Colors.white),
       ),
       backgroundColor: isError ? Colors.red : AppColors.primary,
-      behavior: SnackBarBehavior.fixed, // Changed to fixed to prevent layout issues
+      behavior:
+          SnackBarBehavior.fixed, // Changed to fixed to prevent layout issues
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
