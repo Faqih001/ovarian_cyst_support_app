@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
+import 'package:ovarian_cyst_support_app/services/database_service.dart';
+import 'package:ovarian_cyst_support_app/screens/medication_tracking_screen.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
@@ -11,6 +16,13 @@ class TrackingScreen extends StatefulWidget {
 class _TrackingScreenState extends State<TrackingScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final DatabaseService _databaseService = DatabaseService();
+  bool _isLoading = false;
+  DateTime _selectedDay = DateTime.now();
+  DateTime _focusedDay = DateTime.now();
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+  Map<DateTime, List<dynamic>> _events = {};
+
   final List<String> _symptoms = [
     'Abdominal Pain',
     'Bloating',
@@ -29,12 +41,229 @@ class _TrackingScreenState extends State<TrackingScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadSymptoms();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _loadSymptoms() async {
+    setState(() => _isLoading = true);
+    try {
+      // Load today's symptoms
+      final symptoms = await _databaseService.getTodaysSymptoms();
+      setState(() {
+        _symptomsIntensity.clear();
+        for (var symptom in symptoms) {
+          _symptomsIntensity[symptom['name']] = symptom['intensity'];
+        }
+      });
+
+      // Load all symptoms and medications for calendar
+      final allSymptoms = await _databaseService.getAllSymptomEntries();
+      final medications = await _databaseService.getAllMedications();
+
+      final events = <DateTime, List<dynamic>>{};
+
+      // Group symptoms by date
+      for (var symptom in allSymptoms) {
+        final date = DateTime(
+          symptom.date.year,
+          symptom.date.month,
+          symptom.date.day,
+        );
+        events[date] = events[date] ?? [];
+        events[date]!.add({
+          'type': 'symptom',
+          'name': symptom.symptoms.join(', '),
+          'intensity': symptom.painLevel,
+        });
+      }
+
+      // Add medications to events
+      for (var med in medications) {
+        final startDate = DateTime.parse(med['startDate']);
+        final endDate = med['endDate'] != null
+            ? DateTime.parse(med['endDate'])
+            : DateTime.now();
+
+        for (DateTime date = startDate;
+            date.isBefore(endDate) || date.isAtSameMomentAs(endDate);
+            date = date.add(const Duration(days: 1))) {
+          final eventDate = DateTime(date.year, date.month, date.day);
+          events[eventDate] = events[eventDate] ?? [];
+          events[eventDate]!.add({
+            'type': 'medication',
+            'name': med['name'],
+            'dosage': med['dosage'],
+          });
+        }
+      }
+
+      setState(() {
+        _events = events;
+      });
+    } catch (e) {
+      // Handle error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading symptoms: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Widget _buildEventsForSelectedDay() {
+    final selectedEvents = _events[_selectedDay];
+
+    if (selectedEvents == null || selectedEvents.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.event_note_outlined,
+              size: 64,
+              color: AppColors.textLight.withOpacity(0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No events for ${DateFormat('MMMM d, y').format(_selectedDay)}',
+              style: TextStyle(color: AppColors.textLight),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final symptoms =
+        selectedEvents.where((e) => (e as Map)['type'] == 'symptom').toList();
+    final medications = selectedEvents
+        .where((e) => (e as Map)['type'] == 'medication')
+        .toList();
+
+    return ListView(
+      children: [
+        if (symptoms.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Symptoms',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ...symptoms.map((event) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.healing,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  title: Text(event['name']),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Row(
+                        children: List.generate(
+                            5,
+                            (index) => Icon(
+                                  Icons.circle,
+                                  size: 12,
+                                  color: index < (event['intensity'] as int)
+                                      ? AppColors.primary
+                                      : AppColors.secondary.withOpacity(0.3),
+                                )),
+                      ),
+                    ],
+                  ),
+                ),
+              )),
+        ],
+        if (medications.isNotEmpty) ...[
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                const Text(
+                  'Medications',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MedicationTrackingScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Edit Schedule'),
+                ),
+              ],
+            ),
+          ),
+          ...medications.map((event) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.medication,
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                  title: Text(event['name']),
+                  subtitle: Text('Dosage: ${event['dosage']}'),
+                ),
+              )),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _saveSymptom(String symptom, int intensity) async {
+    try {
+      await _databaseService.logSymptom({
+        'name': symptom,
+        'intensity': intensity,
+        'timestamp': DateTime.now(),
+      });
+      setState(() {
+        _symptomsIntensity[symptom] = intensity;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Symptom logged successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving symptom: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -69,7 +298,16 @@ class _TrackingScreenState extends State<TrackingScreen>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          _showAddEntryDialog();
+          if (_tabController.index == 0) {
+            _showAddEntryDialog();
+          } else if (_tabController.index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MedicationTrackingScreen(),
+              ),
+            );
+          }
         },
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
@@ -90,100 +328,112 @@ class _TrackingScreenState extends State<TrackingScreen>
             style: AppStyles.bodyMedium,
           ),
           const SizedBox(height: 24),
-
           const Text(
             'Today\'s Symptoms',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-
           Expanded(
-            child:
-                _symptomsIntensity.isEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _symptomsIntensity.isEmpty
                     ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.healing_outlined,
-                            size: 80,
-                            color: AppColors.textLight.withAlpha(
-                              (255 * 0.5).toInt(),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.healing_outlined,
+                              size: 80,
+                              color: AppColors.textLight.withAlpha(
+                                (255 * 0.5).toInt(),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No symptoms logged today',
-                            style: TextStyle(
-                              color: AppColors.textLight,
-                              fontSize: 16,
+                            const SizedBox(height: 16),
+                            Text(
+                              'No symptoms logged today',
+                              style: TextStyle(
+                                color: AppColors.textLight,
+                                fontSize: 16,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Tap + to log your symptoms',
-                            style: TextStyle(
-                              color: AppColors.textLight,
-                              fontSize: 14,
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tap + to log your symptoms',
+                              style: TextStyle(
+                                color: AppColors.textLight,
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    )
+                          ],
+                        ),
+                      )
                     : ListView.builder(
-                      itemCount: _symptomsIntensity.length,
-                      itemBuilder: (context, index) {
-                        String symptom = _symptomsIntensity.keys.elementAt(
-                          index,
-                        );
-                        int intensity = _symptomsIntensity[symptom] ?? 0;
+                        itemCount: _symptomsIntensity.length,
+                        itemBuilder: (context, index) {
+                          final symptom =
+                              _symptomsIntensity.keys.elementAt(index);
+                          final intensity = _symptomsIntensity[symptom] ?? 0;
 
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  symptom,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Text('Intensity: '),
-                                    ...List.generate(5, (i) {
-                                      return Icon(
-                                        Icons.circle,
-                                        size: 12,
-                                        color:
-                                            i < intensity
-                                                ? AppColors.primary
-                                                : AppColors.secondary.withAlpha(
-                                                  (255 * 0.3).toInt(),
-                                                ),
-                                      );
-                                    }),
-                                    const Spacer(),
-                                    Text(
-                                      '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-                                      style: TextStyle(
-                                        color: AppColors.textLight,
-                                        fontSize: 12,
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        symptom,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                      IconButton(
+                                        icon: const Icon(Icons.edit),
+                                        onPressed: () =>
+                                            _showAddEntryDialog(symptom),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      ...List.generate(
+                                          5,
+                                          (i) => Padding(
+                                                padding: const EdgeInsets.only(
+                                                    right: 4),
+                                                child: Icon(
+                                                  Icons.circle,
+                                                  size: 12,
+                                                  color: i < intensity
+                                                      ? AppColors.primary
+                                                      : AppColors.secondary
+                                                          .withAlpha(
+                                                          (255 * 0.3).toInt(),
+                                                        ),
+                                                ),
+                                              )),
+                                      const Spacer(),
+                                      Text(
+                                        '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+                                        style: TextStyle(
+                                          color: AppColors.textLight,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -216,33 +466,109 @@ class _TrackingScreenState extends State<TrackingScreen>
   }
 
   Widget _buildCalendarTab() {
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.calendar_today_outlined,
-            size: 80,
-            color: AppColors.textLight.withAlpha((0.5 * 255).toInt()),
+          TableCalendar(
+            firstDay: DateTime.utc(2020, 1, 1),
+            lastDay: DateTime.now(),
+            focusedDay: _focusedDay,
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            calendarFormat: _calendarFormat,
+            eventLoader: (day) => _events[day] ?? [],
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+            },
+            onFormatChanged: (format) {
+              setState(() {
+                _calendarFormat = format;
+              });
+            },
+            onPageChanged: (focusedDay) {
+              _focusedDay = focusedDay;
+            },
+            calendarBuilders: CalendarBuilders(
+              markerBuilder: (context, date, events) {
+                if (events.isEmpty) return null;
+
+                final hasSymptoms =
+                    events.any((e) => (e as Map)['type'] == 'symptom');
+                final hasMedications =
+                    events.any((e) => (e as Map)['type'] == 'medication');
+
+                return Positioned(
+                  bottom: 1,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasSymptoms)
+                        Container(
+                          width: 6,
+                          height: 6,
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      if (hasMedications)
+                        Container(
+                          width: 6,
+                          height: 6,
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.secondary,
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            calendarStyle: CalendarStyle(
+              markersMaxCount: 3,
+              markerDecoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              selectedDecoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              todayDecoration: BoxDecoration(
+                color: AppColors.secondary.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              outsideDaysVisible: false,
+            ),
+            headerStyle: HeaderStyle(
+              formatButtonVisible: false,
+              titleCentered: true,
+              titleTextStyle: TextStyle(
+                color: AppColors.primary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Calendar View Coming Soon',
-            style: TextStyle(color: AppColors.textLight, fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Track your symptoms and medications over time',
-            style: TextStyle(color: AppColors.textLight, fontSize: 14),
+          const SizedBox(height: 20),
+          Expanded(
+            child: _buildEventsForSelectedDay(),
           ),
         ],
       ),
     );
   }
 
-  void _showAddEntryDialog() {
-    String? selectedSymptom;
-    int intensity = 3;
+  void _showAddEntryDialog([String? existingSymptom]) {
+    String? selectedSymptom = existingSymptom;
+    int intensity =
+        existingSymptom != null ? _symptomsIntensity[existingSymptom] ?? 3 : 3;
 
     showDialog(
       context: context,
@@ -268,13 +594,12 @@ class _TrackingScreenState extends State<TrackingScreen>
                       underline: const SizedBox(),
                       hint: const Text('Select Symptom'),
                       value: selectedSymptom,
-                      items:
-                          _symptoms.map((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
+                      items: _symptoms.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
                       onChanged: (newValue) {
                         setState(() {
                           selectedSymptom = newValue;
@@ -318,15 +643,12 @@ class _TrackingScreenState extends State<TrackingScreen>
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed:
-                      selectedSymptom == null
-                          ? null
-                          : () {
-                            setState(() {
-                              _symptomsIntensity[selectedSymptom!] = intensity;
-                            });
-                            Navigator.of(context).pop();
-                          },
+                  onPressed: selectedSymptom == null
+                      ? null
+                      : () async {
+                          Navigator.of(context).pop();
+                          await _saveSymptom(selectedSymptom!, intensity);
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,

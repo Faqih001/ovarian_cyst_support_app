@@ -203,6 +203,25 @@ class DatabaseService {
     });
   }
 
+  Future<List<SymptomEntry>> getAllSymptomEntries() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'symptom_entries',
+      orderBy: 'date DESC',
+    );
+
+    return List.generate(maps.length, (i) {
+      return SymptomEntry.fromMap({
+        'date': DateTime.parse(maps[i]['date']),
+        'painLevel': maps[i]['painLevel'],
+        'bloatingLevel': maps[i]['bloatingLevel'],
+        'mood': maps[i]['mood'],
+        'symptoms': maps[i]['symptoms'].split(','),
+        'notes': maps[i]['notes'],
+      });
+    });
+  }
+
   Future<void> saveSymptomEntry(SymptomEntry entry) async {
     final db = await database;
 
@@ -262,6 +281,15 @@ class DatabaseService {
 
   // Medications
   Future<List<Map<String, dynamic>>> getMedications() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'medications',
+      orderBy: 'startDate DESC',
+    );
+    return maps;
+  }
+
+  Future<List<Map<String, dynamic>>> getAllMedications() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
       'medications',
@@ -400,6 +428,22 @@ class DatabaseService {
     await _addToSyncQueue('appointments', id);
   }
 
+  Future<void> updateAppointmentStatus(
+      String appointmentId, String status) async {
+    final db = await database;
+
+    await db.update(
+      'appointments',
+      {
+        'status': status,
+        'updatedAt': DateTime.now().toIso8601String(),
+        'isUploaded': 0,
+      },
+      where: 'id = ?',
+      whereArgs: [appointmentId],
+    );
+  }
+
   Future<void> deleteAppointment(String id) async {
     final db = await database;
 
@@ -485,6 +529,46 @@ class DatabaseService {
         'requiresMedicalAttention': maps[i]['requiresMedicalAttention'] == 1,
       });
     });
+  }
+
+  // Symptom tracking methods
+  Future<List<Map<String, dynamic>>> getTodaysSymptoms() async {
+    final db = await database;
+    final today = DateTime.now();
+    final startOfDay = DateTime(today.year, today.month, today.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+
+    final List<Map<String, dynamic>> results = await db.query(
+      'symptom_entries',
+      where: 'date BETWEEN ? AND ?',
+      whereArgs: [startOfDay.toIso8601String(), endOfDay.toIso8601String()],
+      orderBy: 'date DESC',
+    );
+
+    return results.map((entry) {
+      return {
+        'name': entry['symptoms'],
+        'intensity': entry['painLevel'],
+        'timestamp': DateTime.parse(entry['date']),
+      };
+    }).toList();
+  }
+
+  Future<void> logSymptom(Map<String, dynamic> symptomData) async {
+    final db = await database;
+
+    await db.insert(
+      'symptom_entries',
+      {
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'date': symptomData['timestamp'].toIso8601String(),
+        'painLevel': symptomData['intensity'],
+        'symptoms': symptomData['name'],
+        'isUploaded': 0,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   // Get recent symptom entries with limit

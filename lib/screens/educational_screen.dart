@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 
 class EducationalScreen extends StatefulWidget {
-  const EducationalScreen({super.key});
+  final String initialCategory;
+
+  const EducationalScreen({super.key, this.initialCategory = 'basics'});
 
   @override
   State<EducationalScreen> createState() => _EducationalScreenState();
@@ -11,11 +13,24 @@ class EducationalScreen extends StatefulWidget {
 class _EducationalScreenState extends State<EducationalScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final List<String> _categories = [
+    'basics',
+    'symptoms',
+    'treatment',
+    'nutrition',
+    'exercise'
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: _categories.length, vsync: this);
+
+    // Set initial tab based on category
+    final initialIndex = _categories.indexOf(widget.initialCategory);
+    if (initialIndex != -1) {
+      _tabController.animateTo(initialIndex);
+    }
   }
 
   @override
@@ -35,17 +50,31 @@ class _EducationalScreenState extends State<EducationalScreen>
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.textSecondary,
           indicatorColor: AppColors.primary,
-          tabs: const [
-            Tab(text: 'Basics'),
-            Tab(text: 'Symptoms'),
-            Tab(text: 'Treatment'),
-            Tab(text: 'FAQ'),
-          ],
+          tabs: _categories
+              .map((category) => Tab(
+                    text: category[0].toUpperCase() + category.substring(1),
+                  ))
+              .toList(),
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [BasicsTab(), SymptomsTab(), TreatmentTab(), FAQTab()],
+        children: _categories.map((category) {
+          switch (category) {
+            case 'basics':
+              return const BasicsTab();
+            case 'symptoms':
+              return const SymptomsTab();
+            case 'treatment':
+              return const TreatmentTab();
+            case 'nutrition':
+              return const NutritionTab();
+            case 'exercise':
+              return const ExerciseTab();
+            default:
+              return const Center(child: Text('Coming soon'));
+          }
+        }).toList(),
       ),
     );
   }
@@ -503,6 +532,265 @@ class TreatmentTab extends StatelessWidget {
       ),
     );
   }
+}
+
+class NutritionTab extends StatelessWidget {
+  const NutritionTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Nutrition Guidelines',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildNutritionSection(
+            'Recommended Foods',
+            'Include these foods in your diet:',
+            [
+              'Leafy green vegetables (rich in iron and antioxidants)',
+              'Lean proteins (fish, chicken, legumes)',
+              'Whole grains',
+              'Nuts and seeds',
+              'Fresh fruits',
+            ],
+            Icons.check_circle,
+            Colors.green,
+          ),
+          const SizedBox(height: 24),
+          _buildNutritionSection(
+            'Foods to Limit',
+            'Try to minimize:',
+            [
+              'Processed foods',
+              'Sugary drinks and snacks',
+              'Caffeine',
+              'Alcohol',
+              'High-sodium foods',
+            ],
+            Icons.remove_circle,
+            Colors.red,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNutritionSection(
+    String title,
+    String subtitle,
+    List<String> items,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(icon, size: 20, color: color),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+      ],
+    );
+  }
+}
+
+class ExerciseTab extends StatelessWidget {
+  const ExerciseTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Safe Exercise Guidelines',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildExerciseSection(
+            'Recommended Activities',
+            [
+              ExerciseItem(
+                title: 'Walking',
+                description:
+                    'Start with 10-15 minutes daily, gradually increase',
+                icon: Icons.directions_walk,
+              ),
+              ExerciseItem(
+                title: 'Swimming',
+                description: 'Low-impact cardio, excellent for overall fitness',
+                icon: Icons.pool,
+              ),
+              ExerciseItem(
+                title: 'Yoga',
+                description: 'Gentle stretching and stress relief',
+                icon: Icons.self_improvement,
+              ),
+              ExerciseItem(
+                title: 'Light Cycling',
+                description:
+                    'Stationary bike or outdoor cycling on flat terrain',
+                icon: Icons.pedal_bike,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildWarningSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExerciseSection(String title, List<ExerciseItem> exercises) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...exercises.map((exercise) => Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        exercise.icon,
+                        color: Colors.blue[700],
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            exercise.title,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            exercise.description,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )),
+      ],
+    );
+  }
+
+  Widget _buildWarningSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange[200]!),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange[700],
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Important Notes',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Always consult your healthcare provider before starting any exercise routine. Stop any activity that causes pain or discomfort.',
+            style: TextStyle(fontSize: 14, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ExerciseItem {
+  final String title;
+  final String description;
+  final IconData icon;
+
+  const ExerciseItem({
+    required this.title,
+    required this.description,
+    required this.icon,
+  });
 }
 
 class FAQTab extends StatelessWidget {

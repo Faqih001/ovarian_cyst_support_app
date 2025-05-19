@@ -19,6 +19,9 @@ class AuthService with ChangeNotifier {
   bool _isLoading = false;
   final _logger = Logger();
 
+  // Expose the current user
+  User? get currentUser => _user;
+
   // Storage keys for credentials
   static const String _emailKey = 'auth_email';
   static const String _passwordKey = 'auth_password';
