@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
+import 'package:ovarian_cyst_support_app/models/user_agreement.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated, disabled }
 
@@ -81,8 +82,10 @@ class AuthService with ChangeNotifier {
   Future<User?> registerWithEmailAndPassword(
     String email,
     String password,
-    String name,
-  ) async {
+    String name, {
+    bool acceptTerms = false,
+    bool acceptPrivacy = false,
+  }) async {
     _setLoading(true);
     _clearError();
 
@@ -106,6 +109,15 @@ class AuthService with ChangeNotifier {
 
         // Send email verification
         await userCredential.user!.sendEmailVerification();
+
+        // Store user agreement
+        if (acceptTerms || acceptPrivacy) {
+          await storeUserAgreement(
+            userCredential.user!.uid,
+            acceptTerms,
+            acceptPrivacy,
+          );
+        }
       }
 
       return userCredential.user;
@@ -320,6 +332,45 @@ class AuthService with ChangeNotifier {
     } catch (e) {
       _logger.e('Error retrieving credentials: $e');
       return {};
+    }
+  }
+
+  // Store user agreement status
+  Future<void> storeUserAgreement(
+    String userId,
+    bool hasAcceptedTerms,
+    bool hasAcceptedPrivacy,
+  ) async {
+    try {
+      final userAgreement = UserAgreement(
+        userId: userId,
+        hasAcceptedTerms: hasAcceptedTerms,
+        hasAcceptedPrivacy: hasAcceptedPrivacy,
+        acceptedAt: DateTime.now(),
+      );
+
+      await _firestore!
+          .collection('user_agreements')
+          .doc(userId)
+          .set(userAgreement.toMap());
+    } catch (e) {
+      _logger.e('Error storing user agreement: $e');
+      throw Exception('Failed to store user agreement');
+    }
+  }
+
+  // Get user agreement status
+  Future<UserAgreement?> getUserAgreement(String userId) async {
+    try {
+      final doc =
+          await _firestore!.collection('user_agreements').doc(userId).get();
+      if (doc.exists) {
+        return UserAgreement.fromMap(doc.data()!);
+      }
+      return null;
+    } catch (e) {
+      _logger.e('Error getting user agreement: $e');
+      return null;
     }
   }
 

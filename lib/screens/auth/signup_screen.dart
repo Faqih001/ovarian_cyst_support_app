@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/home_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
+import 'package:ovarian_cyst_support_app/screens/legal/privacy_policy_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/legal/terms_of_service_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -22,6 +24,8 @@ class _SignupScreenState extends State<SignupScreen>
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _acceptedTerms = false;
+  bool _acceptedPrivacy = false;
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
 
@@ -216,15 +220,144 @@ class _SignupScreenState extends State<SignupScreen>
                     },
                   ),
 
+                  const SizedBox(height: 20),
+
+                  // Terms and conditions checkbox
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: _acceptedTerms,
+                        onChanged: (value) {
+                          setState(() {
+                            _acceptedTerms = value!;
+                          });
+                        },
+                      ),
+                      const Text('I accept the '),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const TermsOfServiceScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Terms of Service',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      const Text(' and '),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const PrivacyPolicyScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Privacy Policy',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Terms and Privacy Policy
+                  Column(
+                    children: [
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _acceptedTerms,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                _acceptedTerms = value ?? false;
+                              });
+                            },
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const TermsOfServiceScreen(),
+                                  ),
+                                );
+                              },
+                              child: Text(
+                                'I agree to the Terms of Service',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppColors.textPrimary,
+                                    ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _acceptedPrivacy,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                _acceptedPrivacy = value ?? false;
+                              });
+                            },
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const PrivacyPolicyScreen(),
+                                  ),
+                                );
+                              },
+                              child: Text(
+                                'I agree to the Privacy Policy',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppColors.textPrimary,
+                                    ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
                   const SizedBox(height: 30),
 
                   // Sign up button
                   ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        _handleSignup();
-                      }
-                    },
+                    onPressed: (_acceptedTerms && _acceptedPrivacy)
+                        ? () {
+                            if (_formKey.currentState!.validate()) {
+                              _handleSignup();
+                            }
+                          }
+                        : null,
                     style: AppStyles.primaryButton,
                     child: const Text('Sign Up', style: AppStyles.buttonText),
                   ),
@@ -270,6 +403,8 @@ class _SignupScreenState extends State<SignupScreen>
       email,
       password,
       name,
+      acceptTerms: _acceptedTerms,
+      acceptPrivacy: _acceptedPrivacy,
     );
 
     // Check if widget is still mounted before continuing
