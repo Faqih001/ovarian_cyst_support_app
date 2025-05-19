@@ -78,18 +78,6 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
         });
       }
     }
-  } // Helper method to handle loading medications after deletion
-
-  Future<void> _loadMedicationsAfterDelete() async {
-    // Only attempt to load medications if the widget is still mounted
-    if (!mounted) return;
-
-    await _loadMedications();
-
-    // Additional check if still mounted after async operation
-    if (!mounted) return;
-
-    // If you need to do anything after loading medications and the widget is still mounted, do it here
   }
 
   Future<void> _saveMedication() async {
@@ -181,256 +169,256 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
     return _isLoading
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Medication name
-                const Text(
-                  'Medication Name',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter medication name',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a medication name';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                // Dosage
-                const Text(
-                  'Dosage',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _dosageController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g., 500mg, 1 tablet, 2 pills',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter the dosage';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                // Frequency
-                const Text(
-                  'Frequency',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children:
-                      _frequencyOptions.map((freq) {
-                        return ChoiceChip(
-                          label: Text(freq),
-                          selected: _frequency == freq,
-                          onSelected: (selected) {
-                            if (selected) {
-                              setState(() {
-                                _frequency = freq;
-                              });
-                            }
-                          },
-                        );
-                      }).toList(),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Time
-                const Text(
-                  'Time',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    '${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  trailing: const Icon(Icons.access_time),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  onTap: () async {
-                    final pickedTime = await showTimePicker(
-                      context: context,
-                      initialTime: _selectedTime,
-                    );
-
-                    if (pickedTime != null) {
-                      setState(() {
-                        _selectedTime = pickedTime;
-                      });
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                // Start date
-                const Text(
-                  'Start Date',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    DateFormat('MMM dd, yyyy').format(_startDate),
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  trailing: const Icon(Icons.calendar_today),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  onTap: () async {
-                    final pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: _startDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2101),
-                    );
-
-                    if (pickedDate != null) {
-                      setState(() {
-                        _startDate = pickedDate;
-                      });
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                // End date (optional)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'End Date (Optional)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (_endDate != null)
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _endDate = null;
-                          });
-                        },
-                        child: const Text('Clear'),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    _endDate != null
-                        ? DateFormat('MMM dd, yyyy').format(_endDate!)
-                        : 'No end date',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  trailing: const Icon(Icons.calendar_today),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  onTap: () async {
-                    final pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate:
-                          _endDate ?? _startDate.add(const Duration(days: 30)),
-                      firstDate: _startDate,
-                      lastDate: DateTime(2101),
-                    );
-
-                    if (pickedDate != null) {
-                      setState(() {
-                        _endDate = pickedDate;
-                      });
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                // Enable reminders
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Enable Reminders',
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Medication name
+                  const Text(
+                    'Medication Name',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
-                  value: _reminderEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _reminderEnabled = value;
-                    });
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                // Notes
-                const Text(
-                  'Notes (Optional)',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _notesController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: 'Add any notes about this medication...',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Save button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _saveMedication,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter medication name',
+                      border: OutlineInputBorder(),
                     ),
-                    child: const Text('Save Medication'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a medication name';
+                      }
+                      return null;
+                    },
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 24),
+
+                  // Dosage
+                  const Text(
+                    'Dosage',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _dosageController,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g., 500mg, 1 tablet, 2 pills',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the dosage';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Frequency
+                  const Text(
+                    'Frequency',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: _frequencyOptions.map((freq) {
+                      return ChoiceChip(
+                        label: Text(freq),
+                        selected: _frequency == freq,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _frequency = freq;
+                            });
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Time
+                  const Text(
+                    'Time',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      '${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    trailing: const Icon(Icons.access_time),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    onTap: () async {
+                      final pickedTime = await showTimePicker(
+                        context: context,
+                        initialTime: _selectedTime,
+                      );
+
+                      if (pickedTime != null) {
+                        setState(() {
+                          _selectedTime = pickedTime;
+                        });
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Start date
+                  const Text(
+                    'Start Date',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      DateFormat('MMM dd, yyyy').format(_startDate),
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    trailing: const Icon(Icons.calendar_today),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    onTap: () async {
+                      final pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: _startDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2101),
+                      );
+
+                      if (pickedDate != null) {
+                        setState(() {
+                          _startDate = pickedDate;
+                        });
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // End date (optional)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'End Date (Optional)',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (_endDate != null)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _endDate = null;
+                            });
+                          },
+                          child: const Text('Clear'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      _endDate != null
+                          ? DateFormat('MMM dd, yyyy').format(_endDate!)
+                          : 'No end date',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    trailing: const Icon(Icons.calendar_today),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    onTap: () async {
+                      final pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: _endDate ??
+                            _startDate.add(const Duration(days: 30)),
+                        firstDate: _startDate,
+                        lastDate: DateTime(2101),
+                      );
+
+                      if (pickedDate != null) {
+                        setState(() {
+                          _endDate = pickedDate;
+                        });
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Enable reminders
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Enable Reminders',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    value: _reminderEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _reminderEnabled = value;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Notes
+                  const Text(
+                    'Notes (Optional)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _notesController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      hintText: 'Add any notes about this medication...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Save button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _saveMedication,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Text('Save Medication'),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
+          );
   }
 
   Widget _buildMedicationListTab() {
@@ -483,10 +471,9 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
         final dosage = medication['dosage'];
         final frequency = medication['frequency'];
         final startDate = DateTime.parse(medication['startDate']);
-        final endDate =
-            medication['endDate'] != null
-                ? DateTime.parse(medication['endDate'])
-                : null;
+        final endDate = medication['endDate'] != null
+            ? DateTime.parse(medication['endDate'])
+            : null;
         final time = TimeOfDay(
           hour: medication['timeHour'],
           minute: medication['timeMinute'],
@@ -544,14 +531,13 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color:
-                                      isActive
-                                          ? Colors.green.withAlpha(
-                                            (0.1 * 255).toInt(),
-                                          )
-                                          : Colors.grey.withAlpha(
-                                            (0.1 * 255).toInt(),
-                                          ),
+                                  color: isActive
+                                      ? Colors.green.withAlpha(
+                                          (0.1 * 255).toInt(),
+                                        )
+                                      : Colors.grey.withAlpha(
+                                          (0.1 * 255).toInt(),
+                                        ),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Text(
@@ -626,53 +612,61 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                     TextButton.icon(
                       onPressed: () async {
                         // Show confirmation dialog
+                        if (!mounted) return;
+
                         final confirmed = await showDialog<bool>(
                           context: context,
-                          builder:
-                              (context) => AlertDialog(
-                                title: const Text('Delete Medication'),
-                                content: const Text(
-                                  'Are you sure you want to delete this medication?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed:
-                                        () => Navigator.of(context).pop(false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed:
-                                        () => Navigator.of(context).pop(true),
-                                    child: const Text(
-                                      'Delete',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  ),
-                                ],
+                          builder: (context) => AlertDialog(
+                            title: const Text('Delete Medication'),
+                            content: const Text(
+                              'Are you sure you want to delete this medication?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
                               ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: const Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
                         );
 
-                        if (confirmed == true) {
-                          // Delete medication
-                          await _databaseService.deleteMedication(
-                            medication['id'],
-                          );
+                        if (confirmed == true && mounted) {
+                          setState(() {
+                            _isLoading = true;
+                          });
 
-                          // Capture context before async gap
-                          final scaffoldMessenger = ScaffoldMessenger.of(
-                            context,
-                          );
+                          try {
+                            // Delete medication
+                            await _databaseService.deleteMedication(
+                              medication['id'],
+                            );
 
-                          // Call the helper method to handle medication loading
-                          await _loadMedicationsAfterDelete();
+                            // Call the helper method to handle medication loading
+                            await _loadMedications();
 
-                          // Check if still mounted after async operation
-                          if (!mounted) return;
-
-                          // Show snackbar using captured scaffoldMessenger
-                          scaffoldMessenger.showSnackBar(
-                            const SnackBar(content: Text('Medication deleted')),
-                          );
+                            // Only show snackbar if still mounted
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Medication deleted')),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            }
+                          }
                         }
                       },
                       icon: const Icon(Icons.delete, color: Colors.red),

@@ -4,13 +4,15 @@ import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/cost_estimation_screen.dart';
 import 'package:ovarian_cyst_support_app/services/payment_service.dart';
+import 'package:ovarian_cyst_support_app/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Try to initialize Firebase, but continue even if it fails
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     print('Firebase initialized successfully');
   } catch (e) {
     print('Failed to initialize Firebase: $e');

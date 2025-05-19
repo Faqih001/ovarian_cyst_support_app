@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:logger/logger.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated, disabled }
 
@@ -12,11 +13,12 @@ class AuthService with ChangeNotifier {
   User? _user;
   String? _errorMessage;
   bool _isLoading = false;
+  final _logger = Logger();
 
   // Constructor that handles Firebase errors
   AuthService()
-    : _auth = _tryGetFirebaseAuth(),
-      _firestore = _tryGetFirestore() {
+      : _auth = _tryGetFirebaseAuth(),
+        _firestore = _tryGetFirestore() {
     // If Firebase services are not available, mark as disabled
     if (_auth == null || _firestore == null) {
       _status = AuthStatus.disabled;
@@ -34,7 +36,7 @@ class AuthService with ChangeNotifier {
     try {
       return FirebaseAuth.instance;
     } catch (e) {
-      print('Error initializing FirebaseAuth: $e');
+      Logger().e('Error initializing FirebaseAuth: $e');
       return null;
     }
   }
@@ -44,7 +46,7 @@ class AuthService with ChangeNotifier {
     try {
       return FirebaseFirestore.instance;
     } catch (e) {
-      print('Error initializing Firestore: $e');
+      Logger().e('Error initializing Firestore: $e');
       return null;
     }
   }
@@ -123,7 +125,7 @@ class AuthService with ChangeNotifier {
 
       if (userCredential.user != null) {
         // Update last login timestamp
-        await _firestore
+        await _firestore!
             .collection('users')
             .doc(userCredential.user!.uid)
             .update({'lastLogin': FieldValue.serverTimestamp()});
@@ -177,7 +179,7 @@ class AuthService with ChangeNotifier {
 
       // Delete user data from Firestore first
       if (_user != null) {
-        await _firestore.collection('users').doc(_user!.uid).delete();
+        await _firestore!.collection('users').doc(_user!.uid).delete();
 
         // Delete user authentication
         await _user!.delete();
