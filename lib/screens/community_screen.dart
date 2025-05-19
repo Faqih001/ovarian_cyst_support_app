@@ -5,6 +5,7 @@ import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/models/community_post.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/firestore_service.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -14,6 +15,8 @@ class CommunityScreen extends StatefulWidget {
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
+  late final FirestoreService _firestoreService;
+  late final AuthService _authService;
   late Stream<QuerySnapshot> _postsStream;
   final TextEditingController _postController = TextEditingController();
   bool _isComposing = false;
@@ -21,9 +24,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   @override
   void initState() {
     super.initState();
-    final firestoreService =
-        Provider.of<FirestoreService>(context, listen: false);
-    _postsStream = firestoreService.getCommunityPosts();
+    _firestoreService = Provider.of<FirestoreService>(context, listen: false);
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _postsStream = _firestoreService.getCommunityPosts();
   }
 
   @override
@@ -35,10 +38,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Future<void> _submitPost() async {
     if (_postController.text.trim().isEmpty) return;
 
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final firestoreService =
-        Provider.of<FirestoreService>(context, listen: false);
-    final currentUser = authService.user;
+    final currentUser = _authService.user;
+    if (!mounted) return;
 
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -48,20 +49,63 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
 
     try {
-      await firestoreService.createCommunityPost({
-        'content': _postController.text.trim(),
+      await _firestoreService.createCommunityPost({
         'userId': currentUser.uid,
         'userName': currentUser.displayName ?? 'Anonymous',
         'userPhotoUrl': currentUser.photoURL,
+        'content': _postController.text.trim(),
         'likes': 0,
+        'likedBy': [],
         'comments': [],
+        'tags': [], // Adding empty tags list
       });
 
+      if (!mounted) return;
       _postController.clear();
       setState(() => _isComposing = false);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error posting: $e')),
+      );
+    }
+  }
+
+  Future<void> _handleLike(CommunityPost post) async {
+    final currentUser = _authService.user;
+    if (!mounted) return;
+
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to like posts')),
+      );
+      return;
+    }
+
+    try {
+      final isLiked = post.likedBy.contains(currentUser.uid);
+      final newLikedBy = List<String>.from(post.likedBy);
+      if (isLiked) {
+        newLikedBy.remove(currentUser.uid);
+      } else {
+        newLikedBy.add(currentUser.uid);
+      }
+
+      await _firestoreService.batchUpdate([
+        {
+          'ref': FirebaseFirestore.instance
+              .collection('communityPosts')
+              .doc(post.id),
+          'data': {
+            'likes': isLiked ? post.likes - 1 : post.likes + 1,
+            'likedBy': newLikedBy,
+          },
+        },
+      ]);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating like: $e')),
       );
     }
   }
@@ -93,18 +137,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                final posts = snapshot.data?.docs
+                        .map((doc) => CommunityPost.fromFirestore(doc))
+                        .toList() ??
+                    [];
+
+                if (posts.isEmpty) {
                   return const Center(
                     child: Text('No posts yet. Be the first to share!'),
                   );
                 }
 
-                final posts = snapshot.data!.docs
-                    .map((doc) => CommunityPost.fromFirestore(doc))
-                    .toList();
-
                 return ListView.builder(
-                  padding: const EdgeInsets.all(8.0),
                   itemCount: posts.length,
                   itemBuilder: (context, index) {
                     final post = posts[index];
@@ -114,108 +158,71 @@ class _CommunityScreenState extends State<CommunityScreen> {
               },
             ),
           ),
-          _buildComposer(),
+          _buildNewPostComposer(),
         ],
       ),
     );
   }
 
   Widget _buildPostCard(CommunityPost post) {
-    // Calculate relative time
-    final now = DateTime.now();
-    final difference = now.difference(post.timestamp);
-
-    String timeAgo;
-    if (difference.inDays > 7) {
-      timeAgo =
-          '${post.timestamp.day}/${post.timestamp.month}/${post.timestamp.year}';
-    } else if (difference.inDays > 0) {
-      timeAgo =
-          '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
-    } else if (difference.inHours > 0) {
-      timeAgo =
-          '${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
-    } else if (difference.inMinutes > 0) {
-      timeAgo =
-          '${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
-    } else {
-      timeAgo = 'Just now';
-    }
+    final currentUser = _authService.user;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppColors.primary,
-                  backgroundImage: post.userAvatar.startsWith('http')
-                      ? NetworkImage(post.userAvatar) as ImageProvider
+                  backgroundImage: post.userPhotoUrl != null
+                      ? NetworkImage(post.userPhotoUrl!)
                       : null,
-                  child: post.userAvatar.startsWith('http')
-                      ? null
-                      : Text(
-                          post.username.substring(0, 1).toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  child: post.userPhotoUrl == null
+                      ? Text(post.userName[0].toUpperCase())
+                      : null,
                 ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      post.username,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        post.userName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    Text(
-                      timeAgo,
-                      style: TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 12,
+                      Text(
+                        timeago.format(post.createdAt),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Text(post.content, style: const TextStyle(fontSize: 15)),
+            const SizedBox(height: 8),
+            Text(post.content),
+            const SizedBox(height: 8),
             if (post.tags.isNotEmpty) ...[
-              const SizedBox(height: 12),
               Wrap(
-                spacing: 8,
-                children: post.tags.map((tag) {
-                  return Chip(
-                    label: Text(
-                      '#$tag',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.accent,
-                      ),
-                    ),
-                    backgroundColor: AppColors.accent.withAlpha(
-                      (0.1 * 255).round(),
-                    ),
-                    padding: EdgeInsets.zero,
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  );
-                }).toList(),
+                spacing: 4,
+                children: post.tags
+                    .map((tag) => Chip(
+                          label: Text('#$tag'),
+                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          labelStyle: TextStyle(color: AppColors.primary),
+                        ))
+                    .toList(),
               ),
+              const SizedBox(height: 8),
             ],
-            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -223,48 +230,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   children: [
                     IconButton(
                       icon: Icon(
-                        post.isLikedByCurrentUser
+                        post.likedBy.contains(currentUser?.uid)
                             ? Icons.favorite
                             : Icons.favorite_border,
-                        color: post.isLikedByCurrentUser
-                            ? AppColors.primary
-                            : AppColors.primary.withAlpha(
-                                (0.7 * 255).round(),
-                              ),
-                        size: 20,
+                        color: post.likedBy.contains(currentUser?.uid)
+                            ? Colors.red
+                            : null,
                       ),
-                      onPressed: () {
-                        // In a real app, you would implement liking functionality
-                      },
-                      constraints: const BoxConstraints(),
-                      padding: EdgeInsets.zero,
-                      iconSize: 20,
+                      onPressed: () => _handleLike(post),
                     ),
+                    Text('${post.likes}'),
+                    const SizedBox(width: 16),
+                    const Icon(Icons.comment_outlined),
                     const SizedBox(width: 4),
-                    Text(
-                      '${post.likes}',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.comment, color: AppColors.textLight, size: 20),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${post.comments}',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.share, color: AppColors.textLight, size: 20),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Share',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
+                    Text('${post.comments.length}'),
                   ],
                 ),
               ],
@@ -275,36 +254,41 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  Widget _buildComposer() {
-    return Padding(
+  Widget _buildNewPostComposer() {
+    return Container(
       padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, -1),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: _postController,
+              decoration: const InputDecoration(
+                hintText: 'Share your thoughts...',
+                border: InputBorder.none,
+              ),
+              maxLines: null,
               onChanged: (text) {
                 setState(() {
-                  _isComposing = text.isNotEmpty;
+                  _isComposing = text.trim().isNotEmpty;
                 });
               },
-              decoration: InputDecoration(
-                hintText: 'What\'s on your mind?',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primary),
-                ),
-              ),
-              maxLines: 5,
             ),
           ),
-          const SizedBox(width: 8),
           IconButton(
-            icon: const Icon(Icons.send, color: AppColors.primary),
-            onPressed: _isComposing ? _submitPost : null,
+            icon: const Icon(Icons.send),
+            onPressed: _isComposing ? () => _submitPost() : null,
+            color: _isComposing ? AppColors.primary : Colors.grey,
           ),
         ],
       ),

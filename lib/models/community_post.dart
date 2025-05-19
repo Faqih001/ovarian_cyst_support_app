@@ -3,14 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class CommunityPost {
   final String id;
   final String userId;
-  final String userName;
-  final String? userPhotoUrl;
+  final String userName; // Changed from username to match Firestore
+  final String? userPhotoUrl; // Changed from userAvatar to match Firestore
   final String content;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final int likes;
   final List<String> likedBy;
   final List<Comment> comments;
+  final List<String> tags; // Added tags field
 
   CommunityPost({
     required this.id,
@@ -23,8 +24,17 @@ class CommunityPost {
     this.likes = 0,
     List<String>? likedBy,
     List<Comment>? comments,
+    List<String>? tags,
   })  : likedBy = likedBy ?? [],
-        comments = comments ?? [];
+        comments = comments ?? [],
+        tags = tags ?? [];
+
+  // Getters for backward compatibility
+  String get username => userName; // Alias for userName
+  String? get userAvatar => userPhotoUrl; // Alias for userPhotoUrl
+  DateTime get timestamp => createdAt; // Alias for createdAt
+  bool get isLikedByCurrentUser =>
+      false; // To be implemented with proper user context
 
   // Convert from Firestore DocumentSnapshot
   factory CommunityPost.fromFirestore(DocumentSnapshot doc) {
@@ -43,6 +53,7 @@ class CommunityPost {
               ?.map((c) => Comment.fromMap(c as Map<String, dynamic>))
               .toList() ??
           [],
+      tags: List<String>.from(data['tags'] ?? []),
     );
   }
 
@@ -58,6 +69,7 @@ class CommunityPost {
       'likes': likes,
       'likedBy': likedBy,
       'comments': comments.map((c) => c.toMap()).toList(),
+      'tags': tags,
     };
   }
 }
