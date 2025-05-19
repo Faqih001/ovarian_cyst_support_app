@@ -658,17 +658,21 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                             medication['id'],
                           );
 
-                          // Check if still mounted after async operation
-                          if (!mounted) return;
-
-                          // Show snackbar since we're still mounted
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Medication deleted')),
+                          // Capture context before async gap
+                          final scaffoldMessenger = ScaffoldMessenger.of(
+                            context,
                           );
 
                           // Call the helper method to handle medication loading
-                          // We don't await here because we don't need to block the UI
-                          _loadMedicationsAfterDelete();
+                          await _loadMedicationsAfterDelete();
+
+                          // Check if still mounted after async operation
+                          if (!mounted) return;
+
+                          // Show snackbar using captured scaffoldMessenger
+                          scaffoldMessenger.showSnackBar(
+                            const SnackBar(content: Text('Medication deleted')),
+                          );
                         }
                       },
                       icon: const Icon(Icons.delete, color: Colors.red),

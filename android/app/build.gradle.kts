@@ -8,11 +8,13 @@ plugins {
 android {
     namespace = "com.example.ovarian_cyst_support_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973" // Using the required NDK version for plugins
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        // Enable core library desugaring for flutter_local_notifications
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -24,7 +26,7 @@ android {
         applicationId = "com.example.ovarian_cyst_support_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 26 // Updated to support tflite_flutter
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -41,4 +43,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Add coreLibraryDesugaring for Java 8+ APIs on Android 7 and below
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
