@@ -23,6 +23,7 @@ class AuthService with ChangeNotifier {
     if (_auth == null || _firestore == null) {
       _status = AuthStatus.disabled;
       _errorMessage = "Firebase services are not available";
+      _logger.e("Firebase services initialization failed");
       notifyListeners();
       return;
     }
@@ -36,7 +37,6 @@ class AuthService with ChangeNotifier {
     try {
       return FirebaseAuth.instance;
     } catch (e) {
-      Logger().e('Error initializing FirebaseAuth: $e');
       return null;
     }
   }
@@ -46,7 +46,6 @@ class AuthService with ChangeNotifier {
     try {
       return FirebaseFirestore.instance;
     } catch (e) {
-      Logger().e('Error initializing Firestore: $e');
       return null;
     }
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:logger/logger.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/cost_estimation_screen.dart';
 import 'package:ovarian_cyst_support_app/services/payment_service.dart';
@@ -8,14 +9,15 @@ import 'package:ovarian_cyst_support_app/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final logger = Logger();
 
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('Firebase initialized successfully');
+    logger.i('Firebase initialized successfully');
   } catch (e) {
-    print('Failed to initialize Firebase: $e');
+    logger.e('Failed to initialize Firebase: $e');
     // App will continue without Firebase functionality
   }
 

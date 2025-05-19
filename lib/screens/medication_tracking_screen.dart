@@ -141,6 +141,87 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
     }
   }
 
+  // Handle medication deletion
+  Future<void> _handleMedicationDeletion(
+      Map<String, dynamic> medication) async {
+    if (!mounted) return;
+
+    // Store scaffold messenger before any async operations
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Delete medication
+      await _databaseService.deleteMedication(medication['id']);
+
+      // Reload medications
+      await _loadMedications();
+
+      // Show success message if still mounted
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('Medication deleted successfully'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      // Handle errors if still mounted
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text('Error deleting medication: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Show delete confirmation dialog
+  Future<void> _showDeleteConfirmationDialog(
+      Map<String, dynamic> medication) async {
+    if (!mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Medication'),
+        content: const Text(
+          'Are you sure you want to delete this medication?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _handleMedicationDeletion(medication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -448,9 +529,7 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                _tabController.animateTo(0);
-              },
+              onPressed: () => _tabController.animateTo(0),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -467,20 +546,18 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
       padding: const EdgeInsets.all(16),
       itemBuilder: (context, index) {
         final medication = _medications[index];
-        final name = medication['name'];
-        final dosage = medication['dosage'];
-        final frequency = medication['frequency'];
-        final startDate = DateTime.parse(medication['startDate']);
+        final name = medication['name'] as String;
+        final dosage = medication['dosage'] as String;
+        final frequency = medication['frequency'] as String;
+        final startDate = DateTime.parse(medication['startDate'] as String);
         final endDate = medication['endDate'] != null
-            ? DateTime.parse(medication['endDate'])
+            ? DateTime.parse(medication['endDate'] as String)
             : null;
         final time = TimeOfDay(
-          hour: medication['timeHour'],
-          minute: medication['timeMinute'],
+          hour: medication['timeHour'] as int,
+          minute: medication['timeMinute'] as int,
         );
         final reminderEnabled = medication['reminderEnabled'] == 1;
-
-        // Calculate if the medication is active
         final isActive = endDate == null || endDate.isAfter(DateTime.now());
 
         return Card(
@@ -603,72 +680,15 @@ class _MedicationTrackingScreenState extends State<MedicationTrackingScreen>
                   children: [
                     TextButton.icon(
                       onPressed: () {
-                        // Edit medication functionality
+                        // Edit medication functionality will be implemented later
                       },
                       icon: const Icon(Icons.edit),
                       label: const Text('Edit'),
                     ),
                     const SizedBox(width: 8),
                     TextButton.icon(
-                      onPressed: () async {
-                        // Show confirmation dialog
-                        if (!mounted) return;
-
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Delete Medication'),
-                            content: const Text(
-                              'Are you sure you want to delete this medication?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.of(context).pop(false),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.of(context).pop(true),
-                                child: const Text(
-                                  'Delete',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-
-                        if (confirmed == true && mounted) {
-                          setState(() {
-                            _isLoading = true;
-                          });
-
-                          try {
-                            // Delete medication
-                            await _databaseService.deleteMedication(
-                              medication['id'],
-                            );
-
-                            // Call the helper method to handle medication loading
-                            await _loadMedications();
-
-                            // Only show snackbar if still mounted
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Medication deleted')),
-                              );
-                            }
-                          } finally {
-                            if (mounted) {
-                              setState(() {
-                                _isLoading = false;
-                              });
-                            }
-                          }
-                        }
-                      },
+                      onPressed: () =>
+                          _showDeleteConfirmationDialog(medication),
                       icon: const Icon(Icons.delete, color: Colors.red),
                       label: const Text(
                         'Delete',
