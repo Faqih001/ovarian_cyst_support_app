@@ -114,8 +114,9 @@ class FirestoreService {
   // Offline Persistence Setup
   void enablePersistence() async {
     try {
-      await _firestore.enablePersistence(
-        const PersistenceSettings(synchronizeTabs: true),
+      _firestore.settings = Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
       );
       _logger.i('Firestore persistence enabled');
     } catch (e) {

@@ -38,7 +38,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   String _selectedTimeSlot = '';
   List<String> _availableTimeSlots = [];
   List<Map<String, dynamic>> _availableServices = [];
-  Set<String> _selectedServices = {};
+  final Set<String> _selectedServices = {};
   bool _isLoading = false;
   bool _reminderEnabled = true;
 
@@ -125,7 +125,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
       await _firestoreService.addAppointment(_userId, appointmentData);
 
       if (_reminderEnabled) {
-        final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
         await _scheduleAppointmentReminder(
           _selectedDate,
           widget.provider['name'],

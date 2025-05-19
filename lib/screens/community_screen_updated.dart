@@ -66,9 +66,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
       _newPostController.clear();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error creating post: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error creating post: $e')),
+        );
+      }
     }
   }
 

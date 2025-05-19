@@ -29,7 +29,7 @@ class _SymptomTrackingScreenState extends State<SymptomTrackingScreen>
     'Not Good',
     'Terrible'
   ];
-  
+
   final List<String> _symptomOptions = [
     'Pelvic Pain',
     'Bloating',
