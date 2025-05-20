@@ -401,67 +401,75 @@ class BasicsTab extends StatelessWidget {
   }) {
     return StatefulBuilder(
       builder: (context, setState) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: AppStyles.headingMedium),
-            const SizedBox(height: 8),
-            Text(caption, style: AppStyles.bodyMedium),
-            const SizedBox(height: 16),
-            Stack(
+        return Card(
+          elevation: 2,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SvgPicture.asset(
-                  'assets/images/education/cyst_anatomy_1.svg',
-                  width: double.infinity,
-                  height: 300,
-                  fit: BoxFit.contain,
-                ),
-                ...anatomyParts.map((part) {
-                  return Positioned(
-                    left: part.region.left,
-                    top: part.region.top,
-                    width: part.region.width,
-                    height: part.region.height,
-                    child: GestureDetector(
-                      onTapDown: (details) {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text(part.name),
-                            content: Text(part.description),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Close'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color:
-                              AppColors.primary.withAlpha((0.2 * 255).round()),
-                          border: Border.all(
-                            color: AppColors.primary,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
+                Text(title, style: AppStyles.headingMedium),
+                const SizedBox(height: 8),
+                Text(caption, style: AppStyles.bodyMedium),
+                const SizedBox(height: 16),
+                Stack(
+                  children: [
+                    SvgPicture.asset(
+                      'assets/images/education/cyst_anatomy_1.svg',
+                      width: double.infinity,
+                      height: 300,
+                      fit: BoxFit.contain,
                     ),
-                  );
-                }),
+                    ...anatomyParts.map((part) {
+                      return Positioned(
+                        left: part.region.left,
+                        top: part.region.top,
+                        width: part.region.width,
+                        height: part.region.height,
+                        child: GestureDetector(
+                          onTapDown: (details) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text(part.name),
+                                content: Text(part.description),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.primary
+                                  .withAlpha((0.2 * 255).round()),
+                              border: Border.all(
+                                color: AppColors.primary,
+                                width: 2,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  details,
+                  style: AppStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              details,
-              style: AppStyles.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
