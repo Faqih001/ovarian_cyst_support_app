@@ -1,5 +1,7 @@
 import 'package:csv/csv.dart';
 import 'package:flutter/services.dart';
+import 'dart:math';
+import 'package:flutter/foundation.dart';
 
 class HealthcareFacility {
   final String id;
@@ -80,7 +82,7 @@ class FacilityService {
           csvData.map((row) => HealthcareFacility.fromCsvRow(row)).toList();
       return _facilities!;
     } catch (e) {
-      print('Error loading facilities: $e');
+      debugPrint('Error loading facilities: $e');
       return [];
     }
   }

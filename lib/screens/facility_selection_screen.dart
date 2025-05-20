@@ -86,7 +86,7 @@ class _FacilitySelectionScreenState extends State<FacilitySelectionScreen> {
       }
     } catch (e) {
       // Location services are not available or permission denied
-      print('Error getting location: $e');
+      debugPrint('Error getting location: $e');
     }
   }
 
