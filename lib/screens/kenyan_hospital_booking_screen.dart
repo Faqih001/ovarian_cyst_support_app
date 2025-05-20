@@ -5,6 +5,7 @@ import 'package:ovarian_cyst_support_app/models/doctor.dart';
 import 'package:ovarian_cyst_support_app/services/hospital_service.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/appointment_service.dart';
+import 'package:ovarian_cyst_support_app/widgets/facility_map_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -176,7 +177,8 @@ class _KenyanHospitalBookingScreenState
         _isLoading = false;
         _hasMoreFacilities = false;
       });
-      if (mounted) { // Check if the widget is still in the tree
+      if (mounted) {
+        // Check if the widget is still in the tree
         toast.AppToast.showError(
           context,
           'Failed to load facilities. Please try again later.',
@@ -263,7 +265,8 @@ class _KenyanHospitalBookingScreenState
         _doctors = [];
         _isLoading = false;
       });
-      if (mounted) { // Check if the widget is still in the tree
+      if (mounted) {
+        // Check if the widget is still in the tree
         toast.AppToast.showError(
           context,
           'Failed to load doctors. Please try again later.',
@@ -541,7 +544,8 @@ class _KenyanHospitalBookingScreenState
                     }
                   },
                   backgroundColor: Colors.grey[200],
-                  selectedColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
+                  selectedColor: AppColors.primary
+                      .withAlpha(51), // approximately 0.2 opacity
                 ),
                 const SizedBox(width: 8),
                 ..._counties.map((county) => Padding(
@@ -555,8 +559,10 @@ class _KenyanHospitalBookingScreenState
                           } else {
                             _filterByCounty(null);
                           }
-                        },                  backgroundColor: Colors.grey[200],
-                  selectedColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
+                        },
+                        backgroundColor: Colors.grey[200],
+                        selectedColor: AppColors.primary
+                            .withAlpha(51), // approximately 0.2 opacity
                       ),
                     )),
               ],
@@ -787,7 +793,8 @@ class _KenyanHospitalBookingScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   CircleAvatar(
-                    backgroundColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
+                    backgroundColor: AppColors.primary
+                        .withAlpha(51), // approximately 0.2 opacity
                     radius: 24,
                     child: Icon(
                       _getFacilityIcon(facility.facilityType),
@@ -984,8 +991,10 @@ class _KenyanHospitalBookingScreenState
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [                  CircleAvatar(
-                    backgroundColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppColors.primary
+                      .withAlpha(51), // approximately 0.2 opacity
                   radius: 30,
                   child: Icon(
                     _getFacilityIcon(facility.facilityType),
@@ -1101,7 +1110,8 @@ class _KenyanHospitalBookingScreenState
                 children: facility.services.map((service) {
                   return Chip(
                     label: Text(service),
-                    backgroundColor: AppColors.primary.withAlpha(26), // approximately 0.1 opacity
+                    backgroundColor: AppColors.primary
+                        .withAlpha(26), // approximately 0.1 opacity
                     labelStyle: const TextStyle(fontSize: 12),
                   );
                 }).toList(),
@@ -1118,38 +1128,10 @@ class _KenyanHospitalBookingScreenState
                 ),
               ),
               const SizedBox(height: 8),
-              Container(
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.map,
-                        size: 40,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Map View ${facility.latitude}, ${facility.longitude}',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: () {
-                          // Open map
-                        },
-                        child: const Text('Open in Maps'),
-                      ),
-                    ],
-                  ),
-                ),
+              FacilityMapWidget(
+                latitude: facility.latitude!,
+                longitude: facility.longitude!,
+                facilityName: facility.name,
               ),
             ],
           ],
@@ -1237,11 +1219,12 @@ class _KenyanHospitalBookingScreenState
             children: [
               CircleAvatar(
                 radius: 30,
-                backgroundImage: doctor.imageUrl != null 
-                    ? NetworkImage(doctor.imageUrl!) 
+                backgroundImage: doctor.imageUrl != null
+                    ? NetworkImage(doctor.imageUrl!)
                     : null,
-                backgroundColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
-                child: doctor.imageUrl == null 
+                backgroundColor: AppColors.primary
+                    .withAlpha(51), // approximately 0.2 opacity
+                child: doctor.imageUrl == null
                     ? const Icon(Icons.person, color: AppColors.primary)
                     : null,
               ),
@@ -1280,21 +1263,22 @@ class _KenyanHospitalBookingScreenState
                           ),
                       ],
                     ),
-                    const SizedBox(height: 4),                      Text(
-                        doctor.specialty ?? 'General Medicine',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                    const SizedBox(height: 4),
+                    Text(
+                      doctor.specialty ?? 'General Medicine',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        doctor.qualification ?? 'Medical Professional',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      doctor.qualification ?? 'Medical Professional',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
                       ),
+                    ),
                     const SizedBox(height: 8),
                     if (doctor.availableDays.isNotEmpty) ...[
                       const Text(
@@ -1383,12 +1367,14 @@ class _KenyanHospitalBookingScreenState
               children: [
                 CircleAvatar(
                   radius: 40,
-                  backgroundImage: doctor.imageUrl != null 
-                      ? NetworkImage(doctor.imageUrl!) 
+                  backgroundImage: doctor.imageUrl != null
+                      ? NetworkImage(doctor.imageUrl!)
                       : null,
-                  backgroundColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
-                  child: doctor.imageUrl == null 
-                      ? const Icon(Icons.person, size: 40, color: AppColors.primary)
+                  backgroundColor: AppColors.primary
+                      .withAlpha(51), // approximately 0.2 opacity
+                  child: doctor.imageUrl == null
+                      ? const Icon(Icons.person,
+                          size: 40, color: AppColors.primary)
                       : null,
                 ),
                 const SizedBox(width: 16),
@@ -1495,7 +1481,8 @@ class _KenyanHospitalBookingScreenState
                 children: doctor.availableDays.map((day) {
                   return Chip(
                     label: Text(day),
-                    backgroundColor: AppColors.primary.withAlpha(26), // approximately 0.1 opacity
+                    backgroundColor: AppColors.primary
+                        .withAlpha(26), // approximately 0.1 opacity
                     labelStyle: const TextStyle(fontSize: 14),
                   );
                 }).toList(),
