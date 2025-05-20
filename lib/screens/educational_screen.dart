@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class EducationalScreen extends StatefulWidget {
   final String initialCategory;
@@ -111,12 +112,7 @@ class BasicsTab extends StatelessWidget {
             icon: Icons.warning_amber,
           ),
           const SizedBox(height: 16),
-          _buildImageSection(
-            title: 'Ovarian Cyst Anatomy',
-            description:
-                'Understanding the structure and location of ovarian cysts can help you better communicate with your healthcare provider.',
-            imagePath: 'assets/images/education/cyst_anatomy.png',
-          ),
+          _buildAnatomySection(),
         ],
       ),
     );
@@ -153,38 +149,141 @@ class BasicsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildImageSection({
-    required String title,
-    required String description,
-    required String imagePath,
-  }) {
+  Widget _buildAnatomySection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: AppStyles.headingMedium.copyWith(fontSize: 18)),
-        const SizedBox(height: 8),
-        Text(description, style: AppStyles.bodyMedium),
-        const SizedBox(height: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            imagePath,
-            width: double.infinity,
-            height: 200,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: double.infinity,
-                height: 200,
-                color: AppColors.secondary.withAlpha((0.3 * 255).toInt()),
-                child: const Center(
-                  child: Text('Image will be displayed here'),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Color.fromRGBO(
+              AppColors.primary.r.toInt(),
+              AppColors.primary.g.toInt(),
+              AppColors.primary.b.toInt(),
+              0.1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.science_outlined, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Ovarian Cyst Anatomy',
+                style: AppStyles.headingMedium.copyWith(
+                  fontSize: 18,
+                  color: AppColors.primary,
                 ),
-              );
-            },
+              ),
+            ],
           ),
         ),
+        Text(
+          'Understanding the structure and location of ovarian cysts can help you better communicate with your healthcare provider.',
+          style: AppStyles.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        _buildAnatomyImage(
+          imagePath: 'assets/images/education/cyst_anatomy_1.svg',
+          title: 'Basic Ovarian Anatomy',
+          caption:
+              'Basic ovarian anatomy showing normal ovary structure and a typical ovarian cyst',
+          details:
+              'Tap different parts of the image to learn more about ovarian anatomy.',
+        ),
+        const SizedBox(height: 16),
+        _buildAnatomyImage(
+          imagePath: 'assets/images/education/cyst_types.svg',
+          title: 'Types of Ovarian Cysts',
+          caption:
+              'Different types of ovarian cysts and their typical appearance',
+          details: 'Learn about various cyst types and their characteristics.',
+        ),
       ],
+    );
+  }
+
+  Widget _buildAnatomyImage({
+    required String imagePath,
+    required String title,
+    required String caption,
+    required String details,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Color.fromRGBO(
+              Colors.grey.r.toInt(),
+              Colors.grey.g.toInt(),
+              Colors.grey.b.toInt(),
+              0.2,
+            ),
+            spreadRadius: 1,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              title,
+              style: AppStyles.headingMedium.copyWith(fontSize: 16),
+            ),
+          ),
+          InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SvgPicture.asset(
+                imagePath,
+                height: 240,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  caption,
+                  style: AppStyles.bodyMedium.copyWith(
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.touch_app,
+                        size: 16, color: Colors.grey.shade600),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        details,
+                        style: AppStyles.bodyMedium.copyWith(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
