@@ -5,6 +5,7 @@ import 'package:csv/csv.dart';
 import 'package:ovarian_cyst_support_app/models/facility.dart';
 import 'package:ovarian_cyst_support_app/models/doctor.dart';
 import 'package:ovarian_cyst_support_app/services/storage_service.dart';
+import 'package:ovarian_cyst_support_app/services/places_service.dart';
 
 // Enum for facility types
 enum FacilityType {
@@ -17,6 +18,7 @@ enum FacilityType {
 class HospitalService {
   final Logger _logger = Logger();
   final StorageService _storageService = StorageService();
+  final PlacesService _placesService = PlacesService();
 
   // Path to the local CSV file in assets
   final String _csvFilePath = 'assets/healthcare_facilities.csv';
@@ -42,56 +44,69 @@ class HospitalService {
         await _loadFacilitiesFromCsv();
       }
 
-      // If cache is still empty after loading, return mock data
+      // If cache is still empty after loading, return mock data as last resort
       if (_facilitiesCache == null || _facilitiesCache!.isEmpty) {
+        _logger.w('No facilities found in cache, using mock data');
         return _getMockFacilities(searchQuery, county, facilityType);
       }
 
       // Filter facilities based on criteria
       List<Map<String, dynamic>> filteredFacilities =
           _facilitiesCache!.where((facility) {
-        // Filter by facility type
+        // Filter by facility type/owner
         bool matchesType = false;
-        String owner = facility['Owner'] ?? '';
+        String owner = (facility['Owner'] ?? '').toLowerCase();
+        String type = (facility['Type'] ?? '').toLowerCase();
 
         switch (facilityType) {
           case FacilityType.ministry:
-            matchesType = owner.contains('Ministry of Health');
+            matchesType = owner.contains('ministry') ||
+                owner.contains('government') ||
+                owner.contains('public') ||
+                type.contains('public');
             break;
           case FacilityType.privatePractice:
-            matchesType = owner.contains('Private Practice');
+            matchesType = owner.contains('private practice') ||
+                owner.contains('individual') ||
+                type.contains('private clinic');
             break;
           case FacilityType.privateEnterprise:
-            matchesType = owner.contains('Private Enterprise');
+            matchesType = owner.contains('private') ||
+                type.contains('private') ||
+                owner.contains('enterprise') ||
+                owner.contains('company');
             break;
         }
 
         // Filter by search query if provided
         bool matchesSearch = true;
         if (searchQuery != null && searchQuery.isNotEmpty) {
-          String facilityName = facility['Facility_N'] ?? '';
-          matchesSearch =
-              facilityName.toLowerCase().contains(searchQuery.toLowerCase());
+          String facilityName = (facility['Facility_N'] ?? '').toLowerCase();
+          matchesSearch = facilityName.contains(searchQuery.toLowerCase());
         }
 
         // Filter by county if provided
         bool matchesCounty = true;
         if (county != null && county.isNotEmpty) {
-          String facilityCounty = facility['County'] ?? '';
-          matchesCounty = facilityCounty.toLowerCase() == county.toLowerCase();
+          String facilityCounty = (facility['County'] ?? '').toLowerCase();
+          matchesCounty = facilityCounty == county.toLowerCase();
         }
 
         return matchesType && matchesSearch && matchesCounty;
       }).toList();
 
+      // Log the number of facilities found
+      _logger
+          .i('Found ${filteredFacilities.length} facilities matching criteria');
+
       // Apply pagination
       int startIndex = (page - 1) * pageSize;
       int endIndex = startIndex + pageSize;
-      if (startIndex >= filteredFacilities.length) {
-        return [];
-      }
       if (endIndex > filteredFacilities.length) {
         endIndex = filteredFacilities.length;
+      }
+      if (startIndex >= filteredFacilities.length) {
+        return [];
       }
 
       List<Map<String, dynamic>> paginatedResults =
@@ -109,32 +124,53 @@ class HospitalService {
 
   // Load facilities from CSV file
   Future<void> _loadFacilitiesFromCsv() async {
+    if (_facilitiesCache != null) {
+      return; // Data already loaded
+    }
+
     try {
       String? csvData;
-      bool fileExistsInStorage =
-          await _storageService.fileExists(_firebaseStoragePath);
 
-      if (!fileExistsInStorage) {
-        // Upload the CSV file from assets to Firebase Storage if it doesn't exist
-        _logger.i(
-            'CSV file not found in Firebase Storage. Uploading from assets...');
-        await _storageService.uploadCsvFromAssets(
-            _csvFilePath, _firebaseStoragePath);
+      // First try to load from local assets for faster access
+      try {
+        csvData = await rootBundle.loadString(_csvFilePath);
+        _logger.i('Successfully loaded CSV from local assets');
+      } catch (e) {
+        _logger.w('Failed to load CSV from local assets: $e');
       }
 
-      // Try to download from Firebase Storage
-      csvData = await _storageService.downloadCsvToString(_firebaseStoragePath);
-
-      // If Firebase Storage fails, fallback to local asset
+      // If local asset failed, try Firebase Storage
       if (csvData == null) {
-        _logger.w(
-            'Failed to download from Firebase Storage. Falling back to local asset.');
-        csvData = await rootBundle.loadString(_csvFilePath);
+        _logger.i('Attempting to load CSV from Firebase Storage...');
+        bool fileExistsInStorage =
+            await _storageService.fileExists(_firebaseStoragePath);
+
+        if (!fileExistsInStorage) {
+          _logger
+              .i('CSV not found in Firebase Storage. Uploading from assets...');
+          await _storageService.uploadCsvFromAssets(
+              _csvFilePath, _firebaseStoragePath);
+        }
+
+        csvData =
+            await _storageService.downloadCsvToString(_firebaseStoragePath);
+        if (csvData != null) {
+          _logger.i('Successfully loaded CSV from Firebase Storage');
+        }
+      }
+
+      // If we still don't have data, throw an error
+      if (csvData == null || csvData.isEmpty) {
+        throw Exception('Could not load CSV data from any source');
       }
 
       // Parse CSV data
       List<List<dynamic>> csvTable =
           const CsvToListConverter().convert(csvData);
+
+      if (csvTable.isEmpty) {
+        throw Exception('CSV file is empty');
+      }
 
       // Extract headers (first row)
       List<String> headers =
@@ -143,10 +179,17 @@ class HospitalService {
       // Convert CSV rows to maps with headers as keys
       _facilitiesCache = [];
       for (int i = 1; i < csvTable.length; i++) {
+        if (csvTable[i].isEmpty) continue; // Skip empty rows
+
         Map<String, dynamic> row = {};
         for (int j = 0; j < headers.length; j++) {
           if (j < csvTable[i].length) {
-            row[headers[j]] = csvTable[i][j];
+            // Clean up the data
+            var value = csvTable[i][j];
+            if (value is String) {
+              value = value.trim();
+            }
+            row[headers[j]] = value;
           } else {
             row[headers[j]] = ''; // Handle missing values
           }
@@ -154,41 +197,132 @@ class HospitalService {
         _facilitiesCache!.add(row);
       }
 
-      _logger.i('Loaded ${_facilitiesCache!.length} facilities from CSV');
+      _logger.i(
+          'Successfully loaded ${_facilitiesCache!.length} facilities from CSV');
     } catch (e) {
       _logger.e('Error loading facilities from CSV: $e');
-      _logger.e('The asset does not exist or has empty data.');
       _facilitiesCache = []; // Set to empty list on error
     }
   }
 
   // Convert CSV row to Facility object
   Facility _convertCsvRowToFacility(Map<String, dynamic> data) {
+    // Extract and clean facility name
+    String name = data['Facility_N']?.toString() ?? '';
+    name = name.trim();
+    if (name.isEmpty) {
+      name = 'Unnamed Facility';
+    }
+
+    // Extract and validate facility type
+    String facilityType = data['Type']?.toString() ?? '';
+    facilityType = facilityType.trim();
+    if (facilityType.isEmpty) {
+      facilityType = 'Health Facility';
+    }
+
+    // Determine ownership and operational status
+    String owner = data['Owner']?.toString() ?? '';
+    owner = owner.trim();
+    if (owner.isEmpty) {
+      owner = 'Unknown Owner';
+    }
+
+    // Clean up location data
+    String county = data['County']?.toString() ?? '';
+    county = county.trim();
+    if (county.isEmpty) {
+      county = 'Unknown County';
+    }
+
+    String subCounty = data['Sub_County']?.toString() ?? '';
+    subCounty = subCounty.trim();
+    if (subCounty.isEmpty) {
+      subCounty = 'Unknown Sub-County';
+    }
+
+    String ward = data['Division']?.toString() ?? '';
+    ward = ward.trim();
+    if (ward.isEmpty) {
+      ward = 'Unknown Ward';
+    }
+
+    // Parse coordinates
+    double? latitude;
+    double? longitude;
+    try {
+      if (data['Latitude'] != null) {
+        latitude = double.parse(data['Latitude'].toString());
+      }
+      if (data['Longitude'] != null) {
+        longitude = double.parse(data['Longitude'].toString());
+      }
+    } catch (e) {
+      _logger.w('Error parsing coordinates for facility $name: $e');
+    }
+
+    // Build description from available data
+    List<String> descriptionParts = [];
+    if (data['Nearest_To'] != null &&
+        data['Nearest_To'].toString().isNotEmpty) {
+      descriptionParts.add('Located near ${data['Nearest_To']}');
+    }
+    if (facilityType.isNotEmpty) {
+      descriptionParts.add('Facility type: $facilityType');
+    }
+    if (owner.isNotEmpty) {
+      descriptionParts.add('Operated by: $owner');
+    }
+
+    String? description =
+        descriptionParts.isEmpty ? null : descriptionParts.join('. ');
+
     return Facility(
       id: data['OBJECTID']?.toString() ?? '',
       code: data['OBJECTID']?.toString() ?? '',
-      name: data['Facility_N']?.toString() ?? '',
-      facilityType: data['Type']?.toString() ?? 'Unknown',
-      county: data['County']?.toString() ?? 'Unknown',
-      subCounty: data['Sub_County']?.toString() ?? 'Unknown',
-      ward: data['Division']?.toString() ?? 'Unknown',
-      owner: data['Owner']?.toString() ?? 'Unknown',
+      name: name,
+      facilityType: facilityType,
+      county: county,
+      subCounty: subCounty,
+      ward: ward,
+      owner: owner,
       operationalStatus: 'Operational', // Default value as it's not in CSV
-      latitude: data['Latitude'] != null
-          ? double.tryParse(data['Latitude'].toString())
-          : null,
-      longitude: data['Longitude'] != null
-          ? double.tryParse(data['Longitude'].toString())
-          : null,
+      latitude: latitude,
+      longitude: longitude,
       phone: null, // Not available in CSV
       email: null, // Not available in CSV
       website: null, // Not available in CSV
       postalAddress: null, // Not available in CSV
-      description: data['Nearest_To'] != null
-          ? 'Located near ${data['Nearest_To'].toString()}'
-          : 'Location details not available',
-      services: [], // Not available in CSV
+      description: description,
+      services: _inferServicesFromType(facilityType),
     );
+  }
+
+  // Helper method to infer basic services based on facility type
+  List<String> _inferServicesFromType(String facilityType) {
+    List<String> services = ['Primary Care'];
+
+    facilityType = facilityType.toLowerCase();
+    if (facilityType.contains('hospital')) {
+      services.addAll([
+        'Emergency Care',
+        'Inpatient Services',
+        'Laboratory Services',
+        'Pharmacy'
+      ]);
+    }
+    if (facilityType.contains('health center')) {
+      services.addAll(
+          ['Outpatient Services', 'Basic Laboratory Services', 'Pharmacy']);
+    }
+    if (facilityType.contains('clinic')) {
+      services.add('Outpatient Services');
+    }
+    if (facilityType.contains('maternity')) {
+      services.addAll(['Maternal Health', 'Child Health', 'Family Planning']);
+    }
+
+    return services;
   }
 
   // Ensure CSV file is in Firebase Storage or load from local assets
@@ -285,6 +419,56 @@ class HospitalService {
         'Nakuru',
         'Eldoret',
       ];
+    }
+  }
+
+  // Enhancement: Get nearby facilities using Google Places
+  Future<List<Facility>> getNearbyFacilities(double latitude, double longitude,
+      {double radius = 5000}) async {
+    try {
+      final places = await _placesService
+          .searchNearbyHospitals(latitude, longitude, radius: radius);
+
+      List<Facility> facilities = [];
+      for (var place in places) {
+        // Get additional details for each place
+        final details = await _placesService.getPlaceDetails(place['place_id']);
+        if (details != null) {
+          facilities.add(Facility(
+            id: place['place_id'],
+            code: place['place_id'],
+            name: place['name'],
+            facilityType: 'Hospital',
+            county: 'From Google Places',
+            subCounty: '',
+            ward: '',
+            owner: 'From Google Places',
+            operationalStatus: 'Operational',
+            latitude: place['geometry']['location']['lat'],
+            longitude: place['geometry']['location']['lng'],
+            phone: details['formatted_phone_number'],
+            email: null,
+            website: details['website'],
+            description: place['vicinity'],
+            services: _inferServicesFromType('Hospital'),
+          ));
+        }
+      }
+
+      return facilities;
+    } catch (e) {
+      _logger.e('Error getting nearby facilities: $e');
+      return [];
+    }
+  }
+
+  // Enhancement: Get facility details using Google Places
+  Future<Map<String, dynamic>?> getGooglePlacesDetails(String placeId) async {
+    try {
+      return await _placesService.getPlaceDetails(placeId);
+    } catch (e) {
+      _logger.e('Error getting Google Places details: $e');
+      return null;
     }
   }
 

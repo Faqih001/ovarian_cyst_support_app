@@ -54,13 +54,15 @@ dependencies:
   path_provider: ^2.1.2
 
   # Networking and API
-  http: ^1.2.0
+  http: ^1.1.0
   dio: ^5.4.0
   connectivity_plus: ^5.0.2
 
   # Location and Maps
-  geolocator: ^11.0.0
-  google_maps_flutter: ^2.5.3
+  google_maps_flutter: ^2.5.0
+  google_maps_flutter_web: ^0.5.4
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
 
   # AI and ML
   tflite_flutter: ^0.10.4
