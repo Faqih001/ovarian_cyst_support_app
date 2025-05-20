@@ -494,20 +494,4 @@ class HospitalService {
       ),
     ];
   }
-
-  // Return mock counties
-  List<String> _getMockCounties() {
-    return [
-      'Nairobi',
-      'Mombasa',
-      'Kisumu',
-      'Nakuru',
-      'Uasin Gishu',
-      'Machakos',
-      'Kiambu',
-      'Kajiado',
-      'Kilifi',
-      'Nyeri',
-    ];
-  }
 }

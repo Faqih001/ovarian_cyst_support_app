@@ -42,9 +42,6 @@ class StorageService {
   // Download the CSV file from Firebase Storage
   Future<String?> downloadCsvToString(String storagePath) async {
     try {
-      // Get the download URL
-      final downloadUrl = await _storage.ref(storagePath).getDownloadURL();
-
       // Create a temporary file
       final tempDir = await getTemporaryDirectory();
       final tempFile = File('${tempDir.path}/downloaded_csv.csv');
