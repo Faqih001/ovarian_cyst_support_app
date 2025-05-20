@@ -746,12 +746,14 @@ class _HomeContentState extends State<HomeContent>
                           ListTile(
                             leading: const Icon(Icons.local_hospital),
                             title: const Text('Ministry of Health Facilities'),
-                            subtitle: const Text('Public hospitals and clinics'),
+                            subtitle:
+                                const Text('Public hospitals and clinics'),
                             onTap: () {
                               Navigator.pop(context); // Close the modal
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) => const KenyanHospitalBookingScreen(
+                                  builder: (_) =>
+                                      const KenyanHospitalBookingScreen(
                                     initialFacilityType: FacilityType.ministry,
                                   ),
                                 ),
@@ -761,13 +763,16 @@ class _HomeContentState extends State<HomeContent>
                           ListTile(
                             leading: const Icon(Icons.person),
                             title: const Text('Private Practice'),
-                            subtitle: const Text('Individual healthcare providers'),
+                            subtitle:
+                                const Text('Individual healthcare providers'),
                             onTap: () {
                               Navigator.pop(context); // Close the modal
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) => const KenyanHospitalBookingScreen(
-                                    initialFacilityType: FacilityType.privatePractice,
+                                  builder: (_) =>
+                                      const KenyanHospitalBookingScreen(
+                                    initialFacilityType:
+                                        FacilityType.privatePractice,
                                   ),
                                 ),
                               );
@@ -776,13 +781,16 @@ class _HomeContentState extends State<HomeContent>
                           ListTile(
                             leading: const Icon(Icons.business),
                             title: const Text('Private Enterprise'),
-                            subtitle: const Text('Private hospitals and institutions'),
+                            subtitle: const Text(
+                                'Private hospitals and institutions'),
                             onTap: () {
                               Navigator.pop(context); // Close the modal
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) => const KenyanHospitalBookingScreen(
-                                    initialFacilityType: FacilityType.privateEnterprise,
+                                  builder: (_) =>
+                                      const KenyanHospitalBookingScreen(
+                                    initialFacilityType:
+                                        FacilityType.privateEnterprise,
                                   ),
                                 ),
                               );

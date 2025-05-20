@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:provider/provider.dart';
 import 'package:logger/logger.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
@@ -21,7 +22,15 @@ void main() async {
         name: 'ovarian_cyst_support_app', // Unique name for this app instance
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      logger.i('Firebase initialized successfully');
+
+      // Initialize Firebase App Check
+      await FirebaseAppCheck.instance.activate(
+        // For Android, use Play Integrity
+        androidProvider: AndroidProvider.playIntegrity,
+        // For iOS, use Device Check
+        appleProvider: AppleProvider.deviceCheck,
+      );
+      logger.i('Firebase initialized successfully with App Check');
     } else {
       logger.w('Firebase already initialized');
       Firebase.app('ovarian_cyst_support_app'); // Get the named instance

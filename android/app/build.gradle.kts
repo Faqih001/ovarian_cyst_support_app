@@ -48,6 +48,9 @@ flutter {
 }
 
 dependencies {
+    // Firebase App Check dependency
+    implementation("com.google.firebase:firebase-appcheck-playintegrity:17.1.1")
+    implementation("com.google.firebase:firebase-appcheck:17.1.1")
     // Add coreLibraryDesugaring for Java 8+ APIs on Android 7 and below
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
