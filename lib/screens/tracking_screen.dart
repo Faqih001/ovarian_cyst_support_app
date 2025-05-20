@@ -48,6 +48,8 @@ class _TrackingScreenState extends State<TrackingScreen>
     try {
       // Load today's symptoms
       final symptoms = await _databaseService.getTodaysSymptoms();
+
+      // Update symptoms intensity map
       setState(() {
         _symptomsIntensity.clear();
         for (var symptom in symptoms) {
@@ -59,7 +61,8 @@ class _TrackingScreenState extends State<TrackingScreen>
       final allSymptoms = await _databaseService.getAllSymptomEntries();
       final medications = await _databaseService.getAllMedications();
 
-      final events = <DateTime, List<dynamic>>{};
+      // Create a new events map
+      final newEvents = <DateTime, List<dynamic>>{};
 
       // Group symptoms by date
       for (var symptom in allSymptoms) {
@@ -68,8 +71,10 @@ class _TrackingScreenState extends State<TrackingScreen>
           symptom.date.month,
           symptom.date.day,
         );
-        events[date] = events[date] ?? [];
-        events[date]!.add({
+        if (!newEvents.containsKey(date)) {
+          newEvents[date] = [];
+        }
+        newEvents[date]!.add({
           'type': 'symptom',
           'name': symptom.symptoms.join(', '),
           'intensity': symptom.painLevel,
@@ -83,12 +88,14 @@ class _TrackingScreenState extends State<TrackingScreen>
             ? DateTime.parse(med['endDate'])
             : DateTime.now();
 
-        for (DateTime date = startDate;
-            date.isBefore(endDate) || date.isAtSameMomentAs(endDate);
+        for (var date = startDate;
+            date.isBefore(endDate.add(const Duration(days: 1)));
             date = date.add(const Duration(days: 1))) {
           final eventDate = DateTime(date.year, date.month, date.day);
-          events[eventDate] = events[eventDate] ?? [];
-          events[eventDate]!.add({
+          if (!newEvents.containsKey(eventDate)) {
+            newEvents[eventDate] = [];
+          }
+          newEvents[eventDate]!.add({
             'type': 'medication',
             'name': med['name'],
             'dosage': med['dosage'],
@@ -96,18 +103,18 @@ class _TrackingScreenState extends State<TrackingScreen>
         }
       }
 
-      setState(() {
-        _events = events;
-      });
+      // Update events state
+      if (mounted) {
+        setState(() {
+          _events = newEvents;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      // Handle error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading symptoms: $e')),
+          SnackBar(content: Text('Error loading data: $e')),
         );
-      }
-    } finally {
-      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
@@ -182,7 +189,8 @@ class _TrackingScreenState extends State<TrackingScreen>
                                   size: 12,
                                   color: index < (event['intensity'] as int)
                                       ? AppColors.primary
-                                      : AppColors.secondary.withAlpha(77), // 0.3 * 255
+                                      : AppColors.secondary
+                                          .withAlpha(77), // 0.3 * 255
                                 )),
                       ),
                     ],
@@ -248,9 +256,10 @@ class _TrackingScreenState extends State<TrackingScreen>
         'intensity': intensity,
         'timestamp': DateTime.now(),
       });
-      setState(() {
-        _symptomsIntensity[symptom] = intensity;
-      });
+
+      // Refresh all data
+      await _loadSymptoms();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Symptom logged successfully')),
@@ -440,24 +449,118 @@ class _TrackingScreenState extends State<TrackingScreen>
   }
 
   Widget _buildMedicationTab() {
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.medication_outlined,
-            size: 80,
-            color: AppColors.textLight.withAlpha((0.5 * 255).toInt()),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No medications logged',
-            style: TextStyle(color: AppColors.textLight, fontSize: 16),
-          ),
+          const Text('Medication Schedule', style: AppStyles.headingMedium),
           const SizedBox(height: 8),
           Text(
-            'Tap + to add your medications',
-            style: TextStyle(color: AppColors.textLight, fontSize: 14),
+            'Keep track of your medications and adherence to prescribed schedules.',
+            style: AppStyles.bodyMedium,
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: FutureBuilder(
+              future: _databaseService.getAllMedications(),
+              builder: (context,
+                  AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error: ${snapshot.error}'),
+                  );
+                }
+
+                final medications = snapshot.data ?? [];
+
+                if (medications.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.medication_outlined,
+                          size: 80,
+                          color: AppColors.textLight
+                              .withAlpha((0.5 * 255).toInt()),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No medications added',
+                          style: TextStyle(
+                              color: AppColors.textLight, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap + to add your medications',
+                          style: TextStyle(
+                              color: AppColors.textLight, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: medications.length,
+                  itemBuilder: (context, index) {
+                    final medication = medications[index];
+                    final startDate = DateTime.parse(medication['startDate']);
+                    final endDate = medication['endDate'] != null
+                        ? DateTime.parse(medication['endDate'])
+                        : null;
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary.withAlpha(26),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.medication,
+                            color: AppColors.secondary,
+                          ),
+                        ),
+                        title: Text(medication['name']),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Dosage: ${medication['dosage']}'),
+                            Text(
+                              'Started: ${DateFormat('MMM d, y').format(startDate)}${endDate != null ? '\nEnds: ${DateFormat('MMM d, y').format(endDate)}' : ''}',
+                              style: TextStyle(
+                                color: AppColors.textLight,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const MedicationTrackingScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
