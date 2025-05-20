@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/auth/signup_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/auth/forgot_password_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/home_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/utils/notification_utils.dart';
@@ -190,7 +191,12 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                       TextButton(
                         onPressed: () {
-                          // Handle forgot password
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const ForgotPasswordScreen(),
+                            ),
+                          );
                         },
                         child: Text(
                           'Forgot Password?',

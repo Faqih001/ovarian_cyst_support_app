@@ -66,7 +66,8 @@ class AuthService with ChangeNotifier {
   User? get user => _user;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
-  bool get isAuthenticated => _user != null && _status == AuthStatus.authenticated;
+  bool get isAuthenticated =>
+      _user != null && _status == AuthStatus.authenticated;
 
   // Initialize auth state changes
   void _init() {
@@ -216,7 +217,7 @@ class AuthService with ChangeNotifier {
   }
 
   // Reset password
-  Future<void> resetPassword(String email) async {
+  Future<void> sendPasswordResetEmail(String email) async {
     _setLoading(true);
     _clearError();
 
@@ -224,8 +225,10 @@ class AuthService with ChangeNotifier {
       await _auth!.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
       _handleAuthError(e);
+      rethrow;
     } catch (e) {
-      _setError('Error resetting password: ${e.toString()}');
+      _setError('Error sending password reset email: ${e.toString()}');
+      rethrow;
     } finally {
       _setLoading(false);
     }
