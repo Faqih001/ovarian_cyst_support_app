@@ -45,7 +45,9 @@ class CommunityPost {
       userName: data['userName'] ?? 'Anonymous',
       userPhotoUrl: data['userPhotoUrl'],
       content: data['content'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(), // Fallback to current time if null
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
       likes: data['likes'] ?? 0,
       likedBy: List<String>.from(data['likedBy'] ?? []),
@@ -100,7 +102,9 @@ class Comment {
       userName: map['userName'] ?? 'Anonymous',
       userPhotoUrl: map['userPhotoUrl'],
       content: map['content'] ?? '',
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: map['createdAt'] != null
+          ? (map['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate(),
     );
   }
