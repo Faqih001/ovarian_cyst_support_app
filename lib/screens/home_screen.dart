@@ -449,51 +449,66 @@ class _HomeContentState extends State<HomeContent>
         try {
           final userId =
               Provider.of<AuthService>(context, listen: false).currentUser?.uid;
-          if (userId != null) {
-            final newSymptom = {
-              'type': label,
-              'severity': label == 'Good'
-                  ? 1
-                  : label == 'Okay'
-                      ? 2
-                      : label == 'Pain'
-                          ? 4
-                          : label == 'Tired'
-                              ? 3
-                              : label == 'Stressed'
-                                  ? 3
-                                  : 3,
-              'description': 'Feeling $label',
-              'timestamp': DateTime.now(),
-            };
-
-            // First save to Firestore
-            final docRef = await FirebaseFirestore.instance
-                .collection('users')
-                .doc(userId)
-                .collection('symptoms')
-                .add(newSymptom);
-
-            // Get the document with the ID
-            final symptomWithId = {
-              'id': docRef.id,
-              ...newSymptom,
-            };
-
-            if (!mounted) return;
-
-            // Then navigate to tracking screen with the new symptom
-            await Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => TrackingScreen(
-                  initialSymptom: symptomWithId,
-                ),
+          if (userId == null) {
+            // Handle not logged in case
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please log in to track symptoms'),
+                backgroundColor: Colors.red,
               ),
             );
-
-            // Refresh the UI
-            setState(() {});
+            return;
           }
+
+          // Get current timestamp
+          final now = DateTime.now();
+
+          final newSymptom = {
+            'type': label,
+            'severity': label == 'Good'
+                ? 1
+                : label == 'Okay'
+                    ? 2
+                    : label == 'Pain'
+                        ? 4
+                        : label == 'Tired'
+                            ? 3
+                            : label == 'Stressed'
+                                ? 3
+                                : 3,
+            'description': 'Feeling $label',
+            'timestamp': Timestamp.fromDate(now),
+            'dateTime': now
+                .toIso8601String(), // Adding a string date for consistent formatting
+            'userId': userId,
+          };
+
+          // Save to Firestore
+          final docRef = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('symptoms')
+              .add(newSymptom);
+
+          // Get the document with the ID
+          final symptomWithId = {
+            'id': docRef.id,
+            ...newSymptom,
+          };
+
+          if (!mounted) return;
+
+          // Navigate to tracking screen with the new symptom
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TrackingScreen(
+                initialSymptom: symptomWithId,
+              ),
+            ),
+          );
+
+          // Refresh the UI
+          setState(() {});
         } catch (e) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(

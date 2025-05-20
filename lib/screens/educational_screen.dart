@@ -60,7 +60,7 @@ class _EducationalScreenState extends State<EducationalScreen>
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
+                    color: Colors.grey.withAlpha(51), // 0.2 * 255
                     spreadRadius: 1,
                     blurRadius: 3,
                     offset: const Offset(0, 2),
@@ -143,7 +143,8 @@ class _EducationalScreenState extends State<EducationalScreen>
 
   Widget _buildKenyaGuide() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding:
+          const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0), // Updated padding
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -200,6 +201,7 @@ Seek medical attention if you experience severe pain or persistent symptoms.
             ''',
             icon: Icons.people,
           ),
+          const SizedBox(height: 32), // Added extra bottom spacing
         ],
       ),
     );
@@ -246,81 +248,415 @@ Seek medical attention if you experience severe pain or persistent symptoms.
 
   Widget _buildNutritionGuide() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Nutrition Guidelines',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+          Card(
+            elevation: 2,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withAlpha(26), // 0.1 * 255
+                    AppColors.accent.withAlpha(26), // 0.1 * 255
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Nutrition Guidelines',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'A balanced diet plays a crucial role in managing ovarian cysts and overall reproductive health.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          _buildInfoCard(
-            title: 'Recommended Foods',
-            content: '''
-• Leafy green vegetables
-• Fresh fruits high in antioxidants
-• Lean proteins
-• Whole grains
-• Low-fat dairy products
-            ''',
-            icon: Icons.restaurant_menu,
+          const SizedBox(height: 24),
+          _buildNutritionSection(
+            'Recommended Foods',
+            'Include these nutrient-rich foods in your daily diet:',
+            [
+              'Dark leafy greens (spinach, kale) - Rich in iron and antioxidants',
+              'Fatty fish (salmon, mackerel) - High in omega-3 fatty acids',
+              'Lean proteins (chicken, legumes, tofu) - Essential for healing',
+              'Whole grains (quinoa, brown rice) - For sustained energy',
+              'Nuts and seeds (almonds, flaxseeds) - Rich in healthy fats',
+              'Colorful fruits (berries, citrus) - High in vitamins and antioxidants',
+              'Probiotic foods (yogurt, kefir) - For gut health',
+              'Green tea - Rich in antioxidants',
+            ],
+            Icons.check_circle,
+            Colors.green,
           ),
-          const SizedBox(height: 16),
-          _buildInfoCard(
-            title: 'Foods to Avoid',
-            content: '''
-• Processed foods
-• Excessive caffeine
-• Sugary drinks
-• High-sodium foods
-            ''',
-            icon: Icons.not_interested,
+          const SizedBox(height: 24),
+          _buildNutritionSection(
+            'Foods to Limit',
+            'Minimize these foods to reduce inflammation and symptoms:',
+            [
+              'Processed foods - High in unhealthy fats and preservatives',
+              'Sugary drinks and snacks - Can increase inflammation',
+              'Caffeine - May worsen hormone imbalances',
+              'Alcohol - Can affect hormone levels',
+              'High-sodium foods - May increase bloating and water retention',
+              'Red meat - Can increase inflammation',
+              'Refined carbohydrates - May affect blood sugar levels',
+            ],
+            Icons.remove_circle,
+            Colors.red,
           ),
+          const SizedBox(height: 24),
+          _buildNutritionSection(
+            'Helpful Tips',
+            'Maintain these healthy eating habits:',
+            [
+              'Eat small, frequent meals throughout the day',
+              'Stay well hydrated with water and herbal teas',
+              'Consider taking doctor-recommended supplements',
+              'Plan your meals ahead to ensure balanced nutrition',
+              'Listen to your body and identify trigger foods',
+            ],
+            Icons.lightbulb,
+            AppColors.accent,
+          ),
+          const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNutritionSection(
+    String title,
+    String subtitle,
+    List<String> items,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 24, color: color),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            ...items.map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: color.withAlpha(26), // 0.1 * 255
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(icon, size: 20, color: color),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          item,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildExerciseGuide() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Safe Exercises',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+          Card(
+            elevation: 2,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withAlpha(26), // 0.1 * 255
+                    AppColors.accent.withAlpha(26), // 0.1 * 255
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Exercise Guidelines',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Safe exercises can help manage symptoms and improve overall health.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          _buildInfoCard(
-            title: 'Recommended Activities',
-            content: '''
-• Gentle walking
-• Swimming
-• Yoga
-• Light stretching
-• Pelvic floor exercises
-            ''',
-            icon: Icons.directions_run,
+          const SizedBox(height: 24),
+          _buildRecommendedExercises(),
+          const SizedBox(height: 24),
+          _buildExercisePrecautions(),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendedExercises() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.directions_run, size: 24, color: Colors.green),
+                SizedBox(width: 12),
+                Text(
+                  'Recommended Activities',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildExerciseItem(
+              icon: Icons.directions_walk,
+              title: 'Walking',
+              duration: '30-60 minutes',
+              frequency: '5 times per week',
+              tips: 'Start slow and gradually increase pace and duration',
+            ),
+            _buildExerciseItem(
+              icon: Icons.pool,
+              title: 'Swimming',
+              duration: '30 minutes',
+              frequency: '2-3 times per week',
+              tips: 'Focus on gentle strokes and avoid intense movements',
+            ),
+            _buildExerciseItem(
+              icon: Icons.self_improvement,
+              title: 'Yoga',
+              duration: '20-30 minutes',
+              frequency: '3-4 times per week',
+              tips: 'Avoid poses that put pressure on the abdomen',
+            ),
+            _buildExerciseItem(
+              icon: Icons.fitness_center,
+              title: 'Light Strength Training',
+              duration: '15-20 minutes',
+              frequency: '2-3 times per week',
+              tips: 'Use light weights and focus on proper form',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExerciseItem({
+    required IconData icon,
+    required String title,
+    required String duration,
+    required String frequency,
+    required String tips,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(26),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 20, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 48),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Duration: $duration'),
+                Text('Frequency: $frequency'),
+                Text('Tips: $tips'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExercisePrecautions() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.withAlpha(26),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.warning, color: Colors.amber),
+              const SizedBox(width: 8),
+              Text(
+                'Exercise Precautions',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber[800],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          _buildInfoCard(
-            title: 'Exercise Guidelines',
-            content: '''
-• Start slowly and gradually increase intensity
-• Listen to your body
-• Stop if you experience pain
-• Stay hydrated
-• Consult your doctor before starting new exercises
-            ''',
-            icon: Icons.warning,
+          _buildPrecautionItem(
+            'Stop exercising and seek medical attention if you experience severe pain',
+          ),
+          _buildPrecautionItem(
+            'Avoid high-impact activities that could cause the cyst to rupture',
+          ),
+          _buildPrecautionItem(
+            'Listen to your body and don\'t push beyond your comfort level',
+          ),
+          _buildPrecautionItem(
+            'Stay hydrated and wear comfortable, supportive clothing',
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: const [
+                Icon(Icons.lightbulb_outline, color: Colors.amber),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Always consult with your healthcare provider before starting any new exercise routine',
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrecautionItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ', style: TextStyle(fontSize: 16)),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14),
+            ),
           ),
         ],
       ),
@@ -781,7 +1117,7 @@ class TreatmentTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.secondary.withAlpha((0.2 * 255).toInt()),
+        color: AppColors.secondary.withAlpha(51), // 0.2 * 255
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -888,23 +1224,60 @@ class NutritionTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Nutrition Guidelines',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+          Card(
+            elevation: 2,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withAlpha(26), // 0.1 * 255
+                    AppColors.accent.withAlpha(26), // 0.1 * 255
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Nutrition Guidelines',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'A balanced diet plays a crucial role in managing ovarian cysts and overall reproductive health.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           _buildNutritionSection(
             'Recommended Foods',
-            'Include these foods in your diet:',
+            'Include these nutrient-rich foods in your daily diet:',
             [
-              'Leafy green vegetables (rich in iron and antioxidants)',
-              'Lean proteins (fish, chicken, legumes)',
-              'Whole grains',
-              'Nuts and seeds',
-              'Fresh fruits',
+              'Dark leafy greens (spinach, kale) - Rich in iron and antioxidants',
+              'Fatty fish (salmon, mackerel) - High in omega-3 fatty acids',
+              'Lean proteins (chicken, legumes, tofu) - Essential for healing',
+              'Whole grains (quinoa, brown rice) - For sustained energy',
+              'Nuts and seeds (almonds, flaxseeds) - Rich in healthy fats',
+              'Colorful fruits (berries, citrus) - High in vitamins and antioxidants',
+              'Probiotic foods (yogurt, kefir) - For gut health',
+              'Green tea - Rich in antioxidants',
             ],
             Icons.check_circle,
             Colors.green,
@@ -912,17 +1285,34 @@ class NutritionTab extends StatelessWidget {
           const SizedBox(height: 24),
           _buildNutritionSection(
             'Foods to Limit',
-            'Try to minimize:',
+            'Minimize these foods to reduce inflammation and symptoms:',
             [
-              'Processed foods',
-              'Sugary drinks and snacks',
-              'Caffeine',
-              'Alcohol',
-              'High-sodium foods',
+              'Processed foods - High in unhealthy fats and preservatives',
+              'Sugary drinks and snacks - Can increase inflammation',
+              'Caffeine - May worsen hormone imbalances',
+              'Alcohol - Can affect hormone levels',
+              'High-sodium foods - May increase bloating and water retention',
+              'Red meat - Can increase inflammation',
+              'Refined carbohydrates - May affect blood sugar levels',
             ],
             Icons.remove_circle,
             Colors.red,
           ),
+          const SizedBox(height: 24),
+          _buildNutritionSection(
+            'Helpful Tips',
+            'Maintain these healthy eating habits:',
+            [
+              'Eat small, frequent meals throughout the day',
+              'Stay well hydrated with water and herbal teas',
+              'Consider taking doctor-recommended supplements',
+              'Plan your meals ahead to ensure balanced nutrition',
+              'Listen to your body and identify trigger foods',
+            ],
+            Icons.lightbulb,
+            AppColors.accent,
+          ),
+          const SizedBox(height: 32),
         ],
       ),
     );
@@ -935,41 +1325,66 @@ class NutritionTab extends StatelessWidget {
     IconData icon,
     Color color,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey[600],
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...items.map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Icon(icon, size: 20, color: color),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: const TextStyle(fontSize: 16),
-                    ),
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 24, color: color),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
               ),
-            )),
-      ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            ...items.map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: color.withAlpha(26), // 0.1 * 255
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(icon, size: 20, color: color),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          item,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+        ),
+      ),
     );
   }
 }
