@@ -6,7 +6,12 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 
 class TrackingScreen extends StatefulWidget {
-  const TrackingScreen({super.key});
+  final Map<String, dynamic>? initialSymptom;
+
+  const TrackingScreen({
+    super.key,
+    this.initialSymptom,
+  });
 
   @override
   State<TrackingScreen> createState() => _TrackingScreenState();

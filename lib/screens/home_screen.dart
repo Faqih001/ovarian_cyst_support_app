@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   final List<Widget> _screens = [
     const HomeContent(),
-    const TrackingScreen(),
+    TrackingScreen(),
     const CommunityScreen(),
     const ProfileScreen(),
   ];
@@ -236,7 +236,8 @@ class _HomeContentState extends State<HomeContent>
                       child: Column(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -438,32 +439,53 @@ class _HomeContentState extends State<HomeContent>
   Widget _buildEmojiButton(String emoji, String label) {
     return InkWell(
       onTap: () async {
-        final newSymptom = {
-          'type': label,
-          'severity': label == 'Good' ? 1 : 
-                     label == 'Okay' ? 2 : 
-                     label == 'Pain' ? 4 : 
-                     label == 'Tired' ? 3 : 
-                     label == 'Stressed' ? 3 : 3,
-          'description': 'Feeling $label',
-          'timestamp': DateTime.now(),
-        };
-        
         try {
-          final userId = Provider.of<AuthService>(context, listen: false).currentUser?.uid;
+          final userId =
+              Provider.of<AuthService>(context, listen: false).currentUser?.uid;
           if (userId != null) {
-            await FirebaseFirestore.instance
+            final newSymptom = {
+              'type': label,
+              'severity': label == 'Good'
+                  ? 1
+                  : label == 'Okay'
+                      ? 2
+                      : label == 'Pain'
+                          ? 4
+                          : label == 'Tired'
+                              ? 3
+                              : label == 'Stressed'
+                                  ? 3
+                                  : 3,
+              'description': 'Feeling $label',
+              'timestamp': DateTime.now(),
+            };
+
+            // First save to Firestore
+            final docRef = await FirebaseFirestore.instance
                 .collection('users')
                 .doc(userId)
                 .collection('symptoms')
                 .add(newSymptom);
-                
+
+            // Get the document with the ID
+            final symptomWithId = {
+              'id': docRef.id,
+              ...newSymptom,
+            };
+
             if (!mounted) return;
-            Navigator.of(context).push(
+            
+            // Then navigate to tracking screen with the new symptom
+            await Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const TrackingScreen(),
+                builder: (_) => TrackingScreen(
+                  initialSymptom: symptomWithId,
+                ),
               ),
             );
+            
+            // Refresh the UI
+            setState(() {});
           }
         } catch (e) {
           if (!mounted) return;
@@ -518,7 +540,7 @@ class _HomeContentState extends State<HomeContent>
         switch (label) {
           case 'Log Symptoms':
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TrackingScreen()),
+              MaterialPageRoute(builder: (_) => TrackingScreen()),
             );
             break;
           case 'Appointments':
@@ -934,8 +956,7 @@ class _HomeContentState extends State<HomeContent>
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(
-              Provider.of<AuthService>(context, listen: false).currentUser?.uid)
+          .doc(Provider.of<AuthService>(context, listen: false).currentUser?.uid)
           .collection('symptoms')
           .orderBy('timestamp', descending: true)
           .limit(5)
@@ -969,6 +990,7 @@ class _HomeContentState extends State<HomeContent>
                 labelColor: AppColors.primary,
                 unselectedLabelColor: AppColors.textSecondary,
                 indicatorColor: AppColors.primary,
+                onTap: (_) => setState(() {}), // Force refresh on tab change
                 tabs: const [
                   Tab(text: 'Symptoms'),
                   Tab(text: 'Medications'),
