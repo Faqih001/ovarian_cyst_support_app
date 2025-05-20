@@ -52,7 +52,32 @@ class _EducationalScreenState extends State<EducationalScreen>
         title: Text(_getTitle(section)),
         backgroundColor: AppColors.primary,
       ),
-      body: _getContent(section),
+      body: Column(
+        children: [
+          if (section == 'main')
+            Container(
+              color: AppColors.primary,
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                indicatorColor: Colors.white,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                tabs: [
+                  Tab(text: 'Basics'),
+                  Tab(text: 'Symptoms'),
+                  Tab(text: 'Treatment'),
+                  Tab(text: 'Nutrition'),
+                  Tab(text: 'Exercise'),
+                  Tab(text: 'Kenya Guide'),
+                ],
+              ),
+            ),
+          Expanded(
+            child: _getContent(section),
+          ),
+        ],
+      ),
     );
   }
 
