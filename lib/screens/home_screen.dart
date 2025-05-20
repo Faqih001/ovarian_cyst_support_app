@@ -1069,10 +1069,15 @@ class _HomeContentState extends State<HomeContent>
       padding: const EdgeInsets.all(16),
       itemCount: symptoms.length,
       itemBuilder: (context, index) {
-        final symptom = symptoms[index].data() as Map<String, dynamic>;
+        final data = symptoms[index].data() as Map<String, dynamic>? ?? {};
         final docId = symptoms[index].id;
-        final userId =
-            Provider.of<AuthService>(context, listen: false).currentUser?.uid;
+        final userId = Provider.of<AuthService>(context, listen: false).currentUser?.uid;
+
+        // Safely access the symptom data with null checks
+        final type = data['type'] as String? ?? 'Unknown';
+        final severity = data['severity'] as int? ?? 1;
+        final description = data['description'] as String? ?? '';
+        final timestamp = data['timestamp'] as Timestamp? ?? Timestamp.now();
 
         return Card(
           child: Dismissible(
@@ -1087,7 +1092,6 @@ class _HomeContentState extends State<HomeContent>
             onDismissed: (direction) async {
               final scaffoldMessenger = ScaffoldMessenger.of(context);
               try {
-                // Delete the symptom
                 await FirebaseFirestore.instance
                     .collection('users')
                     .doc(userId)
@@ -1115,30 +1119,20 @@ class _HomeContentState extends State<HomeContent>
               }
             },
             child: ListTile(
-              leading:
-                  _buildSeverityIndicator(symptom['severity'] as int? ?? 1),
-              title: Text(symptom['type'] as String? ?? 'Unknown'),
-              subtitle: Text(symptom['description'] as String? ?? ''),
+              leading: _buildSeverityIndicator(severity),
+              title: Text(type),
+              subtitle: Text(description),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    _formatDate(
-                      (symptom['timestamp'] as Timestamp?)?.toDate() ??
-                          DateTime.now(),
-                    ),
-                  ),
+                  Text(_formatDate(timestamp.toDate())),
                   IconButton(
                     icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () {
-                      _showEditSymptomDialog(context, docId, symptom);
-                    },
+                    onPressed: () => _showEditSymptomDialog(context, docId, data),
                   ),
                 ],
               ),
-              onTap: () {
-                _showSymptomDetails(context, symptom);
-              },
+              onTap: () => _showSymptomDetails(context, data),
             ),
           ),
         );
@@ -1182,6 +1176,11 @@ class _HomeContentState extends State<HomeContent>
   }
 
   void _showSymptomDetails(BuildContext context, Map<String, dynamic> symptom) {
+    final type = symptom['type'] as String? ?? 'Unknown';
+    final severity = symptom['severity'] as int? ?? 1;
+    final description = symptom['description'] as String? ?? '';
+    final timestamp = symptom['timestamp'] as Timestamp? ?? Timestamp.now();
+
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -1197,14 +1196,13 @@ class _HomeContentState extends State<HomeContent>
               ),
               const SizedBox(height: 16),
               ListTile(
-                leading:
-                    _buildSeverityIndicator(symptom['severity'] as int? ?? 1),
-                title: Text(symptom['type'] as String? ?? 'Unknown'),
-                subtitle: Text(symptom['description'] as String? ?? ''),
+                leading: _buildSeverityIndicator(severity),
+                title: Text(type),
+                subtitle: Text(description),
               ),
               const SizedBox(height: 8),
               Text(
-                'Recorded on: ${_formatDateTime((symptom['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now())}',
+                'Recorded on: ${_formatDateTime(timestamp.toDate())}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -1371,15 +1369,16 @@ class _EditSymptomDialog extends StatefulWidget {
 }
 
 class _EditSymptomDialogState extends State<_EditSymptomDialog> {
-  late final TextEditingController _descriptionController;
+  late TextEditingController _descriptionController;
   late int _currentSeverity;
 
   @override
   void initState() {
     super.initState();
-    _descriptionController = TextEditingController(
-        text: widget.symptom['description'] as String? ?? '');
     _currentSeverity = widget.symptom['severity'] as int? ?? 1;
+    _descriptionController = TextEditingController(
+      text: widget.symptom['description'] as String? ?? '',
+    );
   }
 
   @override
@@ -1395,14 +1394,14 @@ class _EditSymptomDialogState extends State<_EditSymptomDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Severity:'),
+          const Text('Severity'),
           Slider(
             value: _currentSeverity.toDouble(),
             min: 1,
             max: 5,
             divisions: 4,
             label: _currentSeverity.toString(),
-            onChanged: (double value) {
+            onChanged: (value) {
               setState(() {
                 _currentSeverity = value.round();
               });
@@ -1412,7 +1411,6 @@ class _EditSymptomDialogState extends State<_EditSymptomDialog> {
             controller: _descriptionController,
             decoration: const InputDecoration(
               labelText: 'Description',
-              hintText: 'How are you feeling?',
             ),
             maxLines: 3,
           ),
@@ -1420,16 +1418,13 @@ class _EditSymptomDialogState extends State<_EditSymptomDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        TextButton(
+        ElevatedButton(
           onPressed: () {
-            final description = _descriptionController.text.trim();
+            widget.onSave(_currentSeverity, _descriptionController.text);
             Navigator.of(context).pop();
-            widget.onSave(_currentSeverity, description);
           },
           child: const Text('Save'),
         ),
