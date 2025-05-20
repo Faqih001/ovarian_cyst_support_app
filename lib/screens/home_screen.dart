@@ -9,6 +9,7 @@ import 'package:ovarian_cyst_support_app/screens/educational_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/provider_search_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/medication_tracking_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/kenyan_hospital_booking_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/facility_selection_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:ovarian_cyst_support_app/services/hospital_service.dart';
@@ -567,7 +568,8 @@ class _HomeContentState extends State<HomeContent>
             break;
           case 'Appointments':
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ProviderSearchScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const FacilitySelectionScreen()),
             );
             break;
           case 'Medications':
@@ -1071,7 +1073,8 @@ class _HomeContentState extends State<HomeContent>
       itemBuilder: (context, index) {
         final data = symptoms[index].data() as Map<String, dynamic>? ?? {};
         final docId = symptoms[index].id;
-        final userId = Provider.of<AuthService>(context, listen: false).currentUser?.uid;
+        final userId =
+            Provider.of<AuthService>(context, listen: false).currentUser?.uid;
 
         // Safely access the symptom data with null checks
         final type = data['type'] as String? ?? 'Unknown';
@@ -1128,7 +1131,8 @@ class _HomeContentState extends State<HomeContent>
                   Text(_formatDate(timestamp.toDate())),
                   IconButton(
                     icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () => _showEditSymptomDialog(context, docId, data),
+                    onPressed: () =>
+                        _showEditSymptomDialog(context, docId, data),
                   ),
                 ],
               ),

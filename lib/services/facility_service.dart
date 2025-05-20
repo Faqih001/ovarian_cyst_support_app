@@ -68,13 +68,16 @@ class FacilityService {
     if (_facilities != null) return _facilities!;
 
     try {
-      final String csvContent = await rootBundle.loadString('assets/healthcare_facilities.csv');
-      List<List<dynamic>> csvData = const CsvToListConverter().convert(csvContent, shouldParseNumbers: false);
-      
+      final String csvContent =
+          await rootBundle.loadString('assets/healthcare_facilities.csv');
+      List<List<dynamic>> csvData = const CsvToListConverter()
+          .convert(csvContent, shouldParseNumbers: false);
+
       // Remove header row
       csvData.removeAt(0);
-      
-      _facilities = csvData.map((row) => HealthcareFacility.fromCsvRow(row)).toList();
+
+      _facilities =
+          csvData.map((row) => HealthcareFacility.fromCsvRow(row)).toList();
       return _facilities!;
     } catch (e) {
       print('Error loading facilities: $e');
@@ -96,15 +99,18 @@ class FacilityService {
       bool matches = true;
 
       if (query != null && query.isNotEmpty) {
-        matches = matches && (
-          facility.name.toLowerCase().contains(query.toLowerCase()) ||
-          facility.location.toLowerCase().contains(query.toLowerCase()) ||
-          facility.nearestTo?.toLowerCase().contains(query.toLowerCase()) == true
-        );
+        matches = matches &&
+            (facility.name.toLowerCase().contains(query.toLowerCase()) ||
+                facility.location.toLowerCase().contains(query.toLowerCase()) ||
+                facility.nearestTo
+                        ?.toLowerCase()
+                        .contains(query.toLowerCase()) ==
+                    true);
       }
 
       if (county != null && county.isNotEmpty) {
-        matches = matches && facility.county.toLowerCase() == county.toLowerCase();
+        matches =
+            matches && facility.county.toLowerCase() == county.toLowerCase();
       }
 
       if (type != null && type.isNotEmpty) {
@@ -113,8 +119,10 @@ class FacilityService {
 
       if (latitude != null && longitude != null && maxDistance != null) {
         final distance = _calculateDistance(
-          latitude, longitude,
-          facility.latitude, facility.longitude,
+          latitude,
+          longitude,
+          facility.latitude,
+          facility.longitude,
         );
         matches = matches && distance <= maxDistance;
       }
@@ -123,7 +131,8 @@ class FacilityService {
     }).toList();
   }
 
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _calculateDistance(
+      double lat1, double lon1, double lat2, double lon2) {
     // Haversine formula for calculating distance between two points
     const double r = 6371; // Earth's radius in km
     final dlat = _toRad(lat2 - lat1);

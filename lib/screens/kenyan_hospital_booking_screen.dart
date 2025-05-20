@@ -13,10 +13,12 @@ import 'package:ovarian_cyst_support_app/widgets/app_toast.dart' as toast;
 
 class KenyanHospitalBookingScreen extends StatefulWidget {
   final FacilityType initialFacilityType;
+  final Map<String, dynamic>? facility;
 
   const KenyanHospitalBookingScreen({
     super.key,
     this.initialFacilityType = FacilityType.ministry,
+    this.facility,
   });
 
   @override
@@ -68,8 +70,33 @@ class _KenyanHospitalBookingScreenState
     super.didChangeDependencies();
     _hospitalService = Provider.of<HospitalService>(context);
     _authService = Provider.of<AuthService>(context);
-    _loadCounties();
-    _loadFacilities(reset: true);
+
+    // If a facility is provided, select it immediately
+    if (widget.facility != null) {
+      final facility = Facility(
+        id: widget.facility!['id'],
+        code: widget.facility!['code'] ?? '',
+        name: widget.facility!['name'],
+        facilityType: widget.facility!['facilityType'],
+        county: widget.facility!['county'],
+        subCounty: widget.facility!['subCounty'],
+        ward: widget.facility!['division'] ?? '',
+        owner: widget.facility!['owner'],
+        operationalStatus: 'Operational',
+        latitude: widget.facility!['latitude'],
+        longitude: widget.facility!['longitude'],
+        phone: widget.facility!['phone'],
+        email: widget.facility!['email'],
+        website: widget.facility!['website'],
+        services: widget.facility!['services']?.cast<String>() ?? [],
+        description: widget.facility!['description'],
+      );
+      _selectedFacility = facility;
+      _loadDoctorsForFacility(facility);
+    } else {
+      _loadCounties();
+      _loadFacilities(reset: true);
+    }
   }
 
   @override
