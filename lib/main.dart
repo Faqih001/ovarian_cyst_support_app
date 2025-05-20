@@ -9,6 +9,7 @@ import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/payment_service.dart';
 import 'package:ovarian_cyst_support_app/services/firestore_service.dart';
 import 'package:ovarian_cyst_support_app/services/hospital_service.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:ovarian_cyst_support_app/firebase_options.dart';
 
 void main() async {
@@ -16,45 +17,22 @@ void main() async {
   final logger = Logger();
 
   try {
-    // Initialize Firebase first
-    await Firebase.initializeApp(
-      name: 'ovarian_cyst_support_app',
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-
-    // Initialize Firebase App Check with debug token in debug mode
-    await FirebaseAppCheck.instance
-        .activate(
-      webProvider: ReCaptchaV3Provider('your-recaptcha-site-key'),
-      // Use debug provider for development, switch to playIntegrity for production
-      androidProvider: AndroidProvider.debug,
-      appleProvider: AppleProvider.appAttest,
-    )
-        .onError((error, stackTrace) {
-      logger.e('Error initializing Firebase App Check: $error');
-      // Continue app initialization even if App Check fails
-      return;
-    });
-
-    logger.i('Firebase initialized successfully with App Check');
+    // Initialize Firebase with retry mechanism
+    await _initializeFirebaseWithRetry(logger);
 
     final firestoreService = FirestoreService();
-    // Don't await void method
     firestoreService.enablePersistence();
 
-    // Initialize hospital service and upload healthcare facilities data
     final hospitalService = HospitalService();
 
-    // Try to upload the CSV file, but don't block app startup if it fails
-    hospitalService.ensureCsvInFirebaseStorage().then((success) {
-      if (success) {
-        logger.i('Healthcare facilities data uploaded successfully');
-      } else {
-        logger
-            .w('Failed to upload healthcare facilities data, using local data');
-      }
-    }).catchError((error) {
-      logger.e('Error handling healthcare facilities data: $error');
+    // Initialize services in parallel
+    await Future.wait([
+      _initializeAppCheck(logger),
+      _setupHospitalData(hospitalService, logger),
+    ]).catchError((error) {
+      logger.e('Error during parallel initialization: $error');
+      // Return empty list to satisfy Future<List<void>> return type
+      return <void>[];
     });
 
     runApp(
@@ -69,7 +47,6 @@ void main() async {
       ),
     );
   } catch (e) {
-    // Fix logger.e call to use only one argument
     logger.e('Error during app initialization: $e');
     runApp(
       MaterialApp(
@@ -80,6 +57,60 @@ void main() async {
         ),
       ),
     );
+  }
+}
+
+Future<void> _initializeFirebaseWithRetry(Logger logger,
+    {int maxAttempts = 3}) async {
+  int attempts = 0;
+  while (attempts < maxAttempts) {
+    try {
+      await Firebase.initializeApp(
+        name: 'ovarian_cyst_support_app',
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      logger.i('Firebase initialized successfully');
+      return;
+    } catch (e) {
+      attempts++;
+      logger.w('Firebase initialization attempt $attempts failed: $e');
+      if (attempts == maxAttempts) rethrow;
+      await Future.delayed(Duration(seconds: 1));
+    }
+  }
+}
+
+Future<void> _initializeAppCheck(Logger logger) async {
+  try {
+    await FirebaseAppCheck.instance.activate(
+      webProvider: ReCaptchaV3Provider('your-recaptcha-site-key'),
+      androidProvider: AndroidProvider.debug,
+      appleProvider: AppleProvider.appAttest,
+    );
+    logger.i('Firebase App Check initialized successfully');
+  } catch (e) {
+    logger.w('Firebase App Check initialization failed: $e');
+    // Continue without App Check in development
+  }
+}
+
+Future<void> _setupHospitalData(
+    HospitalService hospitalService, Logger logger) async {
+  try {
+    // Set longer timeouts for Firebase Storage operations
+    FirebaseStorage.instance.setMaxUploadRetryTime(const Duration(seconds: 60));
+    FirebaseStorage.instance
+        .setMaxDownloadRetryTime(const Duration(seconds: 60));
+
+    final success = await hospitalService.ensureCsvInFirebaseStorage();
+    if (success) {
+      logger.i('Healthcare facilities data processed successfully');
+    } else {
+      logger.w('Using local healthcare facilities data');
+    }
+  } catch (e) {
+    logger.e('Error setting up hospital data: $e');
+    // Allow app to continue with local data
   }
 }
 
