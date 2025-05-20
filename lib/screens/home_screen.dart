@@ -235,23 +235,32 @@ class _HomeContentState extends State<HomeContent>
                       ),
                       child: Column(
                         children: [
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16.0),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
+                                const Text(
                                   'How are you feeling?',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Text(
-                                  'Track',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600,
+                                InkWell(
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const TrackingScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    'Track',
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -428,12 +437,43 @@ class _HomeContentState extends State<HomeContent>
 
   Widget _buildEmojiButton(String emoji, String label) {
     return InkWell(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => const TrackingScreen(),
-          ),
-        );
+      onTap: () async {
+        final newSymptom = {
+          'type': label,
+          'severity': label == 'Good' ? 1 : 
+                     label == 'Okay' ? 2 : 
+                     label == 'Pain' ? 4 : 
+                     label == 'Tired' ? 3 : 
+                     label == 'Stressed' ? 3 : 3,
+          'description': 'Feeling $label',
+          'timestamp': DateTime.now(),
+        };
+        
+        try {
+          final userId = Provider.of<AuthService>(context, listen: false).currentUser?.uid;
+          if (userId != null) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .collection('symptoms')
+                .add(newSymptom);
+                
+            if (!mounted) return;
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const TrackingScreen(),
+              ),
+            );
+          }
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error recording symptom: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       },
       child: Column(
         children: [
