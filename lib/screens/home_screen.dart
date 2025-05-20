@@ -9,7 +9,7 @@ import 'package:ovarian_cyst_support_app/screens/educational_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/provider_search_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/medication_tracking_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/kenyan_hospital_booking_screen.dart';
-import 'package:ovarian_cyst_support_app/screens/facility_selection_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/ovarian_cyst_prediction_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:ovarian_cyst_support_app/services/hospital_service.dart';
@@ -317,8 +317,8 @@ class _HomeContentState extends State<HomeContent>
                               ),
                               _buildQuickActionButton(
                                 context: context,
-                                icon: Icons.calendar_today,
-                                label: 'Appointments',
+                                icon: Icons.analytics,
+                                label: 'ML Prediction',
                                 color: AppColors.accent,
                               ),
                               _buildQuickActionButton(
@@ -566,16 +566,16 @@ class _HomeContentState extends State<HomeContent>
               MaterialPageRoute(builder: (_) => TrackingScreen()),
             );
             break;
-          case 'Appointments':
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                  builder: (_) => const FacilitySelectionScreen()),
-            );
-            break;
           case 'Medications':
             Navigator.of(context).push(
               MaterialPageRoute(
                   builder: (_) => const MedicationTrackingScreen()),
+            );
+            break;
+          case 'ML Prediction':
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const OvarianCystPredictionScreen()),
             );
             break;
         }
