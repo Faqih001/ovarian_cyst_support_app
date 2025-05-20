@@ -68,4 +68,7 @@ dependencies {
 
     // Add Kotlin standard library with explicit version matching plugin version
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.8.22")
+
+    // Add Play Integrity dependency
+    implementation("com.google.android.play:integrity:1.3.0")
 }

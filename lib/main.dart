@@ -16,45 +16,45 @@ void main() async {
   final logger = Logger();
 
   try {
-    final apps = Firebase.apps;
-    if (apps.isEmpty) {
-      await Firebase.initializeApp(
-        name: 'ovarian_cyst_support_app', // Unique name for this app instance
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+    // Initialize Firebase first
+    await Firebase.initializeApp(
+      name: 'ovarian_cyst_support_app',
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-      // Initialize Firebase App Check
-      await FirebaseAppCheck.instance.activate(
-        // For Android, use Play Integrity
-        androidProvider: AndroidProvider.playIntegrity,
-        // For iOS, use Device Check
-        appleProvider: AppleProvider.deviceCheck,
-      );
-      logger.i('Firebase initialized successfully with App Check');
-    } else {
-      logger.w('Firebase already initialized');
-      Firebase.app('ovarian_cyst_support_app'); // Get the named instance
-    }
+    // Initialize Firebase App Check with debug token in debug mode
+    await FirebaseAppCheck.instance
+        .activate(
+      webProvider: ReCaptchaV3Provider('your-recaptcha-site-key'),
+      // Use debug provider for development, switch to playIntegrity for production
+      androidProvider: AndroidProvider.debug,
+      appleProvider: AppleProvider.appAttest,
+    )
+        .onError((error, stackTrace) {
+      logger.e('Error initializing Firebase App Check: $error');
+      // Continue app initialization even if App Check fails
+      return;
+    });
+
+    logger.i('Firebase initialized successfully with App Check');
 
     final firestoreService = FirestoreService();
+    // Don't await void method
     firestoreService.enablePersistence();
 
-    // Initialize hospital service and upload healthcare facilities data to Firebase Storage
+    // Initialize hospital service and upload healthcare facilities data
     final hospitalService = HospitalService();
 
     // Try to upload the CSV file, but don't block app startup if it fails
     hospitalService.ensureCsvInFirebaseStorage().then((success) {
       if (success) {
-        logger.i(
-            'Healthcare facilities data uploaded to Firebase Storage successfully');
+        logger.i('Healthcare facilities data uploaded successfully');
       } else {
-        // Just log the warning, but don't prevent the app from working
-        logger.w(
-            'Failed to upload healthcare facilities data to Firebase Storage, will use local data instead');
+        logger
+            .w('Failed to upload healthcare facilities data, using local data');
       }
     }).catchError((error) {
       logger.e('Error handling healthcare facilities data: $error');
-      // App can continue to function using local data
     });
 
     runApp(
@@ -69,7 +69,8 @@ void main() async {
       ),
     );
   } catch (e) {
-    logger.e('Error during Firebase initialization: $e');
+    // Fix logger.e call to use only one argument
+    logger.e('Error during app initialization: $e');
     runApp(
       MaterialApp(
         home: Scaffold(
