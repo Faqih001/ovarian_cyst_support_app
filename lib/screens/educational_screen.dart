@@ -56,13 +56,23 @@ class _EducationalScreenState extends State<EducationalScreen>
         children: [
           if (section == 'main')
             Container(
-              color: AppColors.primary,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 1,
+                    blurRadius: 3,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
               child: TabBar(
                 controller: _tabController,
                 isScrollable: true,
-                indicatorColor: Colors.white,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
+                indicatorColor: AppColors.primary,
+                labelColor: AppColors.primary,
+                unselectedLabelColor: Colors.grey[600],
                 tabs: [
                   Tab(text: 'Basics'),
                   Tab(text: 'Symptoms'),
