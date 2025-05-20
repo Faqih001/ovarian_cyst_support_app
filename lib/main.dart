@@ -32,14 +32,20 @@ void main() async {
 
     // Initialize hospital service and upload healthcare facilities data to Firebase Storage
     final hospitalService = HospitalService();
+
+    // Try to upload the CSV file, but don't block app startup if it fails
     hospitalService.ensureCsvInFirebaseStorage().then((success) {
       if (success) {
         logger.i(
             'Healthcare facilities data uploaded to Firebase Storage successfully');
       } else {
+        // Just log the warning, but don't prevent the app from working
         logger.w(
-            'Failed to upload healthcare facilities data to Firebase Storage');
+            'Failed to upload healthcare facilities data to Firebase Storage, will use local data instead');
       }
+    }).catchError((error) {
+      logger.e('Error handling healthcare facilities data: $error');
+      // App can continue to function using local data
     });
 
     runApp(

@@ -104,36 +104,32 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
-    // Community posts with moderation
+    // Community posts with moderation - allowing everyone to post
     match /communityPosts/{postId} {
-      allow read: if isAuthenticated();
-      allow create: if isValidUser()
-        && hasRequiredFields(['content', 'createdAt', 'userId', 'title', 'category'])
-        && request.resource.data.userId == request.auth.uid
-        && isValidTimestamp()
+      allow read: if true; // Allow everyone to read posts
+      allow create: if true // Allow everyone to create posts
+        && hasRequiredFields(['content', 'createdAt', 'title', 'category'])
         && request.resource.data.reportCount == 0
         && request.resource.data.isBlocked == false;
-      allow update: if isValidUser()
+      allow update: if request.auth != null 
         && (resource.data.userId == request.auth.uid
             && onlyFieldsChanged(['content', 'title', 'category', 'updatedAt'])
             || (isAuthenticated() && onlyFieldsChanged(['reportCount', 'reports'])));
-      allow delete: if resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
-    // Comments with moderation
+    // Comments with moderation - allowing everyone to post
     match /communityPosts/{postId}/comments/{commentId} {
-      allow read: if isAuthenticated();
-      allow create: if isValidUser()
-        && hasRequiredFields(['content', 'createdAt', 'userId'])
-        && request.resource.data.userId == request.auth.uid
-        && isValidTimestamp()
+      allow read: if true; // Allow everyone to read comments
+      allow create: if true // Allow everyone to create comments
+        && hasRequiredFields(['content', 'createdAt'])
         && request.resource.data.reportCount == 0
         && request.resource.data.isBlocked == false;
-      allow update: if isValidUser()
+      allow update: if request.auth != null
         && (resource.data.userId == request.auth.uid
             && onlyFieldsChanged(['content', 'updatedAt'])
             || (isAuthenticated() && onlyFieldsChanged(['reportCount', 'reports'])));
-      allow delete: if resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // Educational content - read-only for users

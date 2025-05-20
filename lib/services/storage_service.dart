@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:logger/logger.dart';
@@ -21,9 +23,28 @@ class StorageService {
       final tempFile = File('${tempDir.path}/temp_csv_file.csv');
       await tempFile.writeAsBytes(bytes);
 
-      // Upload the file to Firebase Storage
-      final uploadTask = _storage.ref(storagePath).putFile(tempFile);
-      final snapshot = await uploadTask.whenComplete(() => null);
+      // Create the storage reference
+      final ref = _storage.ref(storagePath);
+
+      // Upload the file to Firebase Storage with metadata
+      final metadata = SettableMetadata(
+        contentType: 'text/csv',
+        customMetadata: {
+          'source': 'app_upload',
+          'date': DateTime.now().toString()
+        },
+      );
+
+      // Create a timeout for the upload to prevent hanging
+      final uploadTask = ref.putFile(tempFile, metadata);
+      final snapshot =
+          await uploadTask.timeout(const Duration(seconds: 15), onTimeout: () {
+        _logger.w('Upload timeout - cancelling');
+        uploadTask.cancel();
+        throw TimeoutException('Upload timed out after 15 seconds');
+      }).whenComplete(() {
+        _logger.i('Upload task completed or timed out');
+      });
 
       // Get the download URL
       final downloadUrl = await snapshot.ref.getDownloadURL();
@@ -33,6 +54,9 @@ class StorageService {
       await tempFile.delete();
 
       return downloadUrl;
+    } on FirebaseException catch (e) {
+      _logger.e('Firebase Storage error: ${e.code} - ${e.message}');
+      return null;
     } catch (e) {
       _logger.e('Error uploading CSV file to Firebase Storage: $e');
       return null;

@@ -191,19 +191,31 @@ class HospitalService {
     );
   }
 
-  // Ensure CSV file is in Firebase Storage
+  // Ensure CSV file is in Firebase Storage or load from local assets
   Future<bool> ensureCsvInFirebaseStorage() async {
     try {
-      bool exists = await _storageService.fileExists(_firebaseStoragePath);
-      if (!exists) {
-        _logger.i('Uploading healthcare facilities CSV to Firebase Storage...');
+      _logger.i('Uploading healthcare facilities CSV to Firebase Storage...');
+
+      // Try to upload to Firebase Storage, but don't block functionality if it fails
+      try {
         String? url = await _storageService.uploadCsvFromAssets(
             _csvFilePath, _firebaseStoragePath);
-        return url != null;
+        if (url != null) {
+          _logger.i('Successfully uploaded CSV to Firebase Storage: $url');
+          return true;
+        } else {
+          _logger.w(
+              'Firebase Storage upload failed, falling back to local assets');
+        }
+      } catch (e) {
+        _logger.w('Firebase Storage error, falling back to local assets: $e');
       }
-      return true;
+
+      // Load from local assets instead
+      await _loadFacilitiesFromCsv();
+      return _facilitiesCache != null && _facilitiesCache!.isNotEmpty;
     } catch (e) {
-      _logger.e('Error ensuring CSV in Firebase Storage: $e');
+      _logger.e('Error ensuring CSV availability: $e');
       return false;
     }
   }
