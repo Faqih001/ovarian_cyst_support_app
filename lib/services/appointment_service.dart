@@ -188,4 +188,40 @@ class AppointmentService {
       throw Exception('Failed to delete appointment');
     }
   }
+
+  // Book appointment
+  Future<String> bookAppointment({
+    required String userId,
+    required String facilityId,
+    required String facilityName,
+    required String doctorId,
+    required String doctorName,
+    required DateTime appointmentDateTime,
+    required String status,
+    String? notes,
+  }) async {
+    try {
+      final appointmentData = {
+        'userId': userId,
+        'facilityId': facilityId,
+        'facilityName': facilityName,
+        'doctorId': doctorId,
+        'doctorName': doctorName,
+        'appointmentDate': Timestamp.fromDate(appointmentDateTime),
+        'appointmentTime':
+            '${appointmentDateTime.hour.toString().padLeft(2, '0')}:${appointmentDateTime.minute.toString().padLeft(2, '0')}',
+        'status': status,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'notes': notes ?? 'Appointment for ovarian cyst consultation',
+        'reminderEnabled': true,
+        'purpose': 'Ovarian cyst consultation',
+      };
+
+      return await addAppointment(appointmentData);
+    } catch (e) {
+      _logger.e('Error booking appointment: $e');
+      throw Exception('Failed to book appointment');
+    }
+  }
 }

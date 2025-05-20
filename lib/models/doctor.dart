@@ -9,6 +9,7 @@ class Doctor {
   final String? description;
   final String? imageUrl;
   final bool isAvailable;
+  final List<String> availableDays;
 
   Doctor({
     required this.id,
@@ -21,6 +22,7 @@ class Doctor {
     this.description,
     this.imageUrl,
     this.isAvailable = true,
+    this.availableDays = const [],
   });
 
   factory Doctor.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,8 @@ class Doctor {
       description: json['description'] as String?,
       imageUrl: json['image_url'] as String?,
       isAvailable: json['is_available'] as bool? ?? true,
+      availableDays:
+          (json['available_days'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
     );
   }
 
@@ -50,6 +54,7 @@ class Doctor {
       'description': description,
       'image_url': imageUrl,
       'is_available': isAvailable,
+      'available_days': availableDays,
     };
   }
 }

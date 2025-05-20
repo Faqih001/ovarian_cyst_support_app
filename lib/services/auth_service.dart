@@ -66,6 +66,7 @@ class AuthService with ChangeNotifier {
   User? get user => _user;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
+  bool get isAuthenticated => _user != null && _status == AuthStatus.authenticated;
 
   // Initialize auth state changes
   void _init() {

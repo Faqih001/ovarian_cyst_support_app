@@ -79,6 +79,8 @@ dependencies:
   path: ^1.8.3
   table_calendar: ^3.0.9
   csv: ^6.0.0
+  firebase_storage: ^11.6.5
+  fluttertoast: ^8.2.4
 
 dev_dependencies:
   flutter_test:
@@ -95,3 +97,4 @@ flutter:
     - assets/images/onboarding/
     - assets/images/education/
     - assets/animations/
+    - assets/healthcare_facilities.csv

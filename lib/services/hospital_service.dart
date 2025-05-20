@@ -1,20 +1,29 @@
+// Import necessary libraries
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
 import 'package:csv/csv.dart';
 import 'package:ovarian_cyst_support_app/models/facility.dart';
 import 'package:ovarian_cyst_support_app/models/doctor.dart';
+import 'package:ovarian_cyst_support_app/services/storage_service.dart';
 
+// Enum for facility types
 enum FacilityType {
   ministry, // Ministry of Health
   privatePractice, // Private Practice (individual providers)
   privateEnterprise // Private Enterprise (institutions, companies)
 }
 
+// Hospital service class for handling healthcare facility data
 class HospitalService {
   final Logger _logger = Logger();
+  final StorageService _storageService = StorageService();
 
-  // Path to the local CSV file
+  // Path to the local CSV file in assets
   final String _csvFilePath = 'assets/healthcare_facilities.csv';
+
+  // Path to the CSV file in Firebase Storage
+  final String _firebaseStoragePath =
+      'healthcare_facilities/healthcare_facilities.csv';
 
   // Cache for facilities to avoid reloading the CSV file repeatedly
   List<Map<String, dynamic>>? _facilitiesCache;
@@ -31,6 +40,11 @@ class HospitalService {
       // Load all facilities from CSV if not already cached
       if (_facilitiesCache == null) {
         await _loadFacilitiesFromCsv();
+      }
+
+      // If cache is still empty after loading, return mock data
+      if (_facilitiesCache == null || _facilitiesCache!.isEmpty) {
+        return _getMockFacilities(searchQuery, county, facilityType);
       }
 
       // Filter facilities based on criteria
@@ -96,8 +110,27 @@ class HospitalService {
   // Load facilities from CSV file
   Future<void> _loadFacilitiesFromCsv() async {
     try {
-      // Load CSV file from assets
-      final String csvData = await rootBundle.loadString(_csvFilePath);
+      String? csvData;
+      bool fileExistsInStorage =
+          await _storageService.fileExists(_firebaseStoragePath);
+
+      if (!fileExistsInStorage) {
+        // Upload the CSV file from assets to Firebase Storage if it doesn't exist
+        _logger.i(
+            'CSV file not found in Firebase Storage. Uploading from assets...');
+        await _storageService.uploadCsvFromAssets(
+            _csvFilePath, _firebaseStoragePath);
+      }
+
+      // Try to download from Firebase Storage
+      csvData = await _storageService.downloadCsvToString(_firebaseStoragePath);
+
+      // If Firebase Storage fails, fallback to local asset
+      if (csvData == null) {
+        _logger.w(
+            'Failed to download from Firebase Storage. Falling back to local asset.');
+        csvData = await rootBundle.loadString(_csvFilePath);
+      }
 
       // Parse CSV data
       List<List<dynamic>> csvTable =
@@ -124,6 +157,7 @@ class HospitalService {
       _logger.i('Loaded ${_facilitiesCache!.length} facilities from CSV');
     } catch (e) {
       _logger.e('Error loading facilities from CSV: $e');
+      _logger.e('The asset does not exist or has empty data.');
       _facilitiesCache = []; // Set to empty list on error
     }
   }
@@ -150,10 +184,28 @@ class HospitalService {
       email: null, // Not available in CSV
       website: null, // Not available in CSV
       postalAddress: null, // Not available in CSV
-      description:
-          'Located near ${data['Nearest_To']?.toString() ?? 'local area'}',
+      description: data['Nearest_To'] != null
+          ? 'Located near ${data['Nearest_To'].toString()}'
+          : 'Location details not available',
       services: [], // Not available in CSV
     );
+  }
+
+  // Ensure CSV file is in Firebase Storage
+  Future<bool> ensureCsvInFirebaseStorage() async {
+    try {
+      bool exists = await _storageService.fileExists(_firebaseStoragePath);
+      if (!exists) {
+        _logger.i('Uploading healthcare facilities CSV to Firebase Storage...');
+        String? url = await _storageService.uploadCsvFromAssets(
+            _csvFilePath, _firebaseStoragePath);
+        return url != null;
+      }
+      return true;
+    } catch (e) {
+      _logger.e('Error ensuring CSV in Firebase Storage: $e');
+      return false;
+    }
   }
 
   // Get detailed information about a specific facility
@@ -190,11 +242,11 @@ class HospitalService {
       return _getMockDoctors();
     } catch (e) {
       _logger.e('Error fetching doctors: $e');
-      return _getMockDoctors();
+      return [];
     }
   }
 
-  // Get list of counties in Kenya
+  // Get unique counties from loaded facilities
   Future<List<String>> getCounties() async {
     try {
       // Load facilities if not already loaded
@@ -202,27 +254,29 @@ class HospitalService {
         await _loadFacilitiesFromCsv();
       }
 
-      // Extract unique counties from the CSV data
-      Set<String> counties = {};
+      // Extract unique counties
+      Set<String> uniqueCounties = {};
       for (var facility in _facilitiesCache!) {
-        String county = facility['County']?.toString() ?? '';
+        String county = facility['County'] ?? '';
         if (county.isNotEmpty) {
-          counties.add(county);
+          uniqueCounties.add(county);
         }
       }
 
-      // Sort counties alphabetically
-      List<String> sortedCounties = counties.toList()..sort();
-      return sortedCounties;
+      return uniqueCounties.toList()..sort();
     } catch (e) {
       _logger.e('Error fetching counties: $e');
-      return _getMockCounties();
+      return [
+        'Nairobi',
+        'Mombasa',
+        'Kisumu',
+        'Nakuru',
+        'Eldoret',
+      ];
     }
   }
 
-  // Mock data methods for fallback when API fails
-
-  // Return mock facilities
+  // Mock facilities for when CSV loading fails
   List<Facility> _getMockFacilities(
       String? searchQuery, String? county, FacilityType facilityType) {
     List<Facility> mockFacilities = [];
@@ -377,7 +431,7 @@ class HospitalService {
     return mockFacilities;
   }
 
-  // Return a mock facility for a specific ID
+  // Get a mock facility by ID (for fallback)
   Facility _getMockFacility(String facilityId) {
     // First try to match by prefix to determine facility type
     FacilityType facilityType;
@@ -400,32 +454,43 @@ class HospitalService {
   List<Doctor> _getMockDoctors() {
     return [
       Doctor(
-        id: '1',
-        name: 'Dr. Sarah Njeri',
-        specialty: 'Gynecology',
-        qualification: 'MBBS, MS',
-        phone: '0712345678',
-        email: 'sarah.njeri@example.com',
-        description: 'Specializes in reproductive health and ovarian disorders',
-      ),
-      Doctor(
-        id: '2',
-        name: 'Dr. John Kamau',
-        specialty: 'Obstetrics',
-        qualification: 'MD',
-        phone: '0723456789',
-        email: 'john.kamau@example.com',
-        description: 'Experienced in women\'s health and prenatal care',
-      ),
-      Doctor(
-        id: '3',
-        name: 'Dr. Mary Ochieng',
-        specialty: 'Gynecologic Oncology',
-        qualification: 'MD, PhD',
-        phone: '0734567890',
-        email: 'mary.ochieng@example.com',
+        id: 'd1',
+        name: 'Dr. Sarah Wanjiku',
+        specialty: 'Gynecologist',
+        qualification: 'MBBS, MD (Gynecology)',
+        registrationNumber: 'KMP-12345',
+        email: 'sarah.wanjiku@example.com',
+        phone: '+254 712 345 678',
         description:
-            'Specializes in cancer treatment related to women\'s reproductive system',
+            'Dr. Wanjiku is a specialist in women\'s health with over 10 years of experience treating ovarian cysts and related conditions.',
+        imageUrl: 'https://randomuser.me/api/portraits/women/45.jpg',
+        isAvailable: true,
+      ),
+      Doctor(
+        id: 'd2',
+        name: 'Dr. James Mwangi',
+        specialty: 'Obstetrician & Gynecologist',
+        qualification: 'MBBS, FCPS (Obs & Gyne)',
+        registrationNumber: 'KMP-23456',
+        email: 'james.mwangi@example.com',
+        phone: '+254 723 456 789',
+        description:
+            'Dr. Mwangi specializes in women\'s reproductive health and has extensive experience in managing ovarian cysts.',
+        imageUrl: 'https://randomuser.me/api/portraits/men/32.jpg',
+        isAvailable: true,
+      ),
+      Doctor(
+        id: 'd3',
+        name: 'Dr. Elizabeth Ochieng',
+        specialty: 'Reproductive Endocrinologist',
+        qualification: 'MD, MRCOG',
+        registrationNumber: 'KMP-34567',
+        email: 'elizabeth.ochieng@example.com',
+        phone: '+254 734 567 890',
+        description:
+            'Dr. Ochieng is an expert in hormonal disorders and reproductive health issues including ovarian cysts.',
+        imageUrl: 'https://randomuser.me/api/portraits/women/67.jpg',
+        isAvailable: true,
       ),
     ];
   }
@@ -438,16 +503,11 @@ class HospitalService {
       'Kisumu',
       'Nakuru',
       'Uasin Gishu',
-      'Kiambu',
-      'Kakamega',
-      'Nyeri',
-      'Meru',
       'Machakos',
+      'Kiambu',
       'Kajiado',
       'Kilifi',
-      'Bungoma',
-      'Bomet',
-      'Kericho'
+      'Nyeri',
     ];
   }
 }

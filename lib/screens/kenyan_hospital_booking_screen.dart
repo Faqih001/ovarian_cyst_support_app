@@ -7,14 +7,14 @@ import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/appointment_service.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ovarian_cyst_support_app/widgets/app_toast.dart' as toast;
 
 class KenyanHospitalBookingScreen extends StatefulWidget {
   final FacilityType initialFacilityType;
-  
+
   const KenyanHospitalBookingScreen({
-    super.key, 
+    super.key,
     this.initialFacilityType = FacilityType.ministry,
   });
 
@@ -23,728 +23,620 @@ class KenyanHospitalBookingScreen extends StatefulWidget {
       _KenyanHospitalBookingScreenState();
 }
 
-class _KenyanHospitalBookingScreenState extends State<KenyanHospitalBookingScreen> {
-  final HospitalService _hospitalService = HospitalService();
+class _KenyanHospitalBookingScreenState
+    extends State<KenyanHospitalBookingScreen> {
+  late final HospitalService _hospitalService;
   final AppointmentService _appointmentService = AppointmentService();
+  late AuthService _authService;
 
-  final _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  // State variables
+  FacilityType _selectedFacilityType = FacilityType.ministry;
   String? _selectedCounty;
-  Facility? _selectedFacility;
-  Doctor? _selectedDoctor;
   List<String> _counties = [];
   List<Facility> _facilities = [];
+  bool _isLoading = true;
+  bool _isSearching = false;
+  bool _hasMoreFacilities = true;
+  int _currentPage = 1;
+  final int _pageSize = 10;
+  Facility? _selectedFacility;
+  Doctor? _selectedDoctor;
   List<Doctor> _doctors = [];
-  
-  bool _isLoadingCounties = false;
-  bool _isLoadingFacilities = false;
-  bool _isLoadingDoctors = false;
-  bool _isSubmitting = false;
-  
-  // Facility type selection
-  FacilityType _selectedFacilityType = FacilityType.ministry;
-
-  // Form controllers
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _purposeController = TextEditingController();
-  final _notesController = TextEditingController();
-
-  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
-  String _selectedTime = '09:00 AM';
-
-  final List<String> _timeSlots = [
-    '09:00 AM',
-    '09:30 AM',
-    '10:00 AM',
-    '10:30 AM',
-    '11:00 AM',
-    '11:30 AM',
-    '12:00 PM',
-    '12:30 PM',
-    '02:00 PM',
-    '02:30 PM',
-    '03:00 PM',
-    '03:30 PM',
-    '04:00 PM',
-    '04:30 PM'
-  ];
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
+  bool _isBooking = false;
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+      GlobalKey<RefreshIndicatorState>();
+  bool _isOnline = true;
+  bool _showFilterPanel = false;
 
   @override
   void initState() {
     super.initState();
-    _loadCounties();
-    
-    // Set initial facility type from widget parameter
-    setState(() {
-      _selectedFacilityType = widget.initialFacilityType;
-    });
+    _selectedFacilityType = widget.initialFacilityType;
+    _scrollController.addListener(_scrollListener);
+    _checkConnectivity();
+    _setupConnectivityListener();
+  }
 
-    // Pre-fill name from auth service if available
-    final authService = Provider.of<AuthService>(context, listen: false);
-    if (authService.user != null) {
-      authService.getUserData().then((userData) {
-        if (userData != null && userData['name'] != null) {
-          _nameController.text = userData['name'];
-        }
-      });
-    }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _hospitalService = Provider.of<HospitalService>(context);
+    _authService = Provider.of<AuthService>(context);
+    _loadCounties();
+    _loadFacilities(reset: true);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _nameController.dispose();
-    _phoneController.dispose();
-    _purposeController.dispose();
-    _notesController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadCounties() async {
+  // Check initial connectivity
+  Future<void> _checkConnectivity() async {
+    var connectivityResult = await (Connectivity().checkConnectivity());
+    _updateConnectionStatus(connectivityResult);
+  }
+
+  // Set up listener for connectivity changes
+  void _setupConnectivityListener() {
+    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+      _updateConnectionStatus(result);
+    });
+  }
+
+  // Update connectivity status
+  void _updateConnectionStatus(ConnectivityResult result) {
     setState(() {
-      _isLoadingCounties = true;
+      _isOnline = result != ConnectivityResult.none;
     });
 
+    if (_isOnline) {
+      toast.AppToast.showSuccess(
+        context,
+        'Connected to the internet',
+      );
+      // Reload data when coming back online
+      if (_facilities.isEmpty) {
+        _loadFacilities(reset: true);
+      }
+    } else {
+      toast.AppToast.showError(
+        context,
+        'No internet connection. Some features may be limited.',
+      );
+    }
+  }
+
+  // Load the list of counties for filtering
+  Future<void> _loadCounties() async {
     try {
       final counties = await _hospitalService.getCounties();
       setState(() {
         _counties = counties;
-        _isLoadingCounties = false;
       });
     } catch (e) {
+      debugPrint('Error loading counties: $e');
       setState(() {
-        _isLoadingCounties = false;
+        _counties = [];
       });
-      if (mounted) {
-        toast.AppToast.showError(context, 'Failed to load counties: $e');
-      }
     }
   }
 
-  Future<void> _searchFacilities() async {
-    if (_searchController.text.trim().isEmpty && _selectedCounty == null) {
-      toast.AppToast.showError(
-          context, 'Please enter a search term or select a county');
-      return;
+  // Infinite scroll listener
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoading &&
+        _hasMoreFacilities) {
+      _loadMoreFacilities();
     }
+  }
 
-    setState(() {
-      _isLoadingFacilities = true;
-      _facilities = [];
-      _selectedFacility = null;
-      _doctors = [];
-      _selectedDoctor = null;
-    });
+  // Load initial facilities or refresh the list
+  Future<void> _loadFacilities({required bool reset}) async {
+    if (reset) {
+      setState(() {
+        _currentPage = 1;
+        _isLoading = true;
+        _hasMoreFacilities = true;
+      });
+    }
 
     try {
       final facilities = await _hospitalService.getFacilities(
-        searchQuery: _searchController.text.trim(),
+        searchQuery: _isSearching ? _searchController.text : null,
         county: _selectedCounty,
+        page: _currentPage,
+        pageSize: _pageSize,
         facilityType: _selectedFacilityType,
       );
 
       setState(() {
-        _facilities = facilities;
-        _isLoadingFacilities = false;
+        if (reset) {
+          _facilities = facilities;
+        } else {
+          _facilities.addAll(facilities);
+        }
+        _isLoading = false;
+        _hasMoreFacilities = facilities.length == _pageSize;
       });
     } catch (e) {
+      debugPrint('Error loading facilities: $e');
       setState(() {
-        _isLoadingFacilities = false;
+        if (reset) {
+          _facilities = [];
+        }
+        _isLoading = false;
+        _hasMoreFacilities = false;
       });
-      if (mounted) {
-        toast.AppToast.showError(context, 'Failed to search facilities: $e');
+      if (mounted) { // Check if the widget is still in the tree
+        toast.AppToast.showError(
+          context,
+          'Failed to load facilities. Please try again later.',
+        );
       }
     }
   }
 
-  Future<void> _loadDoctors() async {
-    if (_selectedFacility == null) return;
+  // Load more facilities when scrolling (pagination)
+  Future<void> _loadMoreFacilities() async {
+    if (_isLoading || !_hasMoreFacilities) return;
 
     setState(() {
-      _isLoadingDoctors = true;
-      _doctors = [];
+      _isLoading = true;
+      _currentPage++;
+    });
+
+    await _loadFacilities(reset: false);
+  }
+
+  // Handle the search action
+  void _handleSearch() {
+    setState(() {
+      _isSearching = _searchController.text.isNotEmpty;
+    });
+    _loadFacilities(reset: true);
+  }
+
+  // Handle refresh action (pull to refresh)
+  Future<void> _handleRefresh() async {
+    await _loadFacilities(reset: true);
+    return;
+  }
+
+  // Change the selected facility type
+  void _changeFacilityType(FacilityType type) {
+    setState(() {
+      _selectedFacilityType = type;
+      _selectedFacility = null;
       _selectedDoctor = null;
+      _doctors = [];
+      _showFilterPanel = false;
+    });
+    _loadFacilities(reset: true);
+  }
+
+  // Filter facilities by county
+  void _filterByCounty(String? county) {
+    setState(() {
+      _selectedCounty = county;
+      _showFilterPanel = false;
+    });
+    _loadFacilities(reset: true);
+  }
+
+  // Clear all filters
+  void _clearFilters() {
+    setState(() {
+      _selectedCounty = null;
+      _searchController.clear();
+      _isSearching = false;
+      _showFilterPanel = false;
+    });
+    _loadFacilities(reset: true);
+  }
+
+  // Load doctors for a selected facility
+  Future<void> _loadDoctorsForFacility(Facility facility) async {
+    setState(() {
+      _selectedFacility = facility;
+      _selectedDoctor = null;
+      _isLoading = true;
     });
 
     try {
-      final doctors =
-          await _hospitalService.getDoctorsForFacility(_selectedFacility!.id);
+      final doctors = await _hospitalService.getDoctorsForFacility(facility.id);
       setState(() {
         _doctors = doctors;
-        _isLoadingDoctors = false;
+        _isLoading = false;
       });
     } catch (e) {
+      debugPrint('Error loading doctors: $e');
       setState(() {
-        _isLoadingDoctors = false;
-        // Generate sample doctor data if API doesn't return doctors
-        _doctors = [
-          Doctor(
-              id: '1',
-              name: 'Dr. Sarah Njeri',
-              specialty: 'Gynecology',
-              qualification: 'MBBS, MS',
-              phone: '0712345678'),
-          Doctor(
-              id: '2',
-              name: 'Dr. John Kamau',
-              specialty: 'Obstetrics',
-              qualification: 'MD',
-              phone: '0723456789'),
-        ];
+        _doctors = [];
+        _isLoading = false;
+      });
+      if (mounted) { // Check if the widget is still in the tree
+        toast.AppToast.showError(
+          context,
+          'Failed to load doctors. Please try again later.',
+        );
+      }
+    }
+  }
+
+  // Select a doctor for booking
+  void _selectDoctor(Doctor doctor) {
+    setState(() {
+      _selectedDoctor = doctor;
+    });
+  }
+
+  // Show date picker for booking
+  Future<void> _showDatePicker() async {
+    final now = DateTime.now();
+    final firstDate = now;
+    // Allow booking up to 90 days in advance
+    final lastDate = now.add(const Duration(days: 90));
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? now.add(const Duration(days: 1)),
+      firstDate: firstDate,
+      lastDate: lastDate,
+      selectableDayPredicate: (DateTime day) {
+        // Make weekends not selectable if the doctor is not available
+        if (_selectedDoctor != null) {
+          // Convert day of week to string (1=Monday, 7=Sunday)
+          final dayName = DateFormat('EEEE').format(day);
+          return _selectedDoctor!.availableDays.contains(dayName);
+        }
+        // By default, allow all days
+        return true;
+      },
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        _selectedDate = pickedDate;
+      });
+    }
+  }
+
+  // Show time picker for booking
+  Future<void> _showTimePicker() async {
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime ?? const TimeOfDay(hour: 9, minute: 0),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime != null) {
+      setState(() {
+        _selectedTime = pickedTime;
+      });
+    }
+  }
+
+  // Book an appointment with the selected facility, doctor, date, and time
+  Future<void> _bookAppointment() async {
+    if (_selectedFacility == null ||
+        _selectedDoctor == null ||
+        _selectedDate == null ||
+        _selectedTime == null) {
+      toast.AppToast.showError(
+        context,
+        'Please select all required information',
+      );
+      return;
+    }
+
+    if (!_isOnline) {
+      toast.AppToast.showError(
+        context,
+        'Cannot book appointments while offline',
+      );
+      return;
+    }
+
+    // Check if user is authenticated
+    if (!_authService.isAuthenticated) {
+      toast.AppToast.showError(
+        context,
+        'Please log in to book an appointment',
+      );
+      // Navigate to login or show login dialog
+      return;
+    }
+
+    setState(() {
+      _isBooking = true;
+    });
+
+    try {
+      // Combine date and time
+      final appointmentDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      );
+
+      // Book the appointment
+      await _appointmentService.bookAppointment(
+        userId: _authService.currentUser!.uid,
+        facilityId: _selectedFacility!.id,
+        facilityName: _selectedFacility!.name,
+        doctorId: _selectedDoctor!.id,
+        doctorName: _selectedDoctor!.name,
+        appointmentDateTime: appointmentDateTime,
+        status: 'pending', // Initial status
+        notes: 'Appointment for ovarian cyst consultation',
+      );
+
+      setState(() {
+        _isBooking = false;
+        // Reset selection after successful booking
+        _selectedDate = null;
+        _selectedTime = null;
+      });
+
+      // Show success message
+      if (mounted) {
+        toast.AppToast.showSuccess(
+          context,
+          'Appointment booked successfully',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error booking appointment: $e');
+      setState(() {
+        _isBooking = false;
       });
       if (mounted) {
         toast.AppToast.showError(
-            context, 'Using sample doctor data for demonstration');
+          context,
+          'Failed to book appointment. Please try again later.',
+        );
       }
     }
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-    );
-
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
-  Future<void> _bookAppointment() async {
-    if (!_formKey.currentState!.validate()) {
-      toast.AppToast.showError(
-          context, 'Please fill all required fields correctly');
-      return;
-    }
-
-    if (_selectedFacility == null) {
-      toast.AppToast.showError(context, 'Please select a hospital');
-      return;
-    }
-
+  // Back to facility selection
+  void _backToFacilitySelection() {
     setState(() {
-      _isSubmitting = true;
+      _selectedFacility = null;
+      _selectedDoctor = null;
+      _doctors = [];
+      _selectedDate = null;
+      _selectedTime = null;
     });
-
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.user?.uid;
-
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
-
-      // Create appointment data
-      final appointmentData = {
-        'userId': userId,
-        'facilityId': _selectedFacility!.id,
-        'facilityName': _selectedFacility!.name,
-        'doctorId': _selectedDoctor?.id,
-        'doctorName': _selectedDoctor?.name,
-        'patientName': _nameController.text,
-        'phoneNumber': _phoneController.text,
-        'appointmentDate': Timestamp.fromDate(_selectedDate),
-        'appointmentTime': _selectedTime,
-        'purpose': _purposeController.text,
-        'notes': _notesController.text,
-        'status': 'pending',
-        'county': _selectedFacility!.county,
-        'createdAt': FieldValue.serverTimestamp(),
-      };
-
-      // Save appointment using the appointment service
-      await _appointmentService.addAppointment(appointmentData);
-
-      if (mounted) {
-        toast.AppToast.showSuccess(context, 'Appointment booked successfully');
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) {
-        toast.AppToast.showError(context, 'Failed to book appointment: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
-    }
   }
+
+  // Toggle filter panel visibility
+  void _toggleFilterPanel() {
+    setState(() {
+      _showFilterPanel = !_showFilterPanel;
+    });
+  }
+
+  // Check if the filters are active
+  bool get _areFiltersActive => _selectedCounty != null || _isSearching;
 
   @override
   Widget build(BuildContext context) {
-    String facilityTypeTitle;
-    switch (_selectedFacilityType) {
-      case FacilityType.ministry:
-        facilityTypeTitle = 'Ministry of Health';
-        break;
-      case FacilityType.privatePractice:
-        facilityTypeTitle = 'Private Practice';
-        break;
-      case FacilityType.privateEnterprise:
-        facilityTypeTitle = 'Private Enterprise';
-        break;
-    }
-    
     return Scaffold(
       appBar: AppBar(
-        title: Text('Book Appointment - $facilityTypeTitle'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Step 1: Search for hospital
-              _buildSearchSection(),
-
-              const SizedBox(height: 20),
-
-              // Step 2: Facility selection
-              if (_facilities.isNotEmpty) _buildFacilitySection(),
-
-              const SizedBox(height: 20),
-
-              // Step 3: Doctor selection
-              if (_selectedFacility != null) _buildDoctorSection(),
-
-              const SizedBox(height: 20),
-
-              // Step 4: Appointment form
-              if (_selectedFacility != null) _buildAppointmentForm(),
-            ],
+        title: const Text('Find Healthcare Facility'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _showFilterPanel ? Icons.filter_list_off : Icons.filter_list,
+              color: _areFiltersActive ? AppColors.primary : null,
+            ),
+            onPressed: _toggleFilterPanel,
+            tooltip: 'Filter options',
           ),
-        ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildSearchSection() {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Step 1: Find a Hospital',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Facility type selector
-            const Text('Select facility type:'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: RadioListTile<FacilityType>(
-                    title: const Text('Ministry of Health'),
-                    value: FacilityType.ministry,
-                    groupValue: _selectedFacilityType,
-                    onChanged: (FacilityType? value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedFacilityType = value;
-                          // Clear previous results when changing facility type
-                          _facilities = [];
-                          _selectedFacility = null;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: RadioListTile<FacilityType>(
-                    title: const Text('Private Practice'),
-                    value: FacilityType.privatePractice,
-                    groupValue: _selectedFacilityType,
-                    onChanged: (FacilityType? value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedFacilityType = value;
-                          // Clear previous results when changing facility type
-                          _facilities = [];
-                          _selectedFacility = null;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: RadioListTile<FacilityType>(
-                    title: const Text('Private Enterprise'),
-                    value: FacilityType.privateEnterprise,
-                    groupValue: _selectedFacilityType,
-                    onChanged: (FacilityType? value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedFacilityType = value;
-                          // Clear previous results when changing facility type
-                          _facilities = [];
-                          _selectedFacility = null;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                labelText: 'Search hospitals by name',
-                hintText: 'Enter hospital name',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Or select a county:'),
-            const SizedBox(height: 8),
-            _isLoadingCounties
-                ? const Center(child: CircularProgressIndicator())
-                : DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                    ),
-                    hint: const Text('Select County'),
-                    value: _selectedCounty,
-                    items: _counties
-                        .map((county) => DropdownMenuItem(
-                              value: county,
-                              child: Text(county),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedCounty = value;
-                      });
-                    },
-                  ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _searchFacilities,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: _isLoadingFacilities
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text('SEARCH'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFacilitySection() {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Step 2: Select a Hospital',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _facilities.length,
-              itemBuilder: (context, index) {
-                final facility = _facilities[index];
-                final isSelected = _selectedFacility?.id == facility.id;
-
-                return ListTile(
-                  title: Text(
-                    facility.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Type: ${facility.facilityType}'),
-                      Text(
-                          'Location: ${facility.county}, ${facility.subCounty}'),
-                      if (facility.phone != null)
-                        Text('Phone: ${facility.phone}'),
-                    ],
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle, color: AppColors.primary)
-                      : const Icon(Icons.circle_outlined),
-                  selected: isSelected,
-                  onTap: () {
-                    setState(() {
-                      _selectedFacility = facility;
-                      _doctors = [];
-                      _selectedDoctor = null;
-                    });
-                    _loadDoctors();
-                  },
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDoctorSection() {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Step 3: Select a Doctor (Optional)',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _isLoadingDoctors
-                ? const Center(child: CircularProgressIndicator())
-                : _doctors.isEmpty
-                    ? const Text(
-                        'No specific doctors available for selection at this facility.')
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _doctors.length,
-                        itemBuilder: (context, index) {
-                          final doctor = _doctors[index];
-                          final isSelected = _selectedDoctor?.id == doctor.id;
-
-                          return ListTile(
-                            leading: const CircleAvatar(
-                              child: Icon(Icons.person),
-                            ),
-                            title: Text(
-                              doctor.name,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (doctor.specialty != null)
-                                  Text('Specialty: ${doctor.specialty}'),
-                                if (doctor.qualification != null)
-                                  Text(
-                                      'Qualification: ${doctor.qualification}'),
-                              ],
-                            ),
-                            trailing: isSelected
-                                ? const Icon(Icons.check_circle,
-                                    color: AppColors.primary)
-                                : const Icon(Icons.circle_outlined),
-                            selected: isSelected,
-                            onTap: () {
-                              setState(() {
-                                _selectedDoctor = isSelected ? null : doctor;
-                              });
-                            },
-                          );
-                        },
-                      ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppointmentForm() {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Step 4: Book Your Appointment',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Your Name',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  border: OutlineInputBorder(),
-                  hintText: 'e.g., 0712345678',
-                ),
-                keyboardType: TextInputType.phone,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your phone number';
-                  }
-                  if (!RegExp(r'^\d{9,10}$')
-                      .hasMatch(value.replaceAll(RegExp(r'\D'), ''))) {
-                    return 'Please enter a valid Kenyan phone number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              Row(
+      body: Column(
+        children: [
+          // Offline banner
+          if (!_isOnline)
+            Container(
+              color: Colors.red,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: Row(
                 children: [
+                  const Icon(Icons.wifi_off, color: Colors.white),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: InkWell(
-                      onTap: () => _selectDate(context),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Appointment Date',
-                          border: OutlineInputBorder(),
-                        ),
-                        child: Text(
-                          DateFormat('EEEE, MMM d, yyyy').format(_selectedDate),
-                        ),
-                      ),
+                    child: Text(
+                      'You are offline. Some features may be limited.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.white,
+                          ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Preferred Time',
-                  border: OutlineInputBorder(),
+            ),
+          // Filter panel
+          if (_showFilterPanel) _buildFilterPanel(),
+          // Facility type tabs
+          _buildFacilityTypeTabs(),
+          // Search bar
+          _buildSearchBar(),
+          // Main content
+          Expanded(
+            child: RefreshIndicator(
+              key: _refreshIndicatorKey,
+              onRefresh: _handleRefresh,
+              color: AppColors.primary,
+              child: _selectedFacility == null
+                  ? _buildFacilityList()
+                  : _buildFacilityDetails(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Filter panel widget
+  Widget _buildFilterPanel() {
+    return Container(
+      color: Colors.grey[100],
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Filter by County',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                FilterChip(
+                  label: const Text('All Counties'),
+                  selected: _selectedCounty == null,
+                  onSelected: (selected) {
+                    if (selected) {
+                      _filterByCounty(null);
+                    }
+                  },
+                  backgroundColor: Colors.grey[200],
+                  selectedColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
                 ),
-                value: _selectedTime,
-                items: _timeSlots
-                    .map((time) => DropdownMenuItem(
-                          value: time,
-                          child: Text(time),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedTime = value!;
-                  });
-                },
+                const SizedBox(width: 8),
+                ..._counties.map((county) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(county),
+                        selected: _selectedCounty == county,
+                        onSelected: (selected) {
+                          if (selected) {
+                            _filterByCounty(county);
+                          } else {
+                            _filterByCounty(null);
+                          }
+                        },                  backgroundColor: Colors.grey[200],
+                  selectedColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
+                      ),
+                    )),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: _clearFilters,
+                child: const Text('Clear All Filters'),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _purposeController,
-                decoration: const InputDecoration(
-                  labelText: 'Purpose of Visit',
-                  border: OutlineInputBorder(),
-                  hintText: 'e.g., Consultation, Follow-up, etc.',
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter the purpose of your visit';
-                  }
-                  return null;
-                },
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Facility type tabs widget
+  Widget _buildFacilityTypeTabs() {
+    return Container(
+      color: Colors.white,
+      height: 60,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        children: [
+          _buildFacilityTypeTab(
+            title: 'Ministry of Health',
+            type: FacilityType.ministry,
+            icon: Icons.local_hospital,
+          ),
+          _buildFacilityTypeTab(
+            title: 'Private Practice',
+            type: FacilityType.privatePractice,
+            icon: Icons.person,
+          ),
+          _buildFacilityTypeTab(
+            title: 'Private Enterprise',
+            type: FacilityType.privateEnterprise,
+            icon: Icons.business,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Individual facility type tab widget
+  Widget _buildFacilityTypeTab({
+    required String title,
+    required FacilityType type,
+    required IconData icon,
+  }) {
+    final isSelected = _selectedFacilityType == type;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: () => _changeFacilityType(type),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.grey[200],
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? Colors.white : Colors.grey[700],
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Additional Notes (Optional)',
-                  border: OutlineInputBorder(),
-                  hintText: 'Any additional information for the hospital',
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _bookAppointment,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text('BOOK APPOINTMENT'),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.grey[700],
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
             ],
@@ -752,5 +644,1051 @@ class _KenyanHospitalBookingScreenState extends State<KenyanHospitalBookingScree
         ),
       ),
     );
+  }
+
+  // Search bar widget
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search facilities by name',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    if (_isSearching) {
+                      setState(() {
+                        _isSearching = false;
+                      });
+                      _loadFacilities(reset: true);
+                    }
+                  },
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.grey[200],
+        ),
+        textInputAction: TextInputAction.search,
+        onSubmitted: (_) => _handleSearch(),
+        onChanged: (value) {
+          if (value.isEmpty && _isSearching) {
+            setState(() {
+              _isSearching = false;
+            });
+            _loadFacilities(reset: true);
+          }
+        },
+      ),
+    );
+  }
+
+  // Facility list widget
+  Widget _buildFacilityList() {
+    if (_isLoading && _facilities.isEmpty) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_facilities.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No facilities found',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _areFiltersActive
+                  ? 'Try changing your filters or search terms'
+                  : 'Try a different facility type',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+            ),
+            if (_areFiltersActive)
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: ElevatedButton(
+                  onPressed: _clearFilters,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Clear Filters'),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.only(bottom: 16),
+      itemCount:
+          _facilities.length + (_isLoading && _hasMoreFacilities ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == _facilities.length) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        final facility = _facilities[index];
+        return _buildFacilityCard(facility);
+      },
+    );
+  }
+
+  // Individual facility card widget
+  Widget _buildFacilityCard(Facility facility) {
+    final hasLocation = facility.latitude != null && facility.longitude != null;
+    final hasContactInfo = facility.phone != null ||
+        facility.email != null ||
+        facility.website != null;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () => _loadDoctorsForFacility(facility),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
+                    radius: 24,
+                    child: Icon(
+                      _getFacilityIcon(facility.facilityType),
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          facility.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          facility.facilityType,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              size: 16,
+                              color: Colors.grey[600],
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '${facility.county}, ${facility.subCounty}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Contact Info Indicator
+                  if (hasContactInfo)
+                    Chip(
+                      label: const Text('Contact Available'),
+                      backgroundColor: Colors.green[100],
+                      visualDensity: VisualDensity.compact,
+                      labelStyle: const TextStyle(fontSize: 12),
+                      avatar: const Icon(
+                        Icons.phone,
+                        size: 16,
+                        color: Colors.green,
+                      ),
+                    )
+                  else
+                    Chip(
+                      label: const Text('No Contact Info'),
+                      backgroundColor: Colors.grey[200],
+                      visualDensity: VisualDensity.compact,
+                      labelStyle: const TextStyle(fontSize: 12),
+                      avatar: const Icon(
+                        Icons.phone_disabled,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  // Location Indicator
+                  if (hasLocation)
+                    Chip(
+                      label: const Text('Has Location'),
+                      backgroundColor: Colors.blue[100],
+                      visualDensity: VisualDensity.compact,
+                      labelStyle: const TextStyle(fontSize: 12),
+                      avatar: const Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: Colors.blue,
+                      ),
+                    )
+                  else
+                    Chip(
+                      label: const Text('No Location'),
+                      backgroundColor: Colors.grey[200],
+                      visualDensity: VisualDensity.compact,
+                      labelStyle: const TextStyle(fontSize: 12),
+                      avatar: const Icon(
+                        Icons.location_off,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => _loadDoctorsForFacility(facility),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('View Details & Book'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Facility details widget (after selection)
+  Widget _buildFacilityDetails() {
+    if (_selectedFacility == null) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Back button
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: _backToFacilitySelection,
+              ),
+              Text(
+                'Back to Facilities',
+                style: TextStyle(
+                  color: Colors.blue[700],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Facility information card
+          _buildFacilityInfoCard(),
+          const SizedBox(height: 24),
+          // Doctors section
+          _buildDoctorsSection(),
+          // Selected doctor details
+          if (_selectedDoctor != null) ...[
+            const SizedBox(height: 24),
+            _buildDoctorDetailsCard(),
+          ],
+          // Booking section
+          if (_selectedDoctor != null) ...[
+            const SizedBox(height: 24),
+            _buildBookingSection(),
+          ],
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  // Facility information card widget
+  Widget _buildFacilityInfoCard() {
+    final facility = _selectedFacility!;
+    final hasLocation = facility.latitude != null && facility.longitude != null;
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [                  CircleAvatar(
+                    backgroundColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
+                  radius: 30,
+                  child: Icon(
+                    _getFacilityIcon(facility.facilityType),
+                    color: AppColors.primary,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        facility.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        facility.facilityType,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Code: ${facility.code}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            // Location information
+            ListTile(
+              leading: const Icon(Icons.location_on, color: AppColors.primary),
+              title: const Text('Location'),
+              subtitle: Text(
+                '${facility.county}, ${facility.subCounty}, ${facility.ward}',
+              ),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+            if (facility.description != null) ...[
+              ListTile(
+                leading:
+                    const Icon(Icons.info_outline, color: AppColors.primary),
+                title: const Text('Description'),
+                subtitle: Text(facility.description!),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+            if (facility.phone != null) ...[
+              ListTile(
+                leading: const Icon(Icons.phone, color: AppColors.primary),
+                title: const Text('Phone'),
+                subtitle: Text(facility.phone!),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                onTap: () {
+                  // Implement phone call action
+                },
+              ),
+            ],
+            if (facility.email != null) ...[
+              ListTile(
+                leading: const Icon(Icons.email, color: AppColors.primary),
+                title: const Text('Email'),
+                subtitle: Text(facility.email!),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                onTap: () {
+                  // Implement email action
+                },
+              ),
+            ],
+            if (facility.website != null) ...[
+              ListTile(
+                leading: const Icon(Icons.language, color: AppColors.primary),
+                title: const Text('Website'),
+                subtitle: Text(facility.website!),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                onTap: () {
+                  // Implement website action
+                },
+              ),
+            ],
+            if (facility.services.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Services',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: facility.services.map((service) {
+                  return Chip(
+                    label: Text(service),
+                    backgroundColor: AppColors.primary.withAlpha(26), // approximately 0.1 opacity
+                    labelStyle: const TextStyle(fontSize: 12),
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 16),
+            // Map section (placeholder)
+            if (hasLocation) ...[
+              const Text(
+                'Location on Map',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                height: 150,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.map,
+                        size: 40,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Map View ${facility.latitude}, ${facility.longitude}',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          // Open map
+                        },
+                        child: const Text('Open in Maps'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Doctors section widget
+  Widget _buildDoctorsSection() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_doctors.isEmpty) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(
+                Icons.person_off,
+                size: 48,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No doctors available',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'This facility has no doctors registered in our system. Please contact the facility directly for appointment information.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Available Doctors',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 16),
+        ...List.generate(_doctors.length, (index) {
+          final doctor = _doctors[index];
+          final isSelected = _selectedDoctor?.id == doctor.id;
+          return _buildDoctorCard(doctor, isSelected);
+        }),
+      ],
+    );
+  }
+
+  // Individual doctor card widget
+  Widget _buildDoctorCard(Doctor doctor, bool isSelected) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: isSelected ? 4 : 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isSelected
+            ? const BorderSide(color: AppColors.primary, width: 2)
+            : BorderSide.none,
+      ),
+      child: InkWell(
+        onTap: () => _selectDoctor(doctor),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundImage: doctor.imageUrl != null 
+                    ? NetworkImage(doctor.imageUrl!) 
+                    : null,
+                backgroundColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
+                child: doctor.imageUrl == null 
+                    ? const Icon(Icons.person, color: AppColors.primary)
+                    : null,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            doctor.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (doctor.isAvailable)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'Available',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),                      Text(
+                        doctor.specialty ?? 'General Medicine',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        doctor.qualification ?? 'Medical Professional',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    if (doctor.availableDays.isNotEmpty) ...[
+                      const Text(
+                        'Available Days:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: doctor.availableDays.map((day) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              day,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => _selectDoctor(doctor),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                          ),
+                          child: Text(
+                            isSelected ? 'Selected' : 'Select',
+                            style: TextStyle(
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Doctor details card widget
+  Widget _buildDoctorDetailsCard() {
+    final doctor = _selectedDoctor!;
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Doctor Details',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundImage: doctor.imageUrl != null 
+                      ? NetworkImage(doctor.imageUrl!) 
+                      : null,
+                  backgroundColor: AppColors.primary.withAlpha(51), // approximately 0.2 opacity
+                  child: doctor.imageUrl == null 
+                      ? const Icon(Icons.person, size: 40, color: AppColors.primary)
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        doctor.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        doctor.specialty ?? 'General Medicine',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        doctor.qualification ?? 'Medical Professional',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Reg No: ${doctor.registrationNumber}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text(
+              'About',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              doctor.description ?? 'No description available',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Contact Information',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.email, color: AppColors.primary),
+              title: const Text('Email'),
+              subtitle: Text(doctor.email ?? 'No email available'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              onTap: () {
+                // Email action
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.phone, color: AppColors.primary),
+              title: const Text('Phone'),
+              subtitle: Text(doctor.phone ?? 'No phone available'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              onTap: () {
+                // Phone action
+              },
+            ),
+            const SizedBox(height: 16),
+            if (doctor.availableDays.isNotEmpty) ...[
+              const Text(
+                'Available Days',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: doctor.availableDays.map((day) {
+                  return Chip(
+                    label: Text(day),
+                    backgroundColor: AppColors.primary.withAlpha(26), // approximately 0.1 opacity
+                    labelStyle: const TextStyle(fontSize: 14),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Booking section widget
+  Widget _buildBookingSection() {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Book Appointment',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Date selector
+            InkWell(
+              onTap: _showDatePicker,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today, color: AppColors.primary),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Appointment Date',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _selectedDate == null
+                                ? 'Select a date'
+                                : DateFormat('EEEE, MMMM d, yyyy')
+                                    .format(_selectedDate!),
+                            style: TextStyle(
+                              color: _selectedDate == null
+                                  ? Colors.grey[600]
+                                  : Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 16),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Time selector
+            InkWell(
+              onTap: _showTimePicker,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.access_time, color: AppColors.primary),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Appointment Time',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _selectedTime == null
+                                ? 'Select a time'
+                                : _selectedTime!.format(context),
+                            style: TextStyle(
+                              color: _selectedTime == null
+                                  ? Colors.grey[600]
+                                  : Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 16),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Book button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isBooking || !_isOnline ? null : _bookAppointment,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  disabledBackgroundColor: Colors.grey[300],
+                ),
+                child: _isBooking
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Text('Booking...'),
+                        ],
+                      )
+                    : const Text('Book Appointment'),
+              ),
+            ),
+            if (!_isOnline) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.wifi_off, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'You need an internet connection to book appointments.',
+                        style: TextStyle(
+                          color: Colors.red[800],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Get appropriate icon for facility type
+  IconData _getFacilityIcon(String facilityType) {
+    if (facilityType.toLowerCase().contains('hospital')) {
+      return Icons.local_hospital;
+    } else if (facilityType.toLowerCase().contains('clinic')) {
+      return Icons.medical_services;
+    } else if (facilityType.toLowerCase().contains('center')) {
+      return Icons.health_and_safety;
+    } else {
+      return Icons.business;
+    }
   }
 }
