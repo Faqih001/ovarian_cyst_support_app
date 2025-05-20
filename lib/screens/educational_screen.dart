@@ -19,7 +19,8 @@ class _EducationalScreenState extends State<EducationalScreen>
     'symptoms',
     'treatment',
     'nutrition',
-    'exercise'
+    'exercise',
+    'kenya'
   ];
 
   @override
@@ -42,40 +43,251 @@ class _EducationalScreenState extends State<EducationalScreen>
 
   @override
   Widget build(BuildContext context) {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final String section = args?['section'] ?? 'main';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Education Resources'),
-        centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          indicatorColor: AppColors.primary,
-          tabs: _categories
-              .map((category) => Tab(
-                    text: category[0].toUpperCase() + category.substring(1),
-                  ))
-              .toList(),
+        title: Text(_getTitle(section)),
+        backgroundColor: AppColors.primary,
+      ),
+      body: _getContent(section),
+    );
+  }
+
+  String _getTitle(String section) {
+    switch (section) {
+      case 'kenya_guide':
+        return 'Kenya Health Guide';
+      case 'nutrition':
+        return 'Nutrition Guide';
+      case 'exercises':
+        return 'Exercise Guide';
+      default:
+        return 'Educational Resources';
+    }
+  }
+
+  Widget _getContent(String section) {
+    switch (section) {
+      case 'kenya_guide':
+        return _buildKenyaGuide();
+      case 'nutrition':
+        return _buildNutritionGuide();
+      case 'exercises':
+        return _buildExerciseGuide();
+      default:
+        return _buildMainContent();
+    }
+  }
+
+  Widget _buildMainContent() {
+    return TabBarView(
+      controller: _tabController,
+      children: _categories.map((category) {
+        switch (category) {
+          case 'basics':
+            return const BasicsTab();
+          case 'symptoms':
+            return const SymptomsTab();
+          case 'treatment':
+            return const TreatmentTab();
+          case 'nutrition':
+            return const NutritionTab();
+          case 'exercise':
+            return const ExerciseTab();
+          case 'kenya':
+            return _buildKenyaGuide();
+          default:
+            return const Center(child: Text('Coming soon'));
+        }
+      }).toList(),
+    );
+  }
+
+  Widget _buildKenyaGuide() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ovarian Health in Kenya',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildInfoCard(
+            title: 'Local Healthcare Resources',
+            content: '''
+• Kenyatta National Hospital - Reproductive Health Department
+• Aga Khan University Hospital - Women's Health Centre
+• Moi Teaching and Referral Hospital - Gynecology Unit
+            ''',
+            icon: Icons.local_hospital,
+          ),
+          const SizedBox(height: 16),
+          _buildInfoCard(
+            title: 'Understanding Ovarian Cysts',
+            content: '''
+Common symptoms to watch for:
+• Abdominal pain or pressure
+• Irregular menstrual cycles
+• Bloating
+• Nausea
+
+Seek medical attention if you experience severe pain or persistent symptoms.
+            ''',
+            icon: Icons.health_and_safety,
+          ),
+          const SizedBox(height: 16),
+          _buildInfoCard(
+            title: 'Treatment Options in Kenya',
+            content: '''
+• Traditional medicine consultations
+• Modern medical treatments
+• Surgical options when necessary
+• Support groups and counseling services
+            ''',
+            icon: Icons.medical_services,
+          ),
+          const SizedBox(height: 16),
+          _buildInfoCard(
+            title: 'Local Support Networks',
+            content: '''
+• Kenya Network of Women with AIDS (KENWA)
+• Women's Health Organizations
+• Community Health Workers
+• Mental Health Support Groups
+            ''',
+            icon: Icons.people,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({
+    required String title,
+    required String content,
+    required IconData icon,
+  }) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 24, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              content,
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _categories.map((category) {
-          switch (category) {
-            case 'basics':
-              return const BasicsTab();
-            case 'symptoms':
-              return const SymptomsTab();
-            case 'treatment':
-              return const TreatmentTab();
-            case 'nutrition':
-              return const NutritionTab();
-            case 'exercise':
-              return const ExerciseTab();
-            default:
-              return const Center(child: Text('Coming soon'));
-          }
-        }).toList(),
+    );
+  }
+
+  Widget _buildNutritionGuide() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Nutrition Guidelines',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildInfoCard(
+            title: 'Recommended Foods',
+            content: '''
+• Leafy green vegetables
+• Fresh fruits high in antioxidants
+• Lean proteins
+• Whole grains
+• Low-fat dairy products
+            ''',
+            icon: Icons.restaurant_menu,
+          ),
+          const SizedBox(height: 16),
+          _buildInfoCard(
+            title: 'Foods to Avoid',
+            content: '''
+• Processed foods
+• Excessive caffeine
+• Sugary drinks
+• High-sodium foods
+            ''',
+            icon: Icons.not_interested,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExerciseGuide() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Safe Exercises',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildInfoCard(
+            title: 'Recommended Activities',
+            content: '''
+• Gentle walking
+• Swimming
+• Yoga
+• Light stretching
+• Pelvic floor exercises
+            ''',
+            icon: Icons.directions_run,
+          ),
+          const SizedBox(height: 16),
+          _buildInfoCard(
+            title: 'Exercise Guidelines',
+            content: '''
+• Start slowly and gradually increase intensity
+• Listen to your body
+• Stop if you experience pain
+• Stay hydrated
+• Consult your doctor before starting new exercises
+            ''',
+            icon: Icons.warning,
+          ),
+        ],
       ),
     );
   }
@@ -112,7 +324,39 @@ class BasicsTab extends StatelessWidget {
             icon: Icons.warning_amber,
           ),
           const SizedBox(height: 16),
-          _buildAnatomySection(),
+          _buildInteractiveAnatomyImage(
+            title: 'Basic Ovarian Anatomy',
+            caption:
+                'Basic ovarian anatomy showing normal ovary structure and a typical ovarian cyst',
+            details:
+                'Tap the highlighted regions to learn more about each part of the ovarian anatomy.',
+            anatomyParts: [
+              AnatomyPart(
+                name: 'Ovary',
+                description:
+                    'The female reproductive organ that produces eggs and hormones. Each woman typically has two ovaries.',
+                region: const Rect.fromLTWH(100, 150, 80, 60),
+              ),
+              AnatomyPart(
+                name: 'Follicle',
+                description:
+                    'A fluid-filled sac containing a developing egg. During each menstrual cycle, several follicles begin to develop.',
+                region: const Rect.fromLTWH(120, 170, 40, 40),
+              ),
+              AnatomyPart(
+                name: 'Cyst',
+                description:
+                    'A fluid-filled sac that can develop on or inside the ovary. Most are harmless and disappear on their own.',
+                region: const Rect.fromLTWH(160, 140, 60, 60),
+              ),
+              AnatomyPart(
+                name: 'Fallopian Tube',
+                description:
+                    'The tube that carries eggs from the ovary to the uterus. Fertilization typically occurs here.',
+                region: const Rect.fromLTWH(200, 160, 100, 40),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -149,141 +393,77 @@ class BasicsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildAnatomySection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Color.fromRGBO(
-              AppColors.primary.r.toInt(),
-              AppColors.primary.g.toInt(),
-              AppColors.primary.b.toInt(),
-              0.1,
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.science_outlined, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Ovarian Cyst Anatomy',
-                style: AppStyles.headingMedium.copyWith(
-                  fontSize: 18,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Text(
-          'Understanding the structure and location of ovarian cysts can help you better communicate with your healthcare provider.',
-          style: AppStyles.bodyMedium,
-        ),
-        const SizedBox(height: 16),
-        _buildAnatomyImage(
-          imagePath: 'assets/images/education/cyst_anatomy_1.svg',
-          title: 'Basic Ovarian Anatomy',
-          caption:
-              'Basic ovarian anatomy showing normal ovary structure and a typical ovarian cyst',
-          details:
-              'Tap different parts of the image to learn more about ovarian anatomy.',
-        ),
-        const SizedBox(height: 16),
-        _buildAnatomyImage(
-          imagePath: 'assets/images/education/cyst_types.svg',
-          title: 'Types of Ovarian Cysts',
-          caption:
-              'Different types of ovarian cysts and their typical appearance',
-          details: 'Learn about various cyst types and their characteristics.',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAnatomyImage({
-    required String imagePath,
+  Widget _buildInteractiveAnatomyImage({
     required String title,
     required String caption,
     required String details,
+    required List<AnatomyPart> anatomyParts,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Color.fromRGBO(
-              Colors.grey.r.toInt(),
-              Colors.grey.g.toInt(),
-              Colors.grey.b.toInt(),
-              0.2,
-            ),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              title,
-              style: AppStyles.headingMedium.copyWith(fontSize: 16),
-            ),
-          ),
-          InteractiveViewer(
-            minScale: 0.5,
-            maxScale: 4.0,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SvgPicture.asset(
-                imagePath,
-                height: 240,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: AppStyles.headingMedium),
+            const SizedBox(height: 8),
+            Text(caption, style: AppStyles.bodyMedium),
+            const SizedBox(height: 16),
+            Stack(
               children: [
-                Text(
-                  caption,
-                  style: AppStyles.bodyMedium.copyWith(
-                    color: Colors.grey.shade700,
-                  ),
+                SvgPicture.asset(
+                  'assets/images/education/cyst_anatomy_1.svg',
+                  width: double.infinity,
+                  height: 300,
+                  fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.touch_app,
-                        size: 16, color: Colors.grey.shade600),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        details,
-                        style: AppStyles.bodyMedium.copyWith(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                          fontStyle: FontStyle.italic,
+                ...anatomyParts.map((part) {
+                  return Positioned(
+                    left: part.region.left,
+                    top: part.region.top,
+                    width: part.region.width,
+                    height: part.region.height,
+                    child: GestureDetector(
+                      onTapDown: (details) {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text(part.name),
+                            content: Text(part.description),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Close'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color:
+                              AppColors.primary.withAlpha((0.2 * 255).round()),
+                          border: Border.all(
+                            color: AppColors.primary,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  );
+                }),
               ],
             ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 8),
+            Text(
+              details,
+              style: AppStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -976,4 +1156,16 @@ class FAQTab extends StatelessWidget {
       ),
     );
   }
+}
+
+class AnatomyPart {
+  final String name;
+  final String description;
+  final Rect region;
+
+  const AnatomyPart({
+    required this.name,
+    required this.description,
+    required this.region,
+  });
 }

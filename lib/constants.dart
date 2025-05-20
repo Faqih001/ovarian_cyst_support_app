@@ -22,7 +22,7 @@ class AppStyles {
   );
 
   static const TextStyle headingMedium = TextStyle(
-    fontSize: 22.0,
+    fontSize: 20.0,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary,
   );
@@ -34,6 +34,11 @@ class AppStyles {
 
   static const TextStyle bodyMedium = TextStyle(
     fontSize: 14.0,
+    color: AppColors.textPrimary,
+  );
+
+  static const TextStyle bodySmall = TextStyle(
+    fontSize: 12.0,
     color: AppColors.textSecondary,
   );
 

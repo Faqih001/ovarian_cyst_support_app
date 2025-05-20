@@ -389,6 +389,13 @@ class _HomeContentState extends State<HomeContent>
                             icon: Icons.fitness_center,
                             color: AppColors.accent,
                           ),
+                          _buildResourceCard(
+                            title: 'Kenya Ovarian Health Guide',
+                            description:
+                                'Learn more about ovarian cysts from Kenyan health experts',
+                            icon: Icons.school,
+                            color: Colors.purple,
+                          ),
                         ],
                       ),
                     ),
@@ -474,7 +481,7 @@ class _HomeContentState extends State<HomeContent>
             };
 
             if (!mounted) return;
-            
+
             // Then navigate to tracking screen with the new symptom
             await Navigator.of(context).push(
               MaterialPageRoute(
@@ -483,7 +490,7 @@ class _HomeContentState extends State<HomeContent>
                 ),
               ),
             );
-            
+
             // Refresh the UI
             setState(() {});
           }
@@ -587,68 +594,70 @@ class _HomeContentState extends State<HomeContent>
     required IconData icon,
     required Color color,
   }) {
-    return InkWell(
+    return GestureDetector(
       onTap: () {
-        switch (title) {
-          case 'Nutrition for Ovarian Health':
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    const EducationalScreen(initialCategory: 'nutrition'),
+        if (title == 'Kenya Ovarian Health Guide') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const EducationalScreen(
+                initialCategory: 'kenya_guide',
               ),
-            );
-            break;
-          case 'Safe Exercises':
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    const EducationalScreen(initialCategory: 'exercise'),
+            ),
+          );
+        } else if (title == 'Nutrition for Ovarian Health') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const EducationalScreen(
+                initialCategory: 'nutrition',
               ),
-            );
-            break;
-          default:
-            break;
+            ),
+          );
+        } else if (title == 'Safe Exercises') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const EducationalScreen(
+                initialCategory: 'exercise',
+              ),
+            ),
+          );
         }
       },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: color.withAlpha((0.1 * 255).round()),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(
-          children: [
-            Icon(icon, size: 24, color: color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                icon,
+                size: 32,
+                color: color,
               ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: AppColors.textLight,
-            ),
-          ],
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -956,7 +965,8 @@ class _HomeContentState extends State<HomeContent>
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(Provider.of<AuthService>(context, listen: false).currentUser?.uid)
+          .doc(
+              Provider.of<AuthService>(context, listen: false).currentUser?.uid)
           .collection('symptoms')
           .orderBy('timestamp', descending: true)
           .limit(5)
