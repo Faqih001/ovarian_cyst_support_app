@@ -1218,7 +1218,7 @@ class _HomeContentState extends State<HomeContent>
       String userId, int severity, String description) async {
     // Capture ScaffoldMessenger before async operation
     final scaffoldMessenger = ScaffoldMessenger.of(parentContext);
-    
+
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -1252,82 +1252,20 @@ class _HomeContentState extends State<HomeContent>
   }
 
   void _showEditSymptomDialog(
-      BuildContext parentContext, String docId, Map<String, dynamic> symptom) {
-    final descriptionController =
-        TextEditingController(text: symptom['description'] as String? ?? '');
-    int currentSeverity = symptom['severity'] as int? ?? 1;
-
-    showDialog(
-      context: parentContext,
+      BuildContext context, String docId, Map<String, dynamic> symptom) {
+    showDialog<void>(
+      context: context,
       builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Edit Symptom'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Severity:'),
-                  Slider(
-                    value: currentSeverity.toDouble(),
-                    min: 1,
-                    max: 5,
-                    divisions: 4,
-                    label: currentSeverity.toString(),
-                    onChanged: (double value) {
-                      setDialogState(() {
-                        currentSeverity = value.round();
-                      });
-                    },
-                  ),
-                  TextField(
-                    controller: descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      hintText: 'How are you feeling?',
-                    ),
-                    maxLines: 3,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                    descriptionController.dispose();
-                  },
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    final userId =
-                        Provider.of<AuthService>(parentContext, listen: false)
-                            .currentUser
-                            ?.uid;
-                    if (userId == null) {
-                      Navigator.of(dialogContext).pop();
-                      return;
-                    }
-
-                    // Close dialog before async operation
-                    Navigator.of(dialogContext).pop();
-
-                    // Edit symptom after dialog is closed
-                    _editSymptom(
-                      parentContext,
-                      docId,
-                      userId,
-                      currentSeverity,
-                      descriptionController.text.trim(),
-                    );
-
-                    // Cleanup
-                    descriptionController.dispose();
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
-            );
+        return _EditSymptomDialog(
+          docId: docId,
+          symptom: symptom,
+          onSave: (severity, description) {
+            final userId = Provider.of<AuthService>(context, listen: false)
+                .currentUser
+                ?.uid;
+            if (userId != null) {
+              _editSymptom(context, docId, userId, severity, description);
+            }
           },
         );
       },
@@ -1412,6 +1350,90 @@ class _HomeContentState extends State<HomeContent>
           ),
         ],
       ),
+    );
+  }
+}
+
+// Dialog for editing symptoms
+class _EditSymptomDialog extends StatefulWidget {
+  final String docId;
+  final Map<String, dynamic> symptom;
+  final void Function(int severity, String description) onSave;
+
+  const _EditSymptomDialog({
+    required this.docId,
+    required this.symptom,
+    required this.onSave,
+  });
+
+  @override
+  State<_EditSymptomDialog> createState() => _EditSymptomDialogState();
+}
+
+class _EditSymptomDialogState extends State<_EditSymptomDialog> {
+  late final TextEditingController _descriptionController;
+  late int _currentSeverity;
+
+  @override
+  void initState() {
+    super.initState();
+    _descriptionController = TextEditingController(
+        text: widget.symptom['description'] as String? ?? '');
+    _currentSeverity = widget.symptom['severity'] as int? ?? 1;
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit Symptom'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Severity:'),
+          Slider(
+            value: _currentSeverity.toDouble(),
+            min: 1,
+            max: 5,
+            divisions: 4,
+            label: _currentSeverity.toString(),
+            onChanged: (double value) {
+              setState(() {
+                _currentSeverity = value.round();
+              });
+            },
+          ),
+          TextField(
+            controller: _descriptionController,
+            decoration: const InputDecoration(
+              labelText: 'Description',
+              hintText: 'How are you feeling?',
+            ),
+            maxLines: 3,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            final description = _descriptionController.text.trim();
+            Navigator.of(context).pop();
+            widget.onSave(_currentSeverity, description);
+          },
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }

@@ -168,7 +168,7 @@ OBJECTID,Facility_N,Type,Owner,County,Sub_County,Division,Location,Sub_Locati,Co
 167,AIC Kalamba Dispensary,Dispensary,Other Faith Based,Makueni,Nzaui,Kalamba,Kalamba,Kalamba,MAKUENI,Kalamba,-1.86649,37.51275
 168,AIC Litein Mission Hospital,Other Hospital,Other Faith Based,Kericho,Bureti,Bureti,Litein,Litein,BURET,Litein,-0.58621,35.1865
 169,AIC Liten VCT,VCT Centre (Stand-Alone),Christian Health Association of Kenya,Kericho,Bureti,Bureti,Litein,Litein,BURET,Litein Town,-0.58129,35.19104
-170,AIC Mukaa Dispensary,Dispensary,Christian Health Association of Kenya,Makueni,Mukaa,Kilome,Mukaa,Mukaa,KILOME, Nunguni,-1.83442,37.32693
+170,AIC Mukaa Dispensary,Dispensary,Christian Health Association of Kenya,Makueni,Mukaa,Kilome,Mukaa,Mukaa,KILOME,Â Nunguni,-1.83442,37.32693
 171,AIC Mununga Dispensary,Dispensary,Christian Health Association of Kenya,Murang'a,Kigumo,Kigumo,Kigumo,Kigumo,KIGUMO,Kigumo,-0.78096,36.92437
 172,AIC Parkview Dispensary,Dispensary,Christian Health Association of Kenya,Nakuru,Nakuru,Nakuru Municipality,Kaptembwo,Rhonda,NAKURU TOWN,Kipanga market,-0.31257,36.05826
 173,AIC Zion Medical Clinic,Medical Clinic,Other Faith Based,Nairobi,Mathare,Huruma,Huruma,Huruma,MATHARE, ,-1.26107,36.87213
@@ -1677,7 +1677,7 @@ OBJECTID,Facility_N,Type,Owner,County,Sub_County,Division,Location,Sub_Locati,Co
 1676,Ekerubo Dispensary (Kisii South),Dispensary,Ministry of Health,Kisii,Kisii South,Suneka,Bomorenda,Bomwancha,BONCHARI,Itibo Rianyabaro,-0.70116,34.73971
 1677,Ekerubo Dispensary (Masaba),Dispensary,Ministry of Health,Kisii,Masaba South,Kiamokama,Irianyi,Bogeche,NYARIBARI MASABA,Rianyoka,-0.89771,34.94024
 1678,Ekialo Kiano VCT,VCT Centre (Stand-Alone),Non-Governmental Organizations,Homa Bay,Mbita,Mfangano,Mfangano East,Wakinga,MBITA,Kitawi Beach,-0.49119,34.03444
-1679,Ekitale Dispensary,Dispensary,Ministry of Health,Bungoma,Bungoma South,Kanduyi,E. Bukusu,W. Sangálo,KANDUYI,Bungoma,0.555681,34.612614
+1679,Ekitale Dispensary,Dispensary,Ministry of Health,Bungoma,Bungoma South,Kanduyi,E. Bukusu,W. SangÃ¡lo,KANDUYI,Bungoma,0.555681,34.612614
 1680,Ekomero Health Centre,Health Centre,Ministry of Health,Kakamega,Khwisero,Kisa West,Ekomero,Ekomero,KHWISERO,Khumailo,0.52,34.87
 1681,Ekwanda Health Centre,Health Centre,Ministry of Health,Vihiga,Emuhaya,Luanda,South Bunyore,Ekwanda,EMUHAYA,Luanda,0.01411,34.57131
 1682,El Hadi Dispensary,Dispensary,Ministry of Health,Marsabit,North Horr,Dukana,Balesa,Elhadi,NORTH HORR,North Horr,3.8032,37.52908
@@ -3805,7 +3805,7 @@ OBJECTID,Facility_N,Type,Owner,County,Sub_County,Division,Location,Sub_Locati,Co
 3804,Kasiela Dispensary,Dispensary,Ministry of Health,Baringo,Baringo Central,Mochongoi,chebinyiny,Kasiela,BARINGO CENTRAL,Kabarnet,0.43092,36.2161
 3805,Kasigau Rdch,Health Centre,Ministry of Health,Taita Taveta,Voi,Nyangala,Kasigau,Rukanga,VOI,Rukanga Market,-3.81351,38.63989
 3806,Kasikeu Catholic Health Centre,Health Centre,Kenya Episcopal Conference-Catholic Secretariat,Makueni,Mukaa,Kasikeu,Kasikeu,Kasikeu,KILOME,Kasikeu Mkt,-1.95045,37.38488
-3807,Kasikeu Dispensary ,Dispensary,Ministry of Health,Makueni,Mukaa,Kasikeu,Kasikeu,Kasikeu,KILOME,Kasikeu Mkt,-1.94705,37.38233
+3807,Kasikeu DispensaryÂ ,Dispensary,Ministry of Health,Makueni,Mukaa,Kasikeu,Kasikeu,Kasikeu,KILOME,Kasikeu Mkt,-1.94705,37.38233
 3808,Kasilangwa dispensary,Dispensary,Ministry of Health,Baringo,East Pokot, , , ,BARINGO EAST, ,0.73786,36.32407
 3809,Kasilili Medical Clinic,Medical Clinic,Private Enterprise (Institution),Kitui,Mutitu,Mutito/kaliku ward,mutito,kitoo,MUTITO,Mutito,-1.22538,38.18897
 3810,Kasimba Medical Clinic,Medical Clinic,Private Practice - Clinical Officer,Makueni,Kilungu,Kilungu,Kilungu,Nduu,KAITI,Nunguni,-1.79439,37.36226
@@ -6684,7 +6684,7 @@ OBJECTID,Facility_N,Type,Owner,County,Sub_County,Division,Location,Sub_Locati,Co
 6683,Muthuthiini Dispensary,Dispensary,Ministry of Health,Nyeri,Mukurweini,Mukurweini,Gikondi,Muthuthiini,MUKURWEINI,Muthuthiini,-0.59375,37.054
 6684,Muthuthiini Medical Clinic,Medical Clinic,Private Practice - Nurse / Midwife,Nyeri,Mukurweini,Mukurweini,Gikondi,Muthuthiini,MUKURWEINI,Muthuthiini,-0.59369,37.05315
 6685,Muthwani (AIC) Dispensary,Dispensary,Christian Health Association of Kenya,Machakos,Athi River,Kathiani,Lukenya,Muthwani,KATHIANI,Kenol,-1.6427,37.5286
-6686,Mutiluni Dispensary,Dispensary,Ministry of Health,Makueni,Mukaa,Kilome,Kilome,Mutiluni,KILOME,Kilome   Mkt,-1.80249,37.32236
+6686,Mutiluni Dispensary,Dispensary,Ministry of Health,Makueni,Mukaa,Kilome,Kilome,Mutiluni,KILOME,KilomeÂ Â  Mkt,-1.80249,37.32236
 6687,Mutindwa Clinic and Lab,Medical Clinic,Private Practice - Unspecified,Meru,Imenti North,Miriga Mieru West,Municipality,Township,NORTH IMENTI,Meru Town,0.04551,37.65449
 6688,Mutindwa Dispensary,Dispensary,Ministry of Health,Tharaka Nithi,Maara,Chogoria,Murugi west,Kianjagi,CHUKA IGAMBANGOMBE,Chogoria,-0.24269,37.60172
 6689,Mutindwa Laboratory,Medical Clinic,Private Enterprise (Institution),Meru,Imenti North,Miriga Mieru West, , ,NORTH IMENTI,Meru,0.0456,37.65435
@@ -6799,7 +6799,7 @@ OBJECTID,Facility_N,Type,Owner,County,Sub_County,Division,Location,Sub_Locati,Co
 6798,Mweiga Health Centre,Health Centre,Community,Nyeri,Kieni West,Kieni West,Mweiga,Mweiga,KIENI,Mweiga,-0.33025,36.90299
 6799,Mweiga Medical Care,Medical Clinic,Private Practice - Clinical Officer,Nyeri,Kieni East,Kieni West,Mweiga,Mweiga,KIENI,Mweiga,-0.32714,36.90674
 6800,Mweiga Rural Health Clinic,Medical Clinic,Private Practice - Nurse / Midwife,Nyeri,Kieni West,Kieni West,Mweiga,Amboni,KIENI,Mweiga,-0.33029,36.90212
-6801,Mweini Dispensary,Dispensary,Ministry of Health,Makueni,Nzaui,Nguu,Mweini,Mweini,MAKUENI, Emali,-2.068,37.681
+6801,Mweini Dispensary,Dispensary,Ministry of Health,Makueni,Nzaui,Nguu,Mweini,Mweini,MAKUENI,Â Emali,-2.068,37.681
 6802,Mwema Health Care Clinic,Medical Clinic,Private Practice - Unspecified,Meru,Igembe North,Mutuati,Mutuati,Mutuati,NTONYIRI,Mutuati Market,0.38537,37.9815
 6803,Mwembe Tayari Staff Clinic,Dispensary,Local Authority,Mombasa,Mvita,Island,Mwembe Tayari,Mwembe Tayari,MVITA,Mombasa,-4.05668,39.66981
 6804,Mwenda andu Medical Clinic,Medical Clinic,Private Practice - Nurse / Midwife,Nyandarua,Kipipiri,Wanjohi,Ndemi,Ndemi,KIPIPIRI,Ndemi,-0.32544,36.45191
