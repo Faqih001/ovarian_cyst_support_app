@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
+import 'package:ovarian_cyst_support_app/services/ml_prediction_service.dart';
 import 'package:ovarian_cyst_support_app/screens/facility_selection_screen.dart';
 
 class OvarianCystPredictionScreen extends StatefulWidget {
@@ -20,6 +23,10 @@ class _OvarianCystPredictionScreenState
   String? _predictionResult;
   String? _stage;
   List<String>? _recommendations;
+  File? _selectedImage;
+  Map<String, dynamic>? _imageAnalysisResult;
+  final MLPredictionService _mlService = MLPredictionService();
+  Map<String, double>? _featureContributions;
 
   // Form fields
   final TextEditingController _ageController = TextEditingController();
@@ -31,122 +38,24 @@ class _OvarianCystPredictionScreenState
   bool _urinarySymptoms = false;
   bool _weightLoss = false;
 
-  Future<void> _predictCyst() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-      _predictionResult = null;
-      _stage = null;
-      _recommendations = null;
-    });
-
-    try {
-      // TODO: Replace with actual ML model integration
-      // This is a mock prediction for demonstration
-      await Future.delayed(const Duration(seconds: 2));
-
-      final age = int.parse(_ageController.text);
-      final cystSize = double.parse(_cystSizeController.text);
-
-      // Mock prediction logic
-      String prediction;
-      String stage;
-      List<String> recommendations;
-
-      if (cystSize > 10 ||
-          (_painLevel > 4 && _irregularBleeding && _abdominalPain)) {
-        prediction = "High Risk - Immediate Medical Attention Required";
-        stage = "Severe";
-        recommendations = [
-          "Schedule an immediate appointment with a gynecologist",
-          "Consider emergency care if pain is severe",
-          "Complete rest and avoid physical strain",
-          "Keep track of all symptoms",
-          "Book an ultrasound scan"
-        ];
-        // Navigate to appointment booking if severe
-        if (mounted) {
-          _showBookAppointmentDialog();
-        }
-      } else if (cystSize > 5 ||
-          (_painLevel > 3 && (_irregularBleeding || _abdominalPain))) {
-        prediction = "Moderate Risk - Medical Consultation Recommended";
-        stage = "Moderate";
-        recommendations = [
-          "Schedule a check-up within the next week",
-          "Monitor symptoms daily",
-          "Gentle exercise is allowed but avoid strenuous activities",
-          "Apply heat therapy for pain relief",
-          "Consider over-the-counter pain medication if needed"
-        ];
-      } else {
-        prediction = "Low Risk - Regular Monitoring Advised";
-        stage = "Mild";
-        recommendations = [
-          "Schedule a routine check-up",
-          "Keep track of any changes in symptoms",
-          "Maintain healthy lifestyle habits",
-          "Regular mild exercise is beneficial",
-          "Stay hydrated and maintain a balanced diet"
-        ];
-      }
-
-      setState(() {
-        _predictionResult = prediction;
-        _stage = stage;
-        _recommendations = recommendations;
-        _isLoading = false;
-      });
-
-      // Save prediction to Firestore
-      final userId =
-          Provider.of<AuthService>(context, listen: false).currentUser?.uid;
-      if (userId != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .collection('predictions')
-            .add({
-          'timestamp': Timestamp.now(),
-          'age': age,
-          'cystSize': cystSize,
-          'painLevel': _painLevel,
-          'irregularBleeding': _irregularBleeding,
-          'abdominalPain': _abdominalPain,
-          'bloating': _bloating,
-          'urinarySymptoms': _urinarySymptoms,
-          'weightLoss': _weightLoss,
-          'prediction': prediction,
-          'stage': stage,
-          'recommendations': recommendations,
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _predictionResult = "Error: Unable to make prediction";
-      });
-    }
-  }
-
-  void _showBookAppointmentDialog() {
+  void _showBookAppointmentDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext dialogContext) => AlertDialog(
         title: const Text('High Risk Detected'),
         content: const Text(
-            'Based on the symptoms and cyst size, we recommend immediate medical attention. Would you like to book an appointment now?'),
+          'Based on the symptoms and cyst size, we recommend immediate medical attention. Would you like to book an appointment now?',
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Later'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               Navigator.push(
-                context,
+                dialogContext,
                 MaterialPageRoute(
                   builder: (_) => const FacilitySelectionScreen(),
                 ),
@@ -161,6 +70,122 @@ class _OvarianCystPredictionScreenState
         ],
       ),
     );
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
+
+    if (image != null) {
+      setState(() {
+        _selectedImage = File(image.path);
+        _imageAnalysisResult = null;
+      });
+
+      try {
+        setState(() => _isLoading = true);
+        final result = await _mlService.analyzeUltrasoundImage(_selectedImage!);
+        setState(() {
+          _imageAnalysisResult = result;
+          _isLoading = false;
+        });
+      } catch (e) {
+        setState(() {
+          _imageAnalysisResult = null;
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error analyzing image: \${e.toString()}')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _predictCyst() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // Capture the auth service user ID before async operations
+    final userId =
+        Provider.of<AuthService>(context, listen: false).currentUser?.uid;
+
+    setState(() {
+      _isLoading = true;
+      _predictionResult = null;
+      _stage = null;
+      _recommendations = null;
+      _featureContributions = null;
+    });
+
+    try {
+      final age = int.parse(_ageController.text);
+      final cystSize = double.parse(_cystSizeController.text);
+
+      // Get prediction from ML service
+      final prediction = await _mlService.predictFromData(
+        age: age,
+        cystSize: cystSize,
+        painLevel: _painLevel,
+        irregularBleeding: _irregularBleeding,
+        abdominalPain: _abdominalPain,
+        bloating: _bloating,
+        urinarySymptoms: _urinarySymptoms,
+        weightLoss: _weightLoss,
+      );
+
+      if (mounted && userId != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('predictions')
+            .add({
+          'timestamp': Timestamp.now(),
+          'age': age,
+          'cystSize': cystSize,
+          'painLevel': _painLevel,
+          'irregularBleeding': _irregularBleeding,
+          'abdominalPain': _abdominalPain,
+          'bloating': _bloating,
+          'urinarySymptoms': _urinarySymptoms,
+          'weightLoss': _weightLoss,
+          'prediction': prediction.stage,
+          'riskScore': prediction.riskScore,
+          'recommendations': prediction.recommendations,
+          'featureContributions': prediction.featureContributions,
+          'imageAnalysis': _imageAnalysisResult,
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _predictionResult =
+              '\${prediction.stage} Risk - Risk Score: \${prediction.riskScore.toStringAsFixed(1)}%';
+          _stage = prediction.stage;
+          _recommendations = prediction.recommendations;
+          _featureContributions = prediction.featureContributions;
+          _isLoading = false;
+        });
+
+        if (prediction.stage == 'Severe') {
+          _showBookAppointmentDialog(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _predictionResult = "Error: Unable to make prediction";
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: \${e.toString()}')),
+        );
+      }
+    }
   }
 
   @override
@@ -298,6 +323,59 @@ class _OvarianCystPredictionScreenState
               ),
               const SizedBox(height: 24),
 
+              // Image upload section
+              const Text(
+                'Upload Ultrasound Image (Optional)',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      if (_selectedImage != null) ...[
+                        Image.file(
+                          _selectedImage!,
+                          height: 200,
+                          fit: BoxFit.cover,
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _pickImage,
+                        icon: const Icon(Icons.upload),
+                        label: Text(_selectedImage == null
+                            ? 'Select Image'
+                            : 'Change Image'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                      if (_imageAnalysisResult != null) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          'Image Analysis Result:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _imageAnalysisResult!['isCystic']
+                                ? Colors.red
+                                : Colors.green,
+                          ),
+                        ),
+                        Text(
+                          'Confidence: ${(_imageAnalysisResult!['confidence'] as double).toStringAsFixed(1)}%',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
               // Predict button
               SizedBox(
                 width: double.infinity,
@@ -384,6 +462,55 @@ class _OvarianCystPredictionScreenState
                               ),
                             ),
                           ),
+                        ],
+                        if (_featureContributions != null) ...[
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Risk Factors Analysis:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ...(_featureContributions!.entries
+                              .where((e) => e.value > 0)
+                              .toList()
+                                ..sort((a, b) => b.value.compareTo(a.value)))
+                              .map(
+                                (e) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        e.key,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      LinearProgressIndicator(
+                                        value: e.value / 100,
+                                        backgroundColor: Colors.grey[200],
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          e.value > 75
+                                              ? Colors.red
+                                              : e.value > 50
+                                                  ? Colors.orange
+                                                  : Colors.green,
+                                        ),
+                                      ),
+                                      Text(
+                                        '\${e.value.toStringAsFixed(1)}% contribution',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                         ],
                       ],
                     ),

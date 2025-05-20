@@ -1,0 +1,3 @@
+// This is a placeholder for the actual TFLite model
+// The actual model should be trained using the PCOS dataset and converted to TFLite format
+// Model architecture should include both numerical features and CNN for image analysis
