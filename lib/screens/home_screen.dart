@@ -339,23 +339,6 @@ class _HomeContentState extends State<HomeContent>
 
                     const SizedBox(height: 24),
 
-                    // Health Insights
-                    const Text(
-                      'Health Insights',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Health Tracking
-                    _buildHealthTracking(),
-
-                    const SizedBox(height: 24),
-
                     // Health Tips
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -400,8 +383,25 @@ class _HomeContentState extends State<HomeContent>
                       ),
                     ),
 
+                    const SizedBox(height: 24),
+
+                    // Health Insights Header
+                    const Text(
+                      'Health Insights',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Health Tracking
+                    _buildHealthTracking(),
+
                     // Add some space at the bottom
-                    const SizedBox(height: 80),
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),
@@ -478,9 +478,9 @@ class _HomeContentState extends State<HomeContent>
                                 : 3,
             'description': 'Feeling $label',
             'timestamp': Timestamp.fromDate(now),
-            'dateTime': now
-                .toIso8601String(), // Adding a string date for consistent formatting
+            'date': now.toIso8601String(), // Consistent date field name
             'userId': userId,
+            'status': 'active', // Add status for CRUD operations
           };
 
           // Save to Firestore
@@ -1009,6 +1009,7 @@ class _HomeContentState extends State<HomeContent>
             ],
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               TabBar(
                 controller: _tabController,
@@ -1022,8 +1023,11 @@ class _HomeContentState extends State<HomeContent>
                   Tab(text: 'Activity'),
                 ],
               ),
-              SizedBox(
-                height: 200,
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: 200.0,
+                  maxHeight: 400.0,
+                ),
                 child: TabBarView(
                   controller: _tabController,
                   children: [
@@ -1066,16 +1070,75 @@ class _HomeContentState extends State<HomeContent>
       itemCount: symptoms.length,
       itemBuilder: (context, index) {
         final symptom = symptoms[index].data() as Map<String, dynamic>;
+        final docId = symptoms[index].id;
+        final userId =
+            Provider.of<AuthService>(context, listen: false).currentUser?.uid;
+
         return Card(
-          child: ListTile(
-            leading: _buildSeverityIndicator(symptom['severity'] as int? ?? 1),
-            title: Text(symptom['type'] as String? ?? 'Unknown'),
-            subtitle: Text(symptom['description'] as String? ?? ''),
-            trailing: Text(
-              _formatDate(
-                (symptom['timestamp'] as Timestamp?)?.toDate() ??
-                    DateTime.now(),
+          child: Dismissible(
+            key: Key(docId),
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 16),
+              color: Colors.red,
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            direction: DismissDirection.endToStart,
+            onDismissed: (direction) async {
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              try {
+                // Delete the symptom
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(userId)
+                    .collection('symptoms')
+                    .doc(docId)
+                    .delete();
+
+                if (!mounted) return;
+
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Symptom deleted'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text('Error deleting symptom: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: ListTile(
+              leading:
+                  _buildSeverityIndicator(symptom['severity'] as int? ?? 1),
+              title: Text(symptom['type'] as String? ?? 'Unknown'),
+              subtitle: Text(symptom['description'] as String? ?? ''),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _formatDate(
+                      (symptom['timestamp'] as Timestamp?)?.toDate() ??
+                          DateTime.now(),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: () {
+                      _showEditSymptomDialog(context, docId, symptom);
+                    },
+                  ),
+                ],
               ),
+              onTap: () {
+                _showSymptomDetails(context, symptom);
+              },
             ),
           ),
         );
@@ -1112,6 +1175,163 @@ class _HomeContentState extends State<HomeContent>
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}';
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year} at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _showSymptomDetails(BuildContext context, Map<String, dynamic> symptom) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Symptom Details',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading:
+                    _buildSeverityIndicator(symptom['severity'] as int? ?? 1),
+                title: Text(symptom['type'] as String? ?? 'Unknown'),
+                subtitle: Text(symptom['description'] as String? ?? ''),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Recorded on: ${_formatDateTime((symptom['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now())}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _editSymptom(BuildContext parentContext, String docId,
+      String userId, int severity, String description) async {
+    // Capture ScaffoldMessenger before async operation
+    final scaffoldMessenger = ScaffoldMessenger.of(parentContext);
+    
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('symptoms')
+          .doc(docId)
+          .update({
+        'severity': severity,
+        'description': description,
+        'lastUpdated': Timestamp.now(),
+      });
+
+      if (!mounted) return;
+
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Symptom updated successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Error updating symptom: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showEditSymptomDialog(
+      BuildContext parentContext, String docId, Map<String, dynamic> symptom) {
+    final descriptionController =
+        TextEditingController(text: symptom['description'] as String? ?? '');
+    int currentSeverity = symptom['severity'] as int? ?? 1;
+
+    showDialog(
+      context: parentContext,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Edit Symptom'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Severity:'),
+                  Slider(
+                    value: currentSeverity.toDouble(),
+                    min: 1,
+                    max: 5,
+                    divisions: 4,
+                    label: currentSeverity.toString(),
+                    onChanged: (double value) {
+                      setDialogState(() {
+                        currentSeverity = value.round();
+                      });
+                    },
+                  ),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      hintText: 'How are you feeling?',
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    descriptionController.dispose();
+                  },
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final userId =
+                        Provider.of<AuthService>(parentContext, listen: false)
+                            .currentUser
+                            ?.uid;
+                    if (userId == null) {
+                      Navigator.of(dialogContext).pop();
+                      return;
+                    }
+
+                    // Close dialog before async operation
+                    Navigator.of(dialogContext).pop();
+
+                    // Edit symptom after dialog is closed
+                    _editSymptom(
+                      parentContext,
+                      docId,
+                      userId,
+                      currentSeverity,
+                      descriptionController.text.trim(),
+                    );
+
+                    // Cleanup
+                    descriptionController.dispose();
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildMedicationsView() {
