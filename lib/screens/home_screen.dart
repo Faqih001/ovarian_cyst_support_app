@@ -159,13 +159,21 @@ class _HomeContentState extends State<HomeContent>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Welcome, Sarah!',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                Consumer<AuthService>(
+                                  builder: (context, authService, _) {
+                                    final user = authService.user;
+                                    final name =
+                                        user?.displayName?.split(' ')[0] ??
+                                            'Guest';
+                                    return Text(
+                                      'Welcome, $name!',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    );
+                                  },
                                 ),
                                 Text(
                                   'How are you feeling today?',
