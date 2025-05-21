@@ -9,7 +9,7 @@ class PCOSPredictionResult {
   final List<String> recommendations;
   final Map<String, double> featureContributions;
 
-  PCOSPredictionResult({
+  const PCOSPredictionResult({
     required this.riskScore,
     required this.stage,
     required this.recommendations,
@@ -17,13 +17,19 @@ class PCOSPredictionResult {
   });
 
   factory PCOSPredictionResult.fromJson(Map<String, dynamic> json) {
-    return PCOSPredictionResult(
-      riskScore: json['risk_probability'] as double,
-      stage: json['stage'] as String,
-      recommendations: List<String>.from(json['recommendations']),
-      featureContributions:
-          Map<String, double>.from(json['feature_contributions']),
-    );
+    try {
+      return PCOSPredictionResult(
+        riskScore: (json['risk_probability'] as num).toDouble(),
+        stage: json['stage'].toString(),
+        recommendations: List<String>.from(json['recommendations'] ?? []),
+        featureContributions: Map<String, double>.from(
+            json['feature_contributions']?.map((key, value) =>
+                    MapEntry(key.toString(), (value as num).toDouble())) ??
+                {}),
+      );
+    } catch (e) {
+      throw FormatException('Invalid JSON format: $e');
+    }
   }
 }
 
@@ -34,37 +40,25 @@ class MLPredictionService {
   final Logger _logger = Logger('MLPredictionService');
 
   // API Configuration
-  static const bool _useLocalServer = false; // Set to false for production
-  static const String _localUrl = 'http://localhost:8001'; // FastAPI server
+  static const bool _useLocalServer = false;
+  static const String _localUrl = 'http://localhost:8001';
   static const String _streamlitUrl =
-      'http://localhost:8502'; // Streamlit server
-  static const String _productionUrl =
       'https://ovarian-cyst-ml-api.streamlit.app';
 
-  String get _baseUrl => _useLocalServer ? _localUrl : _productionUrl;
-  String get _fallbackUrl => _streamlitUrl; // Only use local fallback in dev
+  String get _baseUrl => _useLocalServer ? _localUrl : _streamlitUrl;
 
   static const int _maxRetries = 3;
-  static const int _maxRedirects = 5;
-  static const Duration _timeout = Duration(seconds: 60); // Increased timeout
+  static const Duration _timeout = Duration(seconds: 60);
 
-  // Custom headers to prevent caching and identify the app
+  // Custom headers
   static final Map<String, String> _headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0',
+    'Cache-Control': 'no-cache',
     'User-Agent': 'OvarianCystApp/1.0',
-    'X-Requested-With': 'XMLHttpRequest',
-    'Origin': '*',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': '*'
   };
 
   MLPredictionService._internal() {
-    // Initialize logging
     Logger.root.level = Level.ALL;
     Logger.root.onRecord.listen((record) {
       debugPrint('${record.level.name}: ${record.time}: ${record.message}');
@@ -159,148 +153,70 @@ class MLPredictionService {
     };
 
     try {
-      http.Response? response;
-      Exception? lastError;
-
-      // Try primary URL first
-      try {
-        response = await _makeRequest(_baseUrl, requestData);
-        return _processPredictionResponse(response);
-      } catch (e) {
-        _logger.warning('Error with primary URL: $e');
-        lastError = e is Exception ? e : Exception(e.toString());
-      }
-
-      // Try fallback URL if primary failed
-      if (response == null) {
-        try {
-          response = await _makeRequest(_fallbackUrl, requestData);
-          return _processPredictionResponse(response);
-        } catch (e) {
-          _logger.warning('Error with fallback URL: $e');
-          lastError = e is Exception ? e : Exception(e.toString());
-        }
-      }
-
-      // If both URLs failed, throw a user-friendly error
-      _logger.severe('Both URLs failed. Last error: $lastError');
-      if (lastError.toString().contains('SocketException')) {
-        throw Exception(
-            'Network error. Please check your internet connection and try again.');
-      } else if (lastError.toString().contains('timeout')) {
-        throw Exception('Request timed out. Please try again.');
-      } else {
-        throw Exception(
-            'Unable to connect to our servers. Please try again later.');
-      }
+      final response = await _makeRequest(requestData);
+      return _processPredictionResponse(response);
     } catch (e) {
       _logger.severe('Prediction failed: $e');
+      if (e.toString().contains('timeout')) {
+        throw Exception('Request timed out. Please try again.');
+      }
       throw Exception(
           'Unable to process your request. Please try again later.');
     }
   }
 
-  Future<http.Response> _makeRequest(
-      String baseUrl, Map<String, dynamic> data) async {
-    var uri = Uri.parse('$baseUrl/predict');
+  Future<http.Response> _makeRequest(Map<String, dynamic> data) async {
+    final uri = Uri.parse(_baseUrl);
     int retryCount = 0;
-    int redirectCount = 0;
-    Exception? lastError;
-    String? initialUrl = uri.toString();
 
     while (retryCount < _maxRetries) {
       try {
         final client = http.Client();
         try {
-          var currentUri = uri;
+          _logger.info('Making request to: ${uri.toString()}');
 
-          // Skip CORS preflight in Dart - it's handled by the browser
+          final response = await client
+              .post(
+                uri,
+                headers: _headers,
+                body: json.encode(data),
+              )
+              .timeout(_timeout);
 
-          while (redirectCount < _maxRedirects) {
-            _logger.info('Making request to: ${currentUri.toString()}');
+          _logger.info('Response status: ${response.statusCode}');
+          _logger.info('Response headers: ${response.headers}');
 
-            // Add retry attempt number to headers
-            final requestHeaders = Map<String, String>.from(_headers)
-              ..['X-Retry-Attempt'] = (retryCount + 1).toString();
-
-            final response = await client
-                .post(
-                  currentUri,
-                  headers: requestHeaders,
-                  body: json.encode(data),
-                )
-                .timeout(_timeout);
-
-            _logger.info('Response status: ${response.statusCode}');
-            _logger.info('Response headers: ${response.headers}');
-
-            // Log response body for debugging (only in development)
-            if (_useLocalServer) {
-              _logger.fine('Response body: ${response.body}');
-            }
-
-            if (response.statusCode == 200) {
-              return response;
-            } else if (response.statusCode >= 300 &&
-                response.statusCode < 400) {
-              final location = response.headers['location'];
-              if (location == null) {
-                throw Exception('Redirect location header missing');
-              }
-
-              final redirectUri = Uri.parse(location);
-              currentUri = redirectUri.isAbsolute
-                  ? redirectUri
-                  : Uri.parse(baseUrl).resolveUri(redirectUri);
-
-              if (currentUri.toString() == initialUrl) {
-                _logger.warning('Redirect loop detected');
-                break;
-              }
-
-              _logger.info('Redirecting to: ${currentUri.toString()}');
-              redirectCount++;
-              continue;
-            }
-
-            // Handle specific error codes
-            switch (response.statusCode) {
-              case 401:
-                throw Exception(
-                    'Unauthorized access. Please check your credentials.');
-              case 403:
-                throw Exception(
-                    'Access forbidden. Please check your permissions.');
-              case 429:
-                final retryAfter = response.headers['retry-after'];
-                if (retryAfter != null) {
-                  final delay = int.tryParse(retryAfter) ?? 5;
-                  await Future.delayed(Duration(seconds: delay));
-                }
-                throw Exception('Too many requests. Please try again later.');
-              case 500:
-              case 502:
-              case 503:
-              case 504:
-                throw Exception(
-                    'Server error (${response.statusCode}). Please try again later.');
-              default:
-                throw Exception(
-                    'Server returned status code ${response.statusCode}: ${response.body}');
-            }
+          if (response.statusCode == 200) {
+            return response;
           }
 
-          throw Exception('Maximum redirect count ($_maxRedirects) exceeded');
+          // Handle specific error codes
+          switch (response.statusCode) {
+            case 401:
+              throw Exception(
+                  'Unauthorized access. Please check your credentials.');
+            case 403:
+              throw Exception(
+                  'Access forbidden. Please check your permissions.');
+            case 429:
+              final retryAfter = response.headers['retry-after'];
+              if (retryAfter != null) {
+                final delay = int.tryParse(retryAfter) ?? 5;
+                await Future.delayed(Duration(seconds: delay));
+              }
+              throw Exception('Too many requests. Please try again later.');
+            default:
+              throw Exception(
+                  'Server returned status code ${response.statusCode}: ${response.body}');
+          }
         } finally {
           client.close();
         }
       } catch (e) {
-        lastError = e is Exception ? e : Exception(e.toString());
         _logger.warning('Attempt ${retryCount + 1} failed: $e');
         retryCount++;
 
         if (retryCount < _maxRetries) {
-          // Exponential backoff with jitter
           final baseDelay = 1 << retryCount;
           final jitter =
               (DateTime.now().millisecondsSinceEpoch % 1000) / 1000.0;
@@ -309,16 +225,16 @@ class MLPredictionService {
       }
     }
 
-    throw lastError ??
-        Exception('Failed to make prediction after $_maxRetries attempts');
+    throw Exception('Failed to make prediction after $_maxRetries attempts');
   }
 
   PCOSPredictionResult _processPredictionResponse(http.Response response) {
     try {
+      _logger.info('Processing response: ${response.body}');
       final result = json.decode(response.body);
       return PCOSPredictionResult.fromJson(result);
     } catch (e) {
-      _logger.severe('Error processing prediction response', e);
+      _logger.severe('Error processing prediction response: $e');
       throw Exception('Invalid response from server. Please try again.');
     }
   }
@@ -335,7 +251,7 @@ class MLPredictionService {
       'AB+': 7,
       'AB-': 8
     };
-    return bloodGroups[bloodGroup] ?? 1; // Default to 1 (A+) if unknown
+    return bloodGroups[bloodGroup] ?? 1;
   }
 
   Future<PCOSPredictionResult> predictOvarianCyst({
@@ -374,9 +290,8 @@ class MLPredictionService {
     required double avgFSizeR,
     required double endometrium,
   }) async {
-    // Calculate FSH-LH ratio using typical values when not provided
-    const double defaultFSH = 6.0; // typical FSH level
-    const double defaultLH = 5.0; // typical LH level
+    const double defaultFSH = 6.0;
+    const double defaultLH = 5.0;
     final double fshLhRatio = defaultFSH / defaultLH;
 
     return predictFromData(
@@ -393,13 +308,13 @@ class MLPredictionService {
       marriageStatus: marriageStatus,
       pregnant: pregnant,
       noOfAbortions: abortions,
-      betaHcg1: 0.0, // Not using these values in simplified version
+      betaHcg1: 0.0,
       betaHcg2: 0.0,
       fsh: defaultFSH,
       lh: defaultLH,
       fshLhRatio: fshLhRatio,
-      hip: waistHipRatio * 100, // Approximating from ratio
-      waist: 100, // Using standard value since we only need the ratio
+      hip: waistHipRatio * 100,
+      waist: 100,
       waistHipRatio: waistHipRatio,
       tsh: tsh,
       amh: amh,
