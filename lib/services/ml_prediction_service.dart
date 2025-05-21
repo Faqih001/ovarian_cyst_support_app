@@ -43,20 +43,13 @@ class MLPredictionService {
   static const bool _useLocalServer = false;
   static const String _localUrl = 'http://localhost:8001';
   static const String _streamlitUrl =
-      'https://ovarian-cyst-ml-api.streamlit.app';
+      'https://ovarian-cyst-ml-api.streamlit.app/_stcore/stream';
 
   String get _baseUrl => _useLocalServer ? _localUrl : _streamlitUrl;
 
+  // Request configuration
   static const int _maxRetries = 3;
   static const Duration _timeout = Duration(seconds: 60);
-
-  // Custom headers
-  static final Map<String, String> _headers = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Cache-Control': 'no-cache',
-    'User-Agent': 'OvarianCystApp/1.0',
-  };
 
   MLPredictionService._internal() {
     Logger.root.level = Level.ALL;
@@ -154,11 +147,24 @@ class MLPredictionService {
 
     try {
       final response = await _makeRequest(requestData);
-      return _processPredictionResponse(response);
+      try {
+        _logger.info('Processing response: ${response.body}');
+        final result = json.decode(response.body);
+        return PCOSPredictionResult.fromJson(result);
+      } catch (e) {
+        _logger.severe('Error processing prediction response: $e');
+        throw Exception('Invalid response from server. Please try again.');
+      }
     } catch (e) {
       _logger.severe('Prediction failed: $e');
       if (e.toString().contains('timeout')) {
         throw Exception('Request timed out. Please try again.');
+      } else if (e.toString().contains('API not ready')) {
+        throw Exception(
+            'The prediction service is starting up. Please try again in a few moments.');
+      } else if (e.toString().contains('SocketException')) {
+        throw Exception(
+            'Network error. Please check your internet connection.');
       }
       throw Exception(
           'Unable to process your request. Please try again later.');
@@ -169,25 +175,53 @@ class MLPredictionService {
     final uri = Uri.parse(_baseUrl);
     int retryCount = 0;
 
+    // Add specific headers for Streamlit
+    final requestHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': '*/*',
+      'User-Agent': 'OvarianCystApp/1.0',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Host': 'ovarian-cyst-ml-api.streamlit.app',
+      'Origin': 'https://ovarian-cyst-ml-api.streamlit.app',
+      'Referer': 'https://ovarian-cyst-ml-api.streamlit.app/',
+      'Connection': 'keep-alive',
+      'X-Streamlit-Client': 'true',
+    };
+
     while (retryCount < _maxRetries) {
       try {
         final client = http.Client();
         try {
           _logger.info('Making request to: ${uri.toString()}');
+          _logger.info('Request headers: $requestHeaders');
+          _logger.info('Request body: ${json.encode(data)}');
+
+          // Wrap the data in Streamlit's expected format
+          final streamlitData = {
+            'data': data,
+            'session_id': DateTime.now().millisecondsSinceEpoch.toString(),
+            'app_id': 'ovarian-cyst-predictor'
+          };
 
           final response = await client
               .post(
                 uri,
-                headers: _headers,
-                body: json.encode(data),
+                headers: requestHeaders,
+                body: json.encode(streamlitData),
               )
               .timeout(_timeout);
 
           _logger.info('Response status: ${response.statusCode}');
           _logger.info('Response headers: ${response.headers}');
+          _logger.info('Response body: ${response.body}');
 
           if (response.statusCode == 200) {
             return response;
+          } else if (response.statusCode >= 300 && response.statusCode < 400) {
+            _logger.warning(
+                'Received redirect response. Streamlit API might not be ready.');
+            throw Exception(
+                'API not ready. Please try again in a few moments.');
           }
 
           // Handle specific error codes
@@ -226,17 +260,6 @@ class MLPredictionService {
     }
 
     throw Exception('Failed to make prediction after $_maxRetries attempts');
-  }
-
-  PCOSPredictionResult _processPredictionResponse(http.Response response) {
-    try {
-      _logger.info('Processing response: ${response.body}');
-      final result = json.decode(response.body);
-      return PCOSPredictionResult.fromJson(result);
-    } catch (e) {
-      _logger.severe('Error processing prediction response: $e');
-      throw Exception('Invalid response from server. Please try again.');
-    }
   }
 
   // Convert blood group string to numeric value
