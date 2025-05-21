@@ -154,9 +154,7 @@ class HospitalService {
 
         csvData =
             await _storageService.downloadCsvToString(_firebaseStoragePath);
-        if (csvData != null) {
-          _logger.i('Successfully loaded CSV from Firebase Storage');
-        }
+        _logger.i('Successfully loaded CSV from Firebase Storage');
       }
 
       // If we still don't have data, throw an error
@@ -334,13 +332,8 @@ class HospitalService {
       try {
         String? url = await _storageService.uploadCsvFromAssets(
             _csvFilePath, _firebaseStoragePath);
-        if (url != null) {
-          _logger.i('Successfully uploaded CSV to Firebase Storage: $url');
-          return true;
-        } else {
-          _logger.w(
-              'Firebase Storage upload failed, falling back to local assets');
-        }
+        _logger.i('Successfully uploaded CSV to Firebase Storage: $url');
+        return true;
       } catch (e) {
         _logger.w('Firebase Storage error, falling back to local assets: $e');
       }
