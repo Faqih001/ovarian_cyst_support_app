@@ -43,3 +43,29 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Python/ML specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+*.env
+ml/miniconda.sh
+ml/venv/
+catboost_info/
+.ipynb_checkpoints/
+
+# Large ML files
+*.joblib
+*.h5
+*.pkl
+*.onnx
+ml/models/*.joblib
+
+# Logs
+logs/
+*.log
