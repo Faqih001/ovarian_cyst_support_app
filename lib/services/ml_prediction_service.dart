@@ -34,7 +34,7 @@ class MLPredictionService {
   final Logger _logger = Logger('MLPredictionService');
 
   // API Configuration
-  static const bool _useLocalServer = true; // Set to false for production
+  static const bool _useLocalServer = false; // Set to false for production
   static const String _localUrl = 'http://localhost:8001'; // FastAPI server
   static const String _streamlitUrl =
       'http://localhost:8502'; // Streamlit server
@@ -42,11 +42,11 @@ class MLPredictionService {
       'https://ovarian-cyst-ml-api.streamlit.app';
 
   String get _baseUrl => _useLocalServer ? _localUrl : _productionUrl;
-  String get _fallbackUrl => _useLocalServer ? _streamlitUrl : _productionUrl;
+  String get _fallbackUrl => _streamlitUrl; // Only use local fallback in dev
 
   static const int _maxRetries = 3;
   static const int _maxRedirects = 5;
-  static const Duration _timeout = Duration(seconds: 30);
+  static const Duration _timeout = Duration(seconds: 60); // Increased timeout
 
   // Custom headers to prevent caching and identify the app
   static final Map<String, String> _headers = {
@@ -57,6 +57,10 @@ class MLPredictionService {
     'Expires': '0',
     'User-Agent': 'OvarianCystApp/1.0',
     'X-Requested-With': 'XMLHttpRequest',
+    'Origin': '*',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': '*'
   };
 
   MLPredictionService._internal() {
@@ -210,38 +214,45 @@ class MLPredictionService {
         try {
           var currentUri = uri;
 
+          // Skip CORS preflight in Dart - it's handled by the browser
+          
           while (redirectCount < _maxRedirects) {
             _logger.info('Making request to: ${currentUri.toString()}');
 
-            final response = await client
-                .post(
-                  currentUri,
-                  headers: _headers,
-                  body: json.encode(data),
-                )
-                .timeout(_timeout);
+            // Add retry attempt number to headers
+            final requestHeaders = Map<String, String>.from(_headers)
+              ..['X-Retry-Attempt'] = (retryCount + 1).toString();
+
+            final response = await client.post(
+              currentUri,
+              headers: requestHeaders,
+              body: json.encode(data),
+            ).timeout(_timeout);
 
             _logger.info('Response status: ${response.statusCode}');
+            _logger.info('Response headers: ${response.headers}');
+
+            // Log response body for debugging (only in development)
+            if (_useLocalServer) {
+              _logger.fine('Response body: ${response.body}');
+            }
 
             if (response.statusCode == 200) {
               return response;
-            } else if (response.statusCode >= 300 &&
-                response.statusCode < 400) {
+            } else if (response.statusCode >= 300 && response.statusCode < 400) {
               final location = response.headers['location'];
               if (location == null) {
                 throw Exception('Redirect location header missing');
               }
 
-              // Convert relative URLs to absolute
               final redirectUri = Uri.parse(location);
               currentUri = redirectUri.isAbsolute
                   ? redirectUri
                   : Uri.parse(baseUrl).resolveUri(redirectUri);
 
-              // Check for redirect loop
               if (currentUri.toString() == initialUrl) {
                 _logger.warning('Redirect loop detected');
-                break; // Exit redirect loop and try next attempt with backoff
+                break;
               }
 
               _logger.info('Redirecting to: ${currentUri.toString()}');
@@ -249,9 +260,28 @@ class MLPredictionService {
               continue;
             }
 
-            // Non-success, non-redirect status code
-            throw Exception(
-                'Server returned status code ${response.statusCode}: ${response.body}');
+            // Handle specific error codes
+            switch (response.statusCode) {
+              case 401:
+                throw Exception('Unauthorized access. Please check your credentials.');
+              case 403:
+                throw Exception('Access forbidden. Please check your permissions.');
+              case 429:
+                final retryAfter = response.headers['retry-after'];
+                if (retryAfter != null) {
+                  final delay = int.tryParse(retryAfter) ?? 5;
+                  await Future.delayed(Duration(seconds: delay));
+                }
+                throw Exception('Too many requests. Please try again later.');
+              case 500:
+              case 502:
+              case 503:
+              case 504:
+                throw Exception('Server error (${response.statusCode}). Please try again later.');
+              default:
+                throw Exception(
+                    'Server returned status code ${response.statusCode}: ${response.body}');
+            }
           }
 
           throw Exception('Maximum redirect count ($_maxRedirects) exceeded');
@@ -264,8 +294,10 @@ class MLPredictionService {
         retryCount++;
 
         if (retryCount < _maxRetries) {
-          // Add exponential backoff delay between retries
-          await Future.delayed(Duration(seconds: 1 << retryCount));
+          // Exponential backoff with jitter
+          final baseDelay = 1 << retryCount;
+          final jitter = (DateTime.now().millisecondsSinceEpoch % 1000) / 1000.0;
+          await Future.delayed(Duration(seconds: baseDelay + jitter.floor()));
         }
       }
     }
