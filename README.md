@@ -157,6 +157,86 @@ The CSV file includes the following key information for each facility:
 4. **Appointment Availability**: Show real-time availability of appointment slots
 5. **Facility Reviews**: Allow users to view and submit ratings and reviews
 
+## 🧠 Machine Learning Component
+
+### Overview
+
+The PCOS prediction model is a crucial component of the application that helps assess the risk of Polycystic Ovary Syndrome (PCOS) using CatBoost, a gradient boosting algorithm. The model processes multiple health indicators to provide accurate risk assessments and personalized recommendations.
+
+### Directory Structure
+
+```
+ml/
+├── data/                   # Dataset files and preprocessing scripts
+├── models/                # Trained model files and parameters
+├── logs/                  # Training and prediction logs
+└── src/                   # Source code
+    ├── pcos_model.py     # Model training and evaluation
+    ├── preprocessor.py   # Data preprocessing utilities
+    └── server.py        # Flask REST API server
+```
+
+### Model Details
+
+The prediction system analyzes comprehensive health indicators:
+- **Medical Tests**: 
+  - AMH (Anti-Müllerian Hormone) levels
+  - Beta-HCG Level I and II
+- **Physical Symptoms**:
+  - Hair growth patterns
+  - Skin changes
+  - Hair loss
+  - Acne presence
+- **Lifestyle Factors**:
+  - Diet habits
+  - Exercise frequency
+- **Other Markers**:
+  - Blood type
+  - Weight fluctuations
+  - Pregnancy history
+
+The CatBoost model achieves approximately 97% training accuracy and 67% test accuracy, providing reliable risk assessments.
+
+### Setup and Deployment
+
+1. **Installation**:
+   ```bash
+   cd ml
+   pip install -r requirements.txt
+   ```
+
+2. **Training New Model**:
+   ```bash
+   python src/pcos_model.py
+   ```
+
+3. **Running the API Server**:
+   ```bash
+   python src/server.py
+   ```
+
+### API Integration
+
+The Flask REST API exposes endpoints for the Flutter app:
+
+- **Prediction Endpoint**: 
+  ```
+  POST /predict
+  ```
+  Accepts JSON payload with health indicators and returns risk assessment
+
+- **Model Info Endpoint**:
+  ```
+  GET /model-info
+  ```
+  Returns current model version and performance metrics
+
+The API server can be deployed on:
+- Google Cloud Run (recommended)
+- AWS Elastic Beanstalk
+- Azure App Service
+- Digital Ocean App Platform
+
 ## 🐛 Debugging and Troubleshooting
 
 ### Common Issues and Solutions
