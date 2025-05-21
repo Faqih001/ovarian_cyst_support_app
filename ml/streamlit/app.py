@@ -1,96 +1,233 @@
 """
 PCOS Risk Assessment Web Application using Streamlit.
-This module provides a web interface for predicting PCOS risk.
+This module provides both a web interface and API for predicting PCOS risk.
 """
 
 from io import BytesIO
+import os
 import streamlit as st
 import pandas as pd
 import numpy as np
 import requests
 import joblib
 from catboost import CatBoostClassifier
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+import uvicorn
+from pydantic import BaseModel, Field
+import logging
 
-@st.cache_resource
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Model loading function
 def load_model():
-    """
-    Load the model from Google Drive.
-    Retu                st.markdown("#### Ongoing Monitoring & Support 📈")
-                st.write("- 🏥 Regular medical monitoring:")
-                st.write("  • 🔍 Weekly ultrasound checks")
-                st.write("  • 🩺 Pain level assessment")
-                st.write("  • 🌡️ Temperature monitoring")
-                st.write("  • 💉 Blood test follow-ups")
-                
-                st.markdown("#### Fertility Considerations 👶")
-                st.write("- 🤰 If planning pregnancy:")
-                st.write("  • Fertility preservation options")
-                st.write("  • Egg freezing consultation")
-                st.write("  • Reproductive planning")
-                
-                st.markdown("#### Support Resources 🤝")
-                st.write("- 💞 Emotional support:")
-                st.write("  • 👥 Support groups")
-                st.write("  • 🧠 Counseling services")
-                st.write("  • 📱 Patient advocacy resources")
-                st.write("- 📚 Educational materials")
-                st.write("- 🆘 Emergency contact numbers")Scikit-learn model or None if loading fails
-    """
     try:
-        model_url = "https://drive.google.com/uc?export=download&id=1jL-UIq7lyGDMduNMbZHLKW-TytPgI2MS"
-        
-        if "model" not in st.session_state:
-            st.session_state.model = None
-            try:
-                response = requests.get(model_url)
-                model_bytes = BytesIO(response.content)
-                st.session_state.model = joblib.load(model_bytes)
-                return st.session_state.model
-            except Exception as e:
-                st.error(f"Error downloading model: {str(e)}")
-                return None
-        return st.session_state.model
+        model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'pcos_model.joblib')
+        return joblib.load(model_path)
     except Exception as e:
-        st.error(f"Error loading model: {str(e)}")
+        logger.error(f"Failed to load model: {e}")
         return None
 
+# Prediction function
 def predict_probability(model, features):
-    """
-    Make prediction using scikit-learn model.
-    Args:
-        model: Scikit-learn model
-        features: List of input features
-    Returns:
-        Probability of PCOS risk
-    """
     try:
-        # Convert features to numpy array
-        X = np.array(features).reshape(1, -1)
-        # Get probability prediction
-        probabilities = model.predict_proba(X)
-        return float(probabilities[0][1])
+        return float(model.predict_proba(np.array([features]))[0][1])
     except Exception as e:
-        st.error(f"Error in prediction: {str(e)}")
+        logger.error(f"Prediction failed: {e}")
         return None
 
+# Fallback prediction when main model fails
 def fallback_predict(input_data):
-    """
-    Simple rule-based prediction when model is not available.
-    Args:
-        input_data: Dictionary of input features
-    Returns:
-        Risk probability between 0 and 1
-    """
-    risk_factors = 0
-    risk_factors += input_data["bmi"] > 25
-    risk_factors += input_data["waist_hip_ratio"] > 0.85
-    risk_factors += input_data["cycle_regularity"] == 0  # Irregular cycle
-    risk_factors += input_data["weight_gain"] == 1
-    risk_factors += input_data["skin_darkening"] == 1
-    risk_factors += input_data["hair_growth"] == 1
-    risk_factors += input_data["pimples"] == 1
-    
-    return min(0.9, risk_factors / 10)
+    # Simple rule-based fallback
+    risk_factors = [
+        input_data.weight_gain,
+        input_data.hair_growth,
+        input_data.skin_darkening,
+        input_data.hair_loss,
+        input_data.pimples,
+        input_data.fast_food,
+        not input_data.regular_exercise
+    ]
+    risk_count = sum(1 for factor in risk_factors if factor)
+    return risk_count / len(risk_factors)  # Simple ratio of risk factors present
+
+# Create FastAPI app
+api = FastAPI(title="PCOS Risk Assessment API")
+
+# Add CORS middleware with more specific configuration
+api.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For development. In production, specify your Flutter app's domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],  # Expose redirect headers
+    max_age=3600,  # Cache preflight requests for 1 hour
+)
+
+# Add custom middleware to handle redirects
+@api.middleware("http")
+async def add_custom_headers(request: Request, call_next):
+    response = await call_next(request)
+    # Add headers to prevent caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+class PredictionInput(BaseModel):
+    age: float = Field(..., description="Age in years")
+    weight: float = Field(..., description="Weight in kg")
+    height: float = Field(..., description="Height in cm")
+    bmi: float = Field(..., description="Body Mass Index")
+    blood_group: int = Field(..., description="Blood group (1-8)")
+    pulse_rate: float = Field(..., description="Pulse rate")
+    rr: float = Field(..., description="Respiratory rate")
+    hb: float = Field(..., description="Hemoglobin level")
+    cycle_ri: int = Field(..., description="Cycle regularity index")
+    cycle_length: float = Field(..., description="Menstrual cycle length in days")
+    marriage_status: float = Field(..., description="Marriage status")
+    pregnant: int = Field(..., description="Pregnancy status (0/1)")
+    no_of_abortions: float = Field(..., description="Number of abortions")
+    beta_hcg1: float = Field(..., description="Beta HCG level 1")
+    beta_hcg2: float = Field(..., description="Beta HCG level 2")
+    fsh: float = Field(..., description="FSH level")
+    lh: float = Field(..., description="LH level")
+    fsh_lh_ratio: float = Field(..., description="FSH/LH ratio")
+    hip: float = Field(..., description="Hip measurement")
+    waist: float = Field(..., description="Waist measurement")
+    waist_hip_ratio: float = Field(..., description="Waist to hip ratio")
+    tsh: float = Field(..., description="TSH level")
+    amh: float = Field(..., description="AMH level")
+    prl: float = Field(..., description="Prolactin level")
+    vit_d3: float = Field(..., description="Vitamin D3 level")
+    prg: float = Field(..., description="Progesterone level")
+    rbs: float = Field(..., description="Random blood sugar")
+    weight_gain: int = Field(..., description="Weight gain (0/1)")
+    hair_growth: int = Field(..., description="Hair growth (0/1)")
+    skin_darkening: int = Field(..., description="Skin darkening (0/1)")
+    hair_loss: int = Field(..., description="Hair loss (0/1)")
+    pimples: int = Field(..., description="Pimples (0/1)")
+    fast_food: int = Field(..., description="Fast food consumption (0/1)")
+    regular_exercise: int = Field(..., description="Regular exercise (0/1)")
+    bp_systolic: float = Field(..., description="Systolic blood pressure")
+    bp_diastolic: float = Field(..., description="Diastolic blood pressure")
+    follicle_l: float = Field(..., description="Left ovary follicle count")
+    follicle_r: float = Field(..., description="Right ovary follicle count")
+    avg_f_size_l: float = Field(..., description="Average left follicle size")
+    avg_f_size_r: float = Field(..., description="Average right follicle size")
+    endometrium: float = Field(..., description="Endometrium thickness")
+
+# Error handler for validation errors
+@api.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=400,
+        content={"error": "Validation error", "details": str(exc)},
+    )
+
+# Error handler for other exceptions
+@api.exception_handler(Exception)
+async def general_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal server error", "details": str(exc)},
+    )
+
+@api.post("/predict")
+async def predict_api(input_data: PredictionInput):
+    try:
+        # Load model
+        model = load_model()
+        if not model:
+            return {"error": "Model loading failed"}
+
+        # Extract features in the correct order
+        features = [
+            input_data.beta_hcg1,
+            input_data.beta_hcg2,
+            input_data.amh,
+            input_data.pregnant,
+            input_data.weight_gain,
+            input_data.hair_growth,
+            input_data.skin_darkening,
+            input_data.hair_loss,
+            input_data.pimples,
+            input_data.fast_food,
+            input_data.regular_exercise,
+            input_data.blood_group
+        ]
+
+        # Make prediction
+        risk_prob = predict_probability(model, features)
+        if risk_prob is None:
+            return {"error": "Prediction failed"}
+
+        # Determine risk stage
+        if risk_prob < 0.3:
+            stage = "Low Risk"
+        elif risk_prob < 0.7:
+            stage = "Moderate Risk"
+        else:
+            stage = "High Risk"
+
+        # Feature contributions
+        feature_names = [
+            "Beta HCG (First)",
+            "Beta HCG (Second)",
+            "AMH Level",
+            "Pregnancy Status",
+            "Weight Gain",
+            "Hair Growth",
+            "Skin Darkening",
+            "Hair Loss",
+            "Pimples",
+            "Fast Food",
+            "Regular Exercise",
+            "Blood Group"
+        ]
+        
+        feature_contributions = {
+            name: abs(float(value)) * 0.1 
+            for name, value in zip(feature_names, features)
+        }
+
+        # Generate recommendations
+        recommendations = []
+        if risk_prob >= 0.7:
+            recommendations.extend([
+                "Schedule an immediate consultation with a gynecologist",
+                "Complete comprehensive hormone testing",
+                "Consider ultrasound examination",
+                "Monitor symptoms closely"
+            ])
+        elif risk_prob >= 0.3:
+            recommendations.extend([
+                "Schedule a check-up within the next month",
+                "Keep a symptom diary",
+                "Consider lifestyle modifications",
+                "Monitor menstrual cycle changes"
+            ])
+        else:
+            recommendations.extend([
+                "Continue regular health monitoring",
+                "Maintain healthy lifestyle habits",
+                "Schedule routine check-up",
+                "Track any changes in symptoms"
+            ])
+
+        return {
+            "risk_probability": float(risk_prob),
+            "stage": stage,
+            "recommendations": recommendations,
+            "feature_contributions": feature_contributions
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 # Initialize the model
 model = load_model()
@@ -495,3 +632,7 @@ with st.form("prediction_form"):
 
 st.markdown("---")
 st.markdown("*This is a part of the Ovarian Cyst Support App*")
+
+# To run the FastAPI app, uncomment the following lines:
+# if __name__ == "__main__":
+#     uvicorn.run(api, host="0.0.0.0", port=8000)

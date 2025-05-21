@@ -33,13 +33,29 @@ class MLPredictionService {
 
   final Logger _logger = Logger('MLPredictionService');
 
-  // Streamlit deployment URL
-  static const String _baseUrl = 'https://ovarian-cyst-ml-api.streamlit.app';
-  static const String _fallbackUrl =
-      'https://ovarian-cyst-ml-api-backup.streamlit.app';
+  // API Configuration
+  static const bool _useLocalServer = true; // Set to false for production
+  static const String _localUrl = 'http://localhost:8000'; // Flask server
+  static const String _streamlitUrl = 'http://localhost:8502'; // Streamlit server
+  static const String _productionUrl = 'https://ovarian-cyst-ml-api.streamlit.app';
+  
+  String get _baseUrl => _useLocalServer ? _localUrl : _productionUrl;
+  String get _fallbackUrl => _useLocalServer ? _streamlitUrl : _productionUrl;
+  
   static const int _maxRetries = 3;
   static const int _maxRedirects = 5;
   static const Duration _timeout = Duration(seconds: 30);
+
+  // Custom headers to prevent caching and identify the app
+  static final Map<String, String> _headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'User-Agent': 'OvarianCystApp/1.0',
+    'X-Requested-With': 'XMLHttpRequest',
+  };
 
   MLPredictionService._internal() {
     // Initialize logging
@@ -193,27 +209,21 @@ class MLPredictionService {
           var currentUri = uri;
 
           while (redirectCount < _maxRedirects) {
+            _logger.info('Making request to: ${currentUri.toString()}');
+            
             final response = await client
                 .post(
                   currentUri,
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0',
-                    'User-Agent': 'OvarianCystApp/1.0',
-                  },
+                  headers: _headers,
                   body: json.encode(data),
                 )
                 .timeout(_timeout);
 
+            _logger.info('Response status: ${response.statusCode}');
+
             if (response.statusCode == 200) {
               return response;
-            } else if (response.statusCode == 301 ||
-                response.statusCode == 302 ||
-                response.statusCode == 307 ||
-                response.statusCode == 308) {
+            } else if (response.statusCode >= 300 && response.statusCode < 400) {
               final location = response.headers['location'];
               if (location == null) {
                 throw Exception('Redirect location header missing');
@@ -227,7 +237,8 @@ class MLPredictionService {
 
               // Check for redirect loop
               if (currentUri.toString() == initialUrl) {
-                throw Exception('Redirect loop detected');
+                _logger.warning('Redirect loop detected');
+                break; // Exit redirect loop and try next attempt with backoff
               }
 
               _logger.info('Redirecting to: ${currentUri.toString()}');
@@ -235,9 +246,9 @@ class MLPredictionService {
               continue;
             }
 
-            // If not a redirect or success, treat as error
+            // Non-success, non-redirect status code
             throw Exception(
-                'Server returned status code ${response.statusCode}');
+                'Server returned status code ${response.statusCode}: ${response.body}');
           }
 
           throw Exception('Maximum redirect count ($_maxRedirects) exceeded');
