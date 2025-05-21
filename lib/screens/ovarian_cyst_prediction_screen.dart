@@ -17,7 +17,6 @@ class _OvarianCystPredictionScreenState
   bool _isLoading = false;
   String? _predictionResult;
   String? _stage;
-  List<String>? _recommendations;
   final MLPredictionService _mlService = MLPredictionService();
   Map<String, double>? _featureContributions;
 
@@ -162,6 +161,44 @@ class _OvarianCystPredictionScreenState
     );
   }
 
+  Widget _buildRecommendationSection(String title, List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...items.map((item) => Padding(
+              padding: EdgeInsets.only(
+                left: item.startsWith('  •') ? 16.0 : 0,
+                bottom: 4.0,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!item.startsWith('  •')) const Text('• '),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -171,7 +208,6 @@ class _OvarianCystPredictionScreenState
       _isLoading = true;
       _predictionResult = null;
       _stage = null;
-      _recommendations = null;
       _featureContributions = null;
     });
 
@@ -262,7 +298,6 @@ class _OvarianCystPredictionScreenState
         _predictionResult =
             'Risk Score: ${(result.riskScore * 100).toStringAsFixed(2)}%';
         _stage = result.stage;
-        _recommendations = result.recommendations;
         _featureContributions = result.featureContributions;
         _isLoading = false;
       });
@@ -290,21 +325,78 @@ class _OvarianCystPredictionScreenState
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('High Risk Detected'),
-        content: const Text(
-          'Based on the test results, we recommend immediate medical attention. Would you like to book an appointment now?',
+        icon: const Icon(Icons.warning_rounded, color: Colors.red, size: 48),
+        title: const Text(
+          '⚠️ High Risk Detected - Urgent Action Required',
+          style: TextStyle(color: Colors.red),
+        ),
+        content: SingleChildScrollView(
+          child: ListBody(
+            children: const [
+              Text(
+                'Your test results indicate a high-risk condition that requires immediate medical attention.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 16),
+              Text('Key Actions Required:'),
+              SizedBox(height: 8),
+              Text('• 🏥 Schedule an immediate consultation'),
+              Text('• 🔬 Complete necessary diagnostic tests'),
+              Text('• 📋 Prepare your symptom history'),
+              SizedBox(height: 16),
+              Text(
+                'Would you like to book an urgent appointment with a specialist now?',
+                style: TextStyle(color: Colors.red),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () {
+              showDialog(
+                context: dialogContext,
+                builder: (BuildContext confirmContext) => AlertDialog(
+                  title: const Text('Confirmation Required'),
+                  content: const Text(
+                    '⚠️ Delaying medical attention in high-risk cases may lead to complications. Are you sure you want to book later?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(confirmContext);
+                        Navigator.pop(dialogContext, true); // Book anyway
+                      },
+                      child: const Text('Book Now'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(confirmContext);
+                        Navigator.pop(dialogContext, false);
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey,
+                      ),
+                      child: const Text('Yes, Later'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey,
+            ),
             child: const Text('Later'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primary,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
             ),
-            child: const Text('Book Appointment'),
+            child: const Text(
+              'Book Urgent Appointment',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -545,30 +637,152 @@ class _OvarianCystPredictionScreenState
                             style: const TextStyle(fontSize: 18),
                           ),
                         ],
-                        if (_recommendations != null) ...[
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Recommendations:',
-                            style: TextStyle(
-                              fontSize: 18,
+
+                        // Recommendations based on risk level
+                        if (_stage != null) ...[
+                          const SizedBox(height: 24),
+                          Text(
+                            'Recommendations & Guidelines for ${_stage}',
+                            style: const TextStyle(
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          ..._recommendations!.map(
-                            (rec) => Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 4.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('• '),
-                                  Expanded(child: Text(rec)),
-                                ],
-                              ),
+                          const SizedBox(height: 16),
+
+                          if (_stage == 'Low Risk') ...[
+                            _buildRecommendationSection(
+                              'Lifestyle Recommendations 🌱',
+                              [
+                                '🏃‍♀️ Continue regular exercise (30 minutes daily)',
+                                '🥗 Maintain a balanced, nutrient-rich diet',
+                                '⏰ Keep regular sleep schedule (7-9 hours)',
+                                '📅 Schedule regular check-ups every 6 months',
+                                '🚭 Avoid smoking and limit alcohol',
+                                '🥬 Include anti-inflammatory foods in diet',
+                              ],
                             ),
+                            _buildRecommendationSection(
+                              'Monitoring 📊',
+                              [
+                                '📝 Track menstrual cycles using an app',
+                                '⚖️ Monitor weight changes weekly',
+                                '🌡️ Note any new symptoms',
+                                '📱 Use fertility tracking apps if planning pregnancy',
+                                '💭 Keep mood and energy journal',
+                              ],
+                            ),
+                            _buildRecommendationSection(
+                              'Preventive Care & Supplements 🛡️',
+                              [
+                                '💊 Recommended daily supplements:',
+                                '  • 🍊 Vitamin D3 (2000-4000 IU daily)',
+                                '  • 🌿 Omega-3 fatty acids (1000mg daily)',
+                                '  • 🍎 Magnesium (300-400mg daily)',
+                                '  • 🥑 Vitamin B-complex',
+                                '🫖 Limit caffeine intake',
+                                '🧘‍♀️ Practice stress management',
+                                '🌿 Consider herbal teas (spearmint, green tea)',
+                              ],
+                            ),
+                          ] else if (_stage == 'Moderate Risk') ...[
+                            _buildRecommendationSection(
+                              'Medical Consultation 👩‍⚕️',
+                              [
+                                '🏥 Schedule appointment with gynecologist',
+                                '🔬 Recommended tests:',
+                                '  • 🩸 Complete hormone panel',
+                                '  • 📊 Insulin resistance testing',
+                                '  • 💉 Thyroid function tests',
+                                '  • 🔍 Lipid profile',
+                                '📋 Maintain detailed symptom diary',
+                                '📱 Use health tracking apps',
+                              ],
+                            ),
+                            _buildRecommendationSection(
+                              'Treatment Options 💊',
+                              [
+                                '💊 Pain management:',
+                                '  • 🌡️ Over-the-counter pain relievers',
+                                '  • 🔥 Heat therapy',
+                                '🌿 Hormone therapy options:',
+                                '  • 💊 Birth control pills',
+                                '  • 🔄 Hormone regulation',
+                              ],
+                            ),
+                            _buildRecommendationSection(
+                              'Lifestyle Changes 🔄',
+                              [
+                                '🏋️‍♀️ Modified exercise routine:',
+                                '  • 💪 Strength training (3x weekly)',
+                                '  • 🚶‍♀️ Daily walking (45-60 minutes)',
+                                '  • 🧘‍♀️ Yoga for hormone balance',
+                                '🥗 Anti-inflammatory diet guide:',
+                                '  • ✅ Increase: leafy greens, lean proteins',
+                                '  • ❌ Avoid: processed foods, refined sugars',
+                              ],
+                            ),
+                          ] else ...[
+                            // High Risk
+                            _buildRecommendationSection(
+                              'Urgent Medical Attention 🚨',
+                              [
+                                '🏥 Immediate specialist consultation needed',
+                                '📋 Required evaluations:',
+                                '  • 📸 Advanced imaging (MRI/CT)',
+                                '  • 🩸 Complete blood work',
+                                '  • 💉 Tumor marker tests',
+                                '  • 🔬 Biopsy if needed',
+                              ],
+                            ),
+                            _buildRecommendationSection(
+                              'Treatment Protocol 🏥',
+                              [
+                                '👩‍⚕️ Medical management:',
+                                '  • 💉 Prescribed medications',
+                                '  • 🌡️ Pain management protocol',
+                                '  • 🔄 Hormone therapy',
+                                '  • 🎯 Surgical options if needed',
+                              ],
+                            ),
+                            _buildRecommendationSection(
+                              'Emergency Guidelines 🚑',
+                              [
+                                '🚨 Seek immediate care if you experience:',
+                                '  • 😫 Severe abdominal pain',
+                                '  • 🤢 Severe vomiting',
+                                '  • 😵 Fainting or dizziness',
+                                '  • 🌡️ High fever',
+                                '  • 💫 Sudden severe pain',
+                              ],
+                            ),
+                            _buildRecommendationSection(
+                              'Follow-up Care 📋',
+                              [
+                                '📅 Regular monitoring schedule',
+                                '📊 Track symptoms and changes',
+                                '👥 Join support groups',
+                                '🧠 Mental health support',
+                                '👶 Fertility preservation options',
+                              ],
+                            ),
+                          ],
+
+                          // General Guidelines for all risk levels
+                          const SizedBox(height: 24),
+                          _buildRecommendationSection(
+                            'General Guidelines ℹ️',
+                            [
+                              '🏥 Keep all scheduled medical appointments',
+                              '📝 Document any changes in symptoms',
+                              '🚫 Avoid strenuous activities when in pain',
+                              '💊 Take prescribed medications as directed',
+                              '📱 Use symptom tracking apps',
+                              '🆘 Know when to seek emergency care',
+                            ],
                           ),
                         ],
+
                         if (_featureContributions != null &&
                             _featureContributions!.isNotEmpty) ...[
                           const SizedBox(height: 16),
