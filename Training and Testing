@@ -1,0 +1,42 @@
+cd /home/amirul/Desktop/Hackathons/ovarian_cyst_support_app/ml && PYTHONPATH=/home/amirul/.local/lib/python3.8/site-packages:. python3 pcos_model.py && python3 test_prediction.py
+Loading and preprocessing data...
+
+Training model...
+/home/amirul/.local/lib/python3.8/site-packages/sklearn/utils/extmath.py:1050: RuntimeWarning: invalid value encountered in divide
+  updated_mean = (last_sum + new_sum) / updated_sample_count
+/home/amirul/.local/lib/python3.8/site-packages/sklearn/utils/extmath.py:1055: RuntimeWarning: invalid value encountered in divide
+  T = new_sum / new_sample_count
+/home/amirul/.local/lib/python3.8/site-packages/sklearn/utils/extmath.py:1075: RuntimeWarning: invalid value encountered in divide
+  new_unnormalized_variance -= correction**2 / new_sample_count
+Train accuracy: 0.9769
+Test accuracy: 0.6697
+
+Model and scaler saved to ml/models/
+/home/amirul/.local/lib/python3.8/site-packages/sklearn/base.py:465: UserWarning: X does not have valid feature names, but StandardScaler was fitted with feature names
+  warnings.warn(
+
+Test Prediction Results:
+Risk Stage: Low Risk
+Risk Probability: 12.53%
+
+Feature Contributions:
+Beta HCG (First Test): 31.592
+Beta HCG (Second Test): 16.948
+AMH Level: 51.461
+Pregnancy Status: 0.000
+
+Recommendations:
+amirul@amirul:~/Desktop/Hackathons/ovarian_cyst_support_app/ml$ cd /home/amirul/Desktop/Hackathons/ovarian_cyst_support_app/ml && PYTHONPATH=/home/amirul/.local/lib/python3.8/site-packages:. python3 pcos_model.py
+Loading and preprocessing data...
+
+Training model...
+/home/amirul/.local/lib/python3.8/site-packages/sklearn/utils/extmath.py:1050: RuntimeWarning: invalid value encountered in divide
+  updated_mean = (last_sum + new_sum) / updated_sample_count
+/home/amirul/.local/lib/python3.8/site-packages/sklearn/utils/extmath.py:1055: RuntimeWarning: invalid value encountered in divide
+  T = new_sum / new_sample_count
+/home/amirul/.local/lib/python3.8/site-packages/sklearn/utils/extmath.py:1075: RuntimeWarning: invalid value encountered in divide
+  new_unnormalized_variance -= correction**2 / new_sample_count
+Train accuracy: 0.9745
+Test accuracy: 0.6514
+
+Model and scaler saved to ml/models/

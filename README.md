@@ -4,6 +4,17 @@ A comprehensive mobile application to support women diagnosed with ovarian cysts
 
 ## 📱 Features
 
+### AI-Powered PCOS Risk Assessment
+- Advanced machine learning model using CatBoost algorithm
+- Comprehensive risk assessment using multiple health indicators:
+  - **Medical Tests**: Beta HCG levels and AMH Level
+  - **Physical Symptoms**: Hair growth, Skin darkening, Hair loss, Pimples
+  - **Lifestyle Factors**: Fast food consumption, Exercise habits
+  - **Other Factors**: Blood type, Pregnancy status, Weight changes
+- Real-time risk prediction with detailed analysis
+- Personalized recommendations based on individual risk factors
+- Visual risk assessment dashboard with feature importance analysis
+
 ### Healthcare Facility Integration
 - Book appointments with three types of healthcare facilities in Kenya:
   - **Ministry of Health Facilities** (Government-run public hospitals)
@@ -241,6 +252,66 @@ DateTime _createAppointmentDateTime() {
    - Enable strict lint rules in analysis_options.yaml
    - Run `flutter analyze` before committing code
    - Address all warnings, not just errors
+
+## 🛠️ Technical Architecture
+
+### Machine Learning Component
+The app uses a sophisticated machine learning pipeline for PCOS risk assessment:
+
+1. **Model Architecture**:
+   - Algorithm: CatBoost Classifier
+   - Features: 12 health indicators
+   - Performance: ~97% training accuracy, ~67% test accuracy
+
+2. **Tech Stack**:
+   - Backend: Flask REST API
+   - Model: CatBoost with scikit-learn preprocessing
+   - Integration: HTTP-based API endpoints
+
+3. **Model Pipeline**:
+   ```
+   User Input → Feature Preprocessing → ML Model → Risk Assessment → Recommendations
+   ```
+
+4. **Features Used**:
+   - Medical Test Results (Beta HCG, AMH)
+   - Physical Symptoms (Hair growth, Skin darkening, etc.)
+   - Lifestyle Factors (Diet, Exercise)
+   - Blood Group Information
+
+### ML Setup Instructions
+
+1. Navigate to the ML directory:
+   ```bash
+   cd ml
+   ```
+
+2. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Start the ML server:
+   ```bash
+   python server.py
+   ```
+
+The server will run on `http://localhost:8000` and provide the prediction endpoint at `/predict`.
+
+### Model Training
+
+To retrain the PCOS prediction model:
+
+1. Place your data files in `ml/data/`:
+   - PCOS_infertility.csv
+   - PCOS_data_without_infertility.xlsx
+
+2. Run the training script:
+   ```bash
+   python ml/pcos_model.py
+   ```
+
+The trained model will be saved in `ml/models/`.
 
 ## 📚 References
 
