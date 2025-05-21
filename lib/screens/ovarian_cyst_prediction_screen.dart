@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/services/ml_prediction_service.dart';
 import 'package:ovarian_cyst_support_app/screens/facility_selection_screen.dart';
@@ -21,7 +22,7 @@ class _OvarianCystPredictionScreenState
   final MLPredictionService _mlService = MLPredictionService();
   Map<String, double>? _featureContributions;
 
-  // Form fields for PCOS prediction
+  // Binary fields
   final Map<String, bool> _booleanFields = {
     'Pregnant': false,
     'Weight gain': false,
@@ -33,6 +34,7 @@ class _OvarianCystPredictionScreenState
     'Regular Exercise': false,
   };
 
+  // Blood group selection
   String _bloodGroup = 'A+';
   final List<String> _bloodGroups = [
     'A+',
@@ -45,9 +47,194 @@ class _OvarianCystPredictionScreenState
     'AB-'
   ];
 
-  final TextEditingController _amhController = TextEditingController();
+  // Text Controllers for numeric inputs
+  final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _weightController = TextEditingController();
+  final TextEditingController _heightController = TextEditingController();
+  final TextEditingController _bmiController = TextEditingController();
+  final TextEditingController _pulseRateController = TextEditingController();
+  final TextEditingController _rrController = TextEditingController();
+  final TextEditingController _hbController = TextEditingController();
+  final TextEditingController _cycleLengthController = TextEditingController();
+  final TextEditingController _marriageStatusController =
+      TextEditingController();
+  final TextEditingController _abortionsController = TextEditingController();
   final TextEditingController _betaHcg1Controller = TextEditingController();
   final TextEditingController _betaHcg2Controller = TextEditingController();
+  final TextEditingController _fshController = TextEditingController();
+  final TextEditingController _lhController = TextEditingController();
+  final TextEditingController _hipController = TextEditingController();
+  final TextEditingController _waistController = TextEditingController();
+  final TextEditingController _tshController = TextEditingController();
+  final TextEditingController _amhController = TextEditingController();
+  final TextEditingController _prlController = TextEditingController();
+  final TextEditingController _vitD3Controller = TextEditingController();
+  final TextEditingController _prgController = TextEditingController();
+  final TextEditingController _rbsController = TextEditingController();
+  final TextEditingController _bpSystolicController = TextEditingController();
+  final TextEditingController _bpDiastolicController = TextEditingController();
+  final TextEditingController _follicleLController = TextEditingController();
+  final TextEditingController _follicleRController = TextEditingController();
+  final TextEditingController _avgFSizeLController = TextEditingController();
+  final TextEditingController _avgFSizeRController = TextEditingController();
+  final TextEditingController _endometriumController = TextEditingController();
+
+  bool _cycleRegularity = true; // true for Regular, false for Irregular
+
+  @override
+  void initState() {
+    super.initState();
+    // Add listeners for calculated fields
+    _weightController.addListener(_calculateBMI);
+    _heightController.addListener(_calculateBMI);
+    _waistController.addListener(_calculateWaistHipRatio);
+    _hipController.addListener(_calculateWaistHipRatio);
+  }
+
+  void _calculateBMI() {
+    if (_weightController.text.isNotEmpty &&
+        _heightController.text.isNotEmpty) {
+      try {
+        double weight = double.parse(_weightController.text);
+        double height =
+            double.parse(_heightController.text) / 100; // convert to meters
+        double bmi = weight / (height * height);
+        _bmiController.text = bmi.toStringAsFixed(2);
+      } catch (e) {
+        _bmiController.text = '';
+      }
+    }
+  }
+
+  void _calculateWaistHipRatio() {
+    if (_waistController.text.isNotEmpty && _hipController.text.isNotEmpty) {
+      try {
+        double waist = double.parse(_waistController.text);
+        double hip = double.parse(_hipController.text);
+        double ratio = waist / hip;
+        setState(() {
+          _waistHipRatio = ratio;
+        });
+      } catch (e) {
+        setState(() {
+          _waistHipRatio = null;
+        });
+      }
+    }
+  }
+
+  double? _waistHipRatio;
+
+  Widget _buildNumericField(String label, TextEditingController controller,
+      {String? suffix, String? hint}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          labelText: label,
+          suffixText: suffix,
+          hintText: hint,
+          border: OutlineInputBorder(),
+        ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter $label';
+          }
+          if (double.tryParse(value) == null) {
+            return 'Please enter a valid number';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _buildBooleanField(String label) {
+    return CheckboxListTile(
+      title: Text(label),
+      value: _booleanFields[label],
+      onChanged: (bool? value) {
+        setState(() {
+          _booleanFields[label] = value ?? false;
+        });
+      },
+    );
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await _mlService.predictFromData(
+        age: double.parse(_ageController.text),
+        weight: double.parse(_weightController.text),
+        height: double.parse(_heightController.text),
+        bmi: double.parse(_bmiController.text),
+        bloodGroup: _bloodGroups.indexOf(_bloodGroup),
+        pulseRate: double.parse(_pulseRateController.text),
+        rr: double.parse(_rrController.text),
+        hb: double.parse(_hbController.text),
+        cycleRI: _cycleRegularity ? 1 : 0,
+        cycleLength: double.parse(_cycleLengthController.text),
+        marriageStatus: double.parse(_marriageStatusController.text),
+        pregnant: _booleanFields['Pregnant']! ? 1 : 0,
+        noOfAbortions: double.parse(_abortionsController.text),
+        betaHcg1: double.parse(_betaHcg1Controller.text),
+        betaHcg2: double.parse(_betaHcg2Controller.text),
+        fsh: double.parse(_fshController.text),
+        lh: double.parse(_lhController.text),
+        fshLhRatio: double.parse(_fshController.text) /
+            double.parse(_lhController.text),
+        hip: double.parse(_hipController.text),
+        waist: double.parse(_waistController.text),
+        waistHipRatio: _waistHipRatio ?? 0,
+        tsh: double.parse(_tshController.text),
+        amh: double.parse(_amhController.text),
+        prl: double.parse(_prlController.text),
+        vitD3: double.parse(_vitD3Controller.text),
+        prg: double.parse(_prgController.text),
+        rbs: double.parse(_rbsController.text),
+        weightGain: _booleanFields['Weight gain']! ? 1 : 0,
+        hairGrowth: _booleanFields['Hair growth']! ? 1 : 0,
+        skinDarkening: _booleanFields['Skin darkening']! ? 1 : 0,
+        hairLoss: _booleanFields['Hair loss']! ? 1 : 0,
+        pimples: _booleanFields['Pimples']! ? 1 : 0,
+        fastFood: _booleanFields['Fast food']! ? 1 : 0,
+        regularExercise: _booleanFields['Regular Exercise']! ? 1 : 0,
+        bpSystolic: double.parse(_bpSystolicController.text),
+        bpDiastolic: double.parse(_bpDiastolicController.text),
+        follicleL: double.parse(_follicleLController.text),
+        follicleR: double.parse(_follicleRController.text),
+        avgFSizeL: double.parse(_avgFSizeLController.text),
+        avgFSizeR: double.parse(_avgFSizeRController.text),
+        endometrium: double.parse(_endometriumController.text),
+      );
+
+      setState(() {
+        _predictionResult =
+            'Risk Score: ${(result.riskScore * 100).toStringAsFixed(2)}%';
+        _stage = result.stage;
+        _recommendations = result.recommendations;
+        _featureContributions = result.featureContributions;
+        _isLoading = false;
+      });
+
+      if (result.riskScore > 0.7) {
+        _showBookAppointmentDialog(context);
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _predictionResult = 'Error: ${e.toString()}';
+      });
+    }
+  }
 
   void _showBookAppointmentDialog(BuildContext context) {
     showDialog(
@@ -97,39 +284,24 @@ class _OvarianCystPredictionScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade100),
-                ),
-                child: const Column(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue, size: 32),
-                    SizedBox(height: 8),
-                    Text(
-                      'This screening tool uses various health indicators to assess PCOS risk.',
-                      style: TextStyle(color: Colors.black87),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+              const Text(
+                'Basic Information',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 24),
-
-              // Blood Group Selection
+              const SizedBox(height: 16),
+              _buildNumericField('Age', _ageController, suffix: 'years'),
+              _buildNumericField('Weight', _weightController, suffix: 'kg'),
+              _buildNumericField('Height', _heightController, suffix: 'cm'),
+              _buildNumericField('BMI', _bmiController,
+                  hint: 'Calculated automatically'),
               DropdownButtonFormField<String>(
                 value: _bloodGroup,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Blood Group',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  prefixIcon: const Icon(Icons.bloodtype),
+                  border: OutlineInputBorder(),
                 ),
                 items: _bloodGroups.map((String group) {
-                  return DropdownMenuItem<String>(
+                  return DropdownMenuItem(
                     value: group,
                     child: Text(group),
                   );
@@ -141,277 +313,208 @@ class _OvarianCystPredictionScreenState
                 },
               ),
               const SizedBox(height: 16),
-
-              // Boolean Fields
-              ..._booleanFields.entries.map((entry) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: SwitchListTile(
-                    title: Text(entry.key),
-                    value: entry.value,
-                    onChanged: (bool value) {
-                      setState(() {
-                        _booleanFields[entry.key] = value;
-                      });
-                    },
-                    tileColor: Colors.grey.shade50,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(color: Colors.grey.shade300),
-                    ),
-                  ),
-                );
-              }).toList(),
-
-              const SizedBox(height: 24),
-
-              // Beta HCG First Test
-              TextFormField(
-                controller: _betaHcg1Controller,
-                decoration: InputDecoration(
-                  labelText: 'Beta HCG - First Test (mIU/mL)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  prefixIcon: const Icon(Icons.science),
-                ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the first Beta HCG value';
-                  }
-                  final number = double.tryParse(value);
-                  if (number == null || number < 0) {
-                    return 'Please enter a valid positive number';
-                  }
-                  return null;
-                },
+              const Text(
+                'Vital Signs',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-
-              // Beta HCG Second Test
-              TextFormField(
-                controller: _betaHcg2Controller,
-                decoration: InputDecoration(
-                  labelText: 'Beta HCG - Second Test (mIU/mL)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  prefixIcon: const Icon(Icons.science),
-                ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the second Beta HCG value';
-                  }
-                  final number = double.tryParse(value);
-                  if (number == null || number < 0) {
-                    return 'Please enter a valid positive number';
-                  }
-                  return null;
-                },
+              _buildNumericField('Pulse Rate', _pulseRateController,
+                  suffix: 'bpm'),
+              _buildNumericField('Respiratory Rate', _rrController,
+                  suffix: 'breaths/min'),
+              _buildNumericField('Hemoglobin', _hbController, suffix: 'g/dl'),
+              _buildNumericField('BP Systolic', _bpSystolicController,
+                  suffix: 'mmHg'),
+              _buildNumericField('BP Diastolic', _bpDiastolicController,
+                  suffix: 'mmHg'),
+              const SizedBox(height: 16),
+              const Text(
+                'Menstrual History',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-
-              // AMH Level
-              TextFormField(
-                controller: _amhController,
-                decoration: InputDecoration(
-                  labelText: 'AMH Level (ng/mL)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  prefixIcon: const Icon(Icons.science),
-                ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your AMH level';
-                  }
-                  final number = double.tryParse(value);
-                  if (number == null || number < 0) {
-                    return 'Please enter a valid positive number';
-                  }
-                  return null;
+              SwitchListTile(
+                title: const Text('Cycle Regularity'),
+                subtitle: Text(_cycleRegularity ? 'Regular' : 'Irregular'),
+                value: _cycleRegularity,
+                onChanged: (bool value) {
+                  setState(() {
+                    _cycleRegularity = value;
+                  });
                 },
               ),
+              _buildNumericField('Cycle Length', _cycleLengthController,
+                  suffix: 'days'),
+              const SizedBox(height: 16),
+              const Text(
+                'Physical Measurements',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              _buildNumericField('Waist', _waistController, suffix: 'inch'),
+              _buildNumericField('Hip', _hipController, suffix: 'inch'),
+              if (_waistHipRatio != null)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    'Waist-Hip Ratio: ${_waistHipRatio!.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              const Text(
+                'Hormonal Tests',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              _buildNumericField('FSH', _fshController, suffix: 'mIU/mL'),
+              _buildNumericField('LH', _lhController, suffix: 'mIU/mL'),
+              _buildNumericField('TSH', _tshController, suffix: 'mIU/L'),
+              _buildNumericField('AMH', _amhController, suffix: 'ng/mL'),
+              _buildNumericField('Prolactin', _prlController, suffix: 'ng/mL'),
+              _buildNumericField('Vitamin D3', _vitD3Controller,
+                  suffix: 'ng/mL'),
+              _buildNumericField('Progesterone', _prgController,
+                  suffix: 'ng/mL'),
+              _buildNumericField('Beta HCG-1', _betaHcg1Controller,
+                  suffix: 'mIU/mL'),
+              _buildNumericField('Beta HCG-2', _betaHcg2Controller,
+                  suffix: 'mIU/mL'),
+              const SizedBox(height: 16),
+              const Text(
+                'Ultrasound Findings',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              _buildNumericField(
+                  'Left Ovary Follicle Count', _follicleLController),
+              _buildNumericField(
+                  'Right Ovary Follicle Count', _follicleRController),
+              _buildNumericField('Left Follicle Size', _avgFSizeLController,
+                  suffix: 'mm'),
+              _buildNumericField('Right Follicle Size', _avgFSizeRController,
+                  suffix: 'mm'),
+              _buildNumericField(
+                  'Endometrium Thickness', _endometriumController,
+                  suffix: 'mm'),
+              const SizedBox(height: 16),
+              const Text(
+                'Additional Information',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              _buildNumericField('Marriage Status', _marriageStatusController,
+                  suffix: 'years'),
+              _buildNumericField('Number of Abortions', _abortionsController),
+              _buildNumericField('Random Blood Sugar', _rbsController,
+                  suffix: 'mg/dl'),
+              const SizedBox(height: 16),
+              const Text(
+                'Symptoms & Lifestyle',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ..._booleanFields.keys
+                  .map((String key) => _buildBooleanField(key)),
               const SizedBox(height: 24),
-
-              // Predict Button
               ElevatedButton(
-                onPressed: _isLoading ? null : _predict,
+                onPressed: _isLoading ? null : _submitForm,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  padding: const EdgeInsets.all(16),
                 ),
                 child: _isLoading
-                    ? const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Text('Analyzing...')
-                        ],
-                      )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.analytics),
-                          SizedBox(width: 8),
-                          Text('Analyze Risk', style: TextStyle(fontSize: 16)),
-                        ],
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Calculate Risk',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
                       ),
               ),
-
               if (_predictionResult != null) ...[
                 const SizedBox(height: 24),
                 Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.medical_information,
-                              color: _getStageColor(_stage ?? ''),
-                              size: 32,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Risk Assessment',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Text(
-                                    _stage ?? 'Unknown',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: _getStageColor(_stage ?? ''),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: _getStageColor(_stage ?? '')
-                                    .withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                _predictionResult ?? '0%',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: _getStageColor(_stage ?? ''),
-                                ),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          _predictionResult!,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        if (_featureContributions != null) ...[
-                          const SizedBox(height: 24),
+                        if (_stage != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Stage: $_stage',
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                        ],
+                        if (_recommendations != null) ...[
+                          const SizedBox(height: 16),
                           const Text(
-                            'Risk Factors',
+                            'Recommendations:',
                             style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ..._featureContributions!.entries.map((entry) {
-                            final contribution = entry.value * 100;
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Column(
+                          ..._recommendations!.map(
+                            (rec) => Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 4.0),
+                              child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
+                                  const Text('• '),
+                                  Expanded(child: Text(rec)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (_featureContributions != null &&
+                            _featureContributions!.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Top Contributing Factors:',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ..._featureContributions!.entries.take(5).map(
+                                (e) => Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4.0),
+                                  child: Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(entry.key),
+                                      Expanded(
+                                        child: Text(e.key),
+                                      ),
                                       Text(
-                                        '${contribution.toStringAsFixed(1)}%',
-                                        style: TextStyle(
+                                        '${(e.value * 100).toStringAsFixed(1)}%',
+                                        style: const TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          color: _getContributionColor(
-                                              entry.value),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 4),
-                                  LinearProgressIndicator(
-                                    value: entry.value,
-                                    backgroundColor: Colors.grey.shade200,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      _getContributionColor(entry.value),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ],
-                        if (_recommendations != null) ...[
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Recommendations',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          ...(_recommendations ?? []).map((rec) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      Icons.check_circle,
-                                      size: 20,
-                                      color: _getStageColor(_stage ?? ''),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(child: Text(rec)),
-                                  ],
                                 ),
-                              )),
+                              ),
                         ],
                       ],
                     ),
                   ),
                 ),
               ],
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -419,80 +522,38 @@ class _OvarianCystPredictionScreenState
     );
   }
 
-  Color _getStageColor(String stage) {
-    switch (stage.toLowerCase()) {
-      case 'low risk':
-        return Colors.green;
-      case 'moderate risk':
-        return Colors.orange;
-      case 'high risk':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Color _getContributionColor(double value) {
-    if (value < 0.3) return Colors.green;
-    if (value < 0.7) return Colors.orange;
-    return Colors.red;
-  }
-
-  Future<void> _predict() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      // Convert blood group to numeric value
-      final bloodGroupMap = {
-        'A+': 0,
-        'A-': 1,
-        'B+': 2,
-        'B-': 3,
-        'O+': 4,
-        'O-': 5,
-        'AB+': 6,
-        'AB-': 7
-      };
-
-      final result = await _mlService.predictFromData(
-        pregnant: _booleanFields['Pregnant']! ? 1 : 0,
-        weightGain: _booleanFields['Weight gain']! ? 1 : 0,
-        hairGrowth: _booleanFields['Hair growth']! ? 1 : 0,
-        skinDarkening: _booleanFields['Skin darkening']! ? 1 : 0,
-        hairLoss: _booleanFields['Hair loss']! ? 1 : 0,
-        pimples: _booleanFields['Pimples']! ? 1 : 0,
-        fastFood: _booleanFields['Fast food']! ? 1 : 0,
-        regularExercise: _booleanFields['Regular Exercise']! ? 1 : 0,
-        bloodGroup: bloodGroupMap[_bloodGroup]!,
-      );
-
-      setState(() {
-        _predictionResult = '${(result.riskScore * 100).toStringAsFixed(1)}%';
-        _stage = result.stage;
-        _recommendations = result.recommendations;
-        _featureContributions = result.featureContributions;
-        _isLoading = false;
-      });
-
-      // Show appointment booking dialog for high risk cases
-      if (result.stage.toLowerCase() == 'high risk') {
-        _showBookAppointmentDialog(context);
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    }
-  }
-
   @override
   void dispose() {
-    _amhController.dispose();
+    // Dispose all controllers
+    _ageController.dispose();
+    _weightController.dispose();
+    _heightController.dispose();
+    _bmiController.dispose();
+    _pulseRateController.dispose();
+    _rrController.dispose();
+    _hbController.dispose();
+    _cycleLengthController.dispose();
+    _marriageStatusController.dispose();
+    _abortionsController.dispose();
     _betaHcg1Controller.dispose();
     _betaHcg2Controller.dispose();
+    _fshController.dispose();
+    _lhController.dispose();
+    _hipController.dispose();
+    _waistController.dispose();
+    _tshController.dispose();
+    _amhController.dispose();
+    _prlController.dispose();
+    _vitD3Controller.dispose();
+    _prgController.dispose();
+    _rbsController.dispose();
+    _bpSystolicController.dispose();
+    _bpDiastolicController.dispose();
+    _follicleLController.dispose();
+    _follicleRController.dispose();
+    _avgFSizeLController.dispose();
+    _avgFSizeRController.dispose();
+    _endometriumController.dispose();
     super.dispose();
   }
 }
