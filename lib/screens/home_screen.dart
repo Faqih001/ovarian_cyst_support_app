@@ -317,15 +317,15 @@ class _HomeContentState extends State<HomeContent>
                               ),
                               _buildQuickActionButton(
                                 context: context,
-                                icon: Icons.analytics,
-                                label: 'ML Prediction',
-                                color: AppColors.accent,
-                              ),
-                              _buildQuickActionButton(
-                                context: context,
                                 icon: Icons.medication,
                                 label: 'Medications',
                                 color: Colors.green,
+                              ),
+                              _buildQuickActionButton(
+                                context: context,
+                                icon: Icons.analytics,
+                                label: 'ML Prediction',
+                                color: AppColors.accent,
                               ),
                             ],
                           ),
