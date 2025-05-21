@@ -35,8 +35,11 @@ class MLPredictionService {
 
   // Streamlit deployment URL
   static const String _baseUrl = 'https://ovarian-cyst-ml-api.streamlit.app';
-  // Fallback URL if primary is not available
-  static const String _fallbackUrl = 'https://ovarian-cyst-ml-api-backup.streamlit.app';
+  static const String _fallbackUrl =
+      'https://ovarian-cyst-ml-api-backup.streamlit.app';
+  static const int _maxRetries = 3;
+  static const int _maxRedirects = 5;
+  static const Duration _timeout = Duration(seconds: 30);
 
   MLPredictionService._internal() {
     // Initialize logging
@@ -89,135 +92,172 @@ class MLPredictionService {
     required double avgFSizeR,
     required double endometrium,
   }) async {
+    final Map<String, dynamic> requestData = {
+      'age': age,
+      'weight': weight,
+      'height': height,
+      'bmi': bmi,
+      'blood_group': bloodGroup,
+      'pulse_rate': pulseRate,
+      'rr': rr,
+      'hb': hb,
+      'cycle_ri': cycleRI,
+      'cycle_length': cycleLength,
+      'marriage_status': marriageStatus,
+      'pregnant': pregnant,
+      'no_of_abortions': noOfAbortions,
+      'beta_hcg1': betaHcg1,
+      'beta_hcg2': betaHcg2,
+      'fsh': fsh,
+      'lh': lh,
+      'fsh_lh_ratio': fshLhRatio,
+      'hip': hip,
+      'waist': waist,
+      'waist_hip_ratio': waistHipRatio,
+      'tsh': tsh,
+      'amh': amh,
+      'prl': prl,
+      'vit_d3': vitD3,
+      'prg': prg,
+      'rbs': rbs,
+      'weight_gain': weightGain,
+      'hair_growth': hairGrowth,
+      'skin_darkening': skinDarkening,
+      'hair_loss': hairLoss,
+      'pimples': pimples,
+      'fast_food': fastFood,
+      'regular_exercise': regularExercise,
+      'bp_systolic': bpSystolic,
+      'bp_diastolic': bpDiastolic,
+      'follicle_l': follicleL,
+      'follicle_r': follicleR,
+      'avg_f_size_l': avgFSizeL,
+      'avg_f_size_r': avgFSizeR,
+      'endometrium': endometrium,
+    };
+
     try {
+      http.Response? response;
+      Exception? lastError;
+
       // Try primary URL first
-      final response = await _makeRequest(_baseUrl, {
-        'age': age,
-        'weight': weight,
-        'height': height,
-        'bmi': bmi,
-        'blood_group': bloodGroup,
-        'pulse_rate': pulseRate,
-        'rr': rr,
-        'hb': hb,
-        'cycle_ri': cycleRI,
-        'cycle_length': cycleLength,
-        'marriage_status': marriageStatus,
-        'pregnant': pregnant,
-        'no_of_abortions': noOfAbortions,
-        'beta_hcg1': betaHcg1,
-        'beta_hcg2': betaHcg2,
-        'fsh': fsh,
-        'lh': lh,
-        'fsh_lh_ratio': fshLhRatio,
-        'hip': hip,
-        'waist': waist,
-        'waist_hip_ratio': waistHipRatio,
-        'tsh': tsh,
-        'amh': amh,
-        'prl': prl,
-        'vit_d3': vitD3,
-        'prg': prg,
-        'rbs': rbs,
-        'weight_gain': weightGain,
-        'hair_growth': hairGrowth,
-        'skin_darkening': skinDarkening,
-        'hair_loss': hairLoss,
-        'pimples': pimples,
-        'fast_food': fastFood,
-        'regular_exercise': regularExercise,
-        'bp_systolic': bpSystolic,
-        'bp_diastolic': bpDiastolic,
-        'follicle_l': follicleL,
-        'follicle_r': follicleR,
-        'avg_f_size_l': avgFSizeL,
-        'avg_f_size_r': avgFSizeR,
-        'endometrium': endometrium,
-      });
-
-      return _processPredictionResponse(response);
-    } catch (e) {
-      _logger.warning('Error with primary URL: $e');
-
       try {
-        // Try fallback URL
-        final response = await _makeRequest(_fallbackUrl, {
-          'age': age,
-          'weight': weight,
-          'height': height,
-          'bmi': bmi,
-          'blood_group': bloodGroup,
-          'pulse_rate': pulseRate,
-          'rr': rr,
-          'hb': hb,
-          'cycle_ri': cycleRI,
-          'cycle_length': cycleLength,
-          'marriage_status': marriageStatus,
-          'pregnant': pregnant,
-          'no_of_abortions': noOfAbortions,
-          'beta_hcg1': betaHcg1,
-          'beta_hcg2': betaHcg2,
-          'fsh': fsh,
-          'lh': lh,
-          'fsh_lh_ratio': fshLhRatio,
-          'hip': hip,
-          'waist': waist,
-          'waist_hip_ratio': waistHipRatio,
-          'tsh': tsh,
-          'amh': amh,
-          'prl': prl,
-          'vit_d3': vitD3,
-          'prg': prg,
-          'rbs': rbs,
-          'weight_gain': weightGain,
-          'hair_growth': hairGrowth,
-          'skin_darkening': skinDarkening,
-          'hair_loss': hairLoss,
-          'pimples': pimples,
-          'fast_food': fastFood,
-          'regular_exercise': regularExercise,
-          'bp_systolic': bpSystolic,
-          'bp_diastolic': bpDiastolic,
-          'follicle_l': follicleL,
-          'follicle_r': follicleR,
-          'avg_f_size_l': avgFSizeL,
-          'avg_f_size_r': avgFSizeR,
-          'endometrium': endometrium,
-        });
-
+        response = await _makeRequest(_baseUrl, requestData);
         return _processPredictionResponse(response);
       } catch (e) {
-        _logger.severe('Error making prediction', e);
-        throw Exception(
-            'Unable to connect to the prediction service. Please check your internet connection and try again.');
+        _logger.warning('Error with primary URL: $e');
+        lastError = e is Exception ? e : Exception(e.toString());
       }
+
+      // Try fallback URL if primary failed
+      if (response == null) {
+        try {
+          response = await _makeRequest(_fallbackUrl, requestData);
+          return _processPredictionResponse(response);
+        } catch (e) {
+          _logger.warning('Error with fallback URL: $e');
+          lastError = e is Exception ? e : Exception(e.toString());
+        }
+      }
+
+      // If both URLs failed, throw a user-friendly error
+      _logger.severe('Both URLs failed. Last error: $lastError');
+      if (lastError.toString().contains('SocketException')) {
+        throw Exception(
+            'Network error. Please check your internet connection and try again.');
+      } else if (lastError.toString().contains('timeout')) {
+        throw Exception('Request timed out. Please try again.');
+      } else {
+        throw Exception(
+            'Unable to connect to our servers. Please try again later.');
+      }
+    } catch (e) {
+      _logger.severe('Prediction failed: $e');
+      throw Exception(
+          'Unable to process your request. Please try again later.');
     }
   }
 
   Future<http.Response> _makeRequest(
       String baseUrl, Map<String, dynamic> data) async {
-    final uri = Uri.parse('$baseUrl/predict');
-    final response = await http
-        .post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: json.encode(data),
-    )
-        .timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        throw Exception('Request timed out. Please try again.');
-      },
-    );
+    var uri = Uri.parse('$baseUrl/predict');
+    int retryCount = 0;
+    int redirectCount = 0;
+    Exception? lastError;
+    String? initialUrl = uri.toString();
 
-    if (response.statusCode != 200) {
-      throw Exception('Server returned status code ${response.statusCode}');
+    while (retryCount < _maxRetries) {
+      try {
+        final client = http.Client();
+        try {
+          var currentUri = uri;
+
+          while (redirectCount < _maxRedirects) {
+            final response = await client
+                .post(
+                  currentUri,
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
+                    'User-Agent': 'OvarianCystApp/1.0',
+                  },
+                  body: json.encode(data),
+                )
+                .timeout(_timeout);
+
+            if (response.statusCode == 200) {
+              return response;
+            } else if (response.statusCode == 301 ||
+                response.statusCode == 302 ||
+                response.statusCode == 307 ||
+                response.statusCode == 308) {
+              final location = response.headers['location'];
+              if (location == null) {
+                throw Exception('Redirect location header missing');
+              }
+
+              // Convert relative URLs to absolute
+              final redirectUri = Uri.parse(location);
+              currentUri = redirectUri.isAbsolute
+                  ? redirectUri
+                  : Uri.parse(baseUrl).resolveUri(redirectUri);
+
+              // Check for redirect loop
+              if (currentUri.toString() == initialUrl) {
+                throw Exception('Redirect loop detected');
+              }
+
+              _logger.info('Redirecting to: ${currentUri.toString()}');
+              redirectCount++;
+              continue;
+            }
+
+            // If not a redirect or success, treat as error
+            throw Exception(
+                'Server returned status code ${response.statusCode}');
+          }
+
+          throw Exception('Maximum redirect count ($_maxRedirects) exceeded');
+        } finally {
+          client.close();
+        }
+      } catch (e) {
+        lastError = e is Exception ? e : Exception(e.toString());
+        _logger.warning('Attempt ${retryCount + 1} failed: $e');
+        retryCount++;
+
+        if (retryCount < _maxRetries) {
+          // Add exponential backoff delay between retries
+          await Future.delayed(Duration(seconds: 1 << retryCount));
+        }
+      }
     }
 
-    return response;
+    throw lastError ??
+        Exception('Failed to make prediction after $_maxRetries attempts');
   }
 
   PCOSPredictionResult _processPredictionResponse(http.Response response) {
