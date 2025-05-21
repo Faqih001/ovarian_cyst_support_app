@@ -215,7 +215,7 @@ class MLPredictionService {
           var currentUri = uri;
 
           // Skip CORS preflight in Dart - it's handled by the browser
-          
+
           while (redirectCount < _maxRedirects) {
             _logger.info('Making request to: ${currentUri.toString()}');
 
@@ -223,11 +223,13 @@ class MLPredictionService {
             final requestHeaders = Map<String, String>.from(_headers)
               ..['X-Retry-Attempt'] = (retryCount + 1).toString();
 
-            final response = await client.post(
-              currentUri,
-              headers: requestHeaders,
-              body: json.encode(data),
-            ).timeout(_timeout);
+            final response = await client
+                .post(
+                  currentUri,
+                  headers: requestHeaders,
+                  body: json.encode(data),
+                )
+                .timeout(_timeout);
 
             _logger.info('Response status: ${response.statusCode}');
             _logger.info('Response headers: ${response.headers}');
@@ -239,7 +241,8 @@ class MLPredictionService {
 
             if (response.statusCode == 200) {
               return response;
-            } else if (response.statusCode >= 300 && response.statusCode < 400) {
+            } else if (response.statusCode >= 300 &&
+                response.statusCode < 400) {
               final location = response.headers['location'];
               if (location == null) {
                 throw Exception('Redirect location header missing');
@@ -263,9 +266,11 @@ class MLPredictionService {
             // Handle specific error codes
             switch (response.statusCode) {
               case 401:
-                throw Exception('Unauthorized access. Please check your credentials.');
+                throw Exception(
+                    'Unauthorized access. Please check your credentials.');
               case 403:
-                throw Exception('Access forbidden. Please check your permissions.');
+                throw Exception(
+                    'Access forbidden. Please check your permissions.');
               case 429:
                 final retryAfter = response.headers['retry-after'];
                 if (retryAfter != null) {
@@ -277,7 +282,8 @@ class MLPredictionService {
               case 502:
               case 503:
               case 504:
-                throw Exception('Server error (${response.statusCode}). Please try again later.');
+                throw Exception(
+                    'Server error (${response.statusCode}). Please try again later.');
               default:
                 throw Exception(
                     'Server returned status code ${response.statusCode}: ${response.body}');
@@ -296,7 +302,8 @@ class MLPredictionService {
         if (retryCount < _maxRetries) {
           // Exponential backoff with jitter
           final baseDelay = 1 << retryCount;
-          final jitter = (DateTime.now().millisecondsSinceEpoch % 1000) / 1000.0;
+          final jitter =
+              (DateTime.now().millisecondsSinceEpoch % 1000) / 1000.0;
           await Future.delayed(Duration(seconds: baseDelay + jitter.floor()));
         }
       }
