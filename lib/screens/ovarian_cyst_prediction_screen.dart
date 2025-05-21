@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/services/ml_prediction_service.dart';
 import 'package:ovarian_cyst_support_app/screens/facility_selection_screen.dart';
@@ -164,36 +163,35 @@ class _OvarianCystPredictionScreenState
   }
 
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() {
       _isLoading = true;
+      _predictionResult = null;
+      _stage = null;
+      _recommendations = null;
+      _featureContributions = null;
     });
 
     try {
-      final result = await _mlService.predictFromData(
+      final result = await _mlService.predictOvarianCyst(
         age: double.parse(_ageController.text),
         weight: double.parse(_weightController.text),
         height: double.parse(_heightController.text),
         bmi: double.parse(_bmiController.text),
-        bloodGroup: _bloodGroups.indexOf(_bloodGroup),
+        bloodGroup: _bloodGroup,
         pulseRate: double.parse(_pulseRateController.text),
         rr: double.parse(_rrController.text),
         hb: double.parse(_hbController.text),
-        cycleRI: _cycleRegularity ? 1 : 0,
         cycleLength: double.parse(_cycleLengthController.text),
+        cycleRegularity: _cycleRegularity ? 1 : 0,
         marriageStatus: double.parse(_marriageStatusController.text),
+        abortions: double.parse(_abortionsController.text),
         pregnant: _booleanFields['Pregnant']! ? 1 : 0,
-        noOfAbortions: double.parse(_abortionsController.text),
-        betaHcg1: double.parse(_betaHcg1Controller.text),
-        betaHcg2: double.parse(_betaHcg2Controller.text),
-        fsh: double.parse(_fshController.text),
-        lh: double.parse(_lhController.text),
-        fshLhRatio: double.parse(_fshController.text) /
-            double.parse(_lhController.text),
-        hip: double.parse(_hipController.text),
-        waist: double.parse(_waistController.text),
-        waistHipRatio: _waistHipRatio ?? 0,
+        waistHipRatio: double.parse(_waistController.text) /
+            double.parse(_hipController.text),
         tsh: double.parse(_tshController.text),
         amh: double.parse(_amhController.text),
         prl: double.parse(_prlController.text),
@@ -216,6 +214,8 @@ class _OvarianCystPredictionScreenState
         endometrium: double.parse(_endometriumController.text),
       );
 
+      if (!mounted) return;
+
       setState(() {
         _predictionResult =
             'Risk Score: ${(result.riskScore * 100).toStringAsFixed(2)}%';
@@ -225,49 +225,49 @@ class _OvarianCystPredictionScreenState
         _isLoading = false;
       });
 
+      if (!mounted) return;
+
       if (result.riskScore > 0.7) {
-        _showBookAppointmentDialog(context);
+        // Use a local BuildContext that won't be used after an async gap
+        final shouldBook = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext dialogContext) => AlertDialog(
+            title: const Text('High Risk Detected'),
+            content: const Text(
+              'Based on the test results, we recommend immediate medical attention. Would you like to book an appointment now?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Later'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Book Appointment'),
+              ),
+            ],
+          ),
+        );
+
+        if (!mounted) return;
+
+        if (shouldBook == true) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const FacilitySelectionScreen(),
+            ),
+          );
+        }
       }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
         _predictionResult = 'Error: ${e.toString()}';
       });
     }
-  }
-
-  void _showBookAppointmentDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('High Risk Detected'),
-        content: const Text(
-          'Based on the test results, we recommend immediate medical attention. Would you like to book an appointment now?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Later'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              Navigator.push(
-                dialogContext,
-                MaterialPageRoute(
-                  builder: (_) => const FacilitySelectionScreen(),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Book Now'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
