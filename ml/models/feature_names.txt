@@ -1,0 +1,9 @@
+Pregnant(Y/N)
+Weight gain(Y/N)
+hair growth(Y/N)
+Skin darkening (Y/N)
+Hair loss(Y/N)
+Pimples(Y/N)
+Fast food (Y/N)
+Reg.Exercise(Y/N)
+Blood Group
