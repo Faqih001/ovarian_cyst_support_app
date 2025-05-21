@@ -19,8 +19,6 @@ class _OvarianCystPredictionScreenState
   String? _stage;
   final MLPredictionService _mlService = MLPredictionService();
   Map<String, double>? _featureContributions;
-
-  // Binary fields
   final Map<String, bool> _booleanFields = {
     'Pregnant': false,
     'Weight gain': false,
@@ -641,25 +639,85 @@ class _OvarianCystPredictionScreenState
                         // Recommendations based on risk level
                         if (_stage != null) ...[
                           const SizedBox(height: 24),
+                          const Text(
+                            'Ovarian Cyst Management Guidelines',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Note: These recommendations are for general guidance. Always consult with your healthcare provider for personalized advice.',
+                            style: TextStyle(
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                           Text(
-                            'Recommendations & Guidelines for ${_stage}',
-                            style: const TextStyle(
+                            'Risk Level: $_stage',
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
+                              color: _stage == 'Low Risk'
+                                  ? Colors.green
+                                  : _stage == 'Moderate Risk'
+                                      ? Colors.orange
+                                      : Colors.red,
                             ),
                           ),
                           const SizedBox(height: 16),
 
                           if (_stage == 'Low Risk') ...[
                             _buildRecommendationSection(
-                              'Lifestyle Recommendations 🌱',
+                              'Regular Monitoring 🔍',
                               [
-                                '🏃‍♀️ Continue regular exercise (30 minutes daily)',
-                                '🥗 Maintain a balanced, nutrient-rich diet',
-                                '⏰ Keep regular sleep schedule (7-9 hours)',
-                                '📅 Schedule regular check-ups every 6 months',
-                                '🚭 Avoid smoking and limit alcohol',
-                                '🥬 Include anti-inflammatory foods in diet',
+                                '📅 Schedule follow-up ultrasound in 4-6 weeks',
+                                '📝 Track any pelvic pain or discomfort',
+                                '📊 Monitor menstrual cycle changes',
+                                '🌡️ Record any new symptoms',
+                                '⚕️ Report changes to your healthcare provider',
+                              ],
+                            ),
+                            _buildRecommendationSection(
+                              'Lifestyle Management 🌱',
+                              [
+                                '🚶‍♀️ Gentle exercise (30 minutes daily):',
+                                '  • 🏊‍♀️ Swimming',
+                                '  • 🧘‍♀️ Yoga',
+                                '  • 🚶‍♀️ Walking',
+                                '💆‍♀️ Practice stress-reducing activities',
+                                '😴 Maintain regular sleep schedule (7-9 hours)',
+                                '🥗 Follow anti-inflammatory diet',
+                                '� Stay well hydrated (8-10 glasses daily)',
+                              ],
+                            ),
+                            _buildRecommendationSection(
+                              'Pain Management & Prevention 💊',
+                              [
+                                '🌡️ Use warm compresses for discomfort',
+                                '� Over-the-counter pain relief options:',
+                                '  • 💊 Ibuprofen (400-600mg as needed)',
+                                '  • 💊 Acetaminophen (500-1000mg)',
+                                '🧘‍♀️ Gentle pelvic floor exercises',
+                                '🛋️ Rest when needed',
+                              ],
+                            ),
+                            _buildRecommendationSection(
+                              'Supplements & Natural Support 🌿',
+                              [
+                                '💊 Recommended daily supplements:',
+                                '  • 🍊 Vitamin D3 (2000-4000 IU)',
+                                '  • 🐟 Omega-3 fatty acids (1000mg)',
+                                '  • 🍎 Magnesium (300-400mg)',
+                                '  • 🥑 Vitamin B-complex',
+                                '🫖 Limit caffeine intake',
+                                '🌿 Herbal support:',
+                                '  • 🍵 Spearmint tea',
+                                '  • 🍃 Green tea',
+                                '  • 🌺 Chamomile for relaxation',
                               ],
                             ),
                             _buildRecommendationSection(
@@ -687,27 +745,37 @@ class _OvarianCystPredictionScreenState
                             ),
                           ] else if (_stage == 'Moderate Risk') ...[
                             _buildRecommendationSection(
-                              'Medical Consultation 👩‍⚕️',
+                              'Medical Evaluation Priority 🏥',
                               [
-                                '🏥 Schedule appointment with gynecologist',
-                                '🔬 Recommended tests:',
+                                '👩‍⚕️ Schedule specialist consultations:',
+                                '  • 🏥 Gynecologist (within 2 weeks)',
+                                '  • 📊 Endocrinologist if needed',
+                                '🔬 Essential medical tests:',
+                                '  • 📸 Transvaginal ultrasound',
                                 '  • 🩸 Complete hormone panel',
-                                '  • 📊 Insulin resistance testing',
-                                '  • 💉 Thyroid function tests',
-                                '  • 🔍 Lipid profile',
-                                '📋 Maintain detailed symptom diary',
-                                '📱 Use health tracking apps',
+                                '  • � CA-125 blood test',
+                                '  • � Detailed pelvic examination',
+                                '� Keep symptom diary with details:',
+                                '  • � Pain intensity (scale 1-10)',
+                                '  • 🕒 Symptom timing and duration',
+                                '  • � Associated symptoms',
                               ],
                             ),
                             _buildRecommendationSection(
-                              'Treatment Options 💊',
+                              'Treatment Protocol �',
                               [
-                                '💊 Pain management:',
-                                '  • 🌡️ Over-the-counter pain relievers',
-                                '  • 🔥 Heat therapy',
-                                '🌿 Hormone therapy options:',
-                                '  • 💊 Birth control pills',
-                                '  • 🔄 Hormone regulation',
+                                '💊 Medication management:',
+                                '  • 💊 Prescribed pain medication regimen',
+                                '  • 💊 Hormonal therapy options',
+                                '  • 🌡️ Anti-inflammatory medications',
+                                '🏥 Pain management strategies:',
+                                '  • 🔥 Heat therapy (20 min, 3x daily)',
+                                '  • 💆‍♀️ Physical therapy sessions',
+                                '  • 🧘‍♀️ Relaxation techniques',
+                                '📊 Monitoring requirements:',
+                                '  • � Daily symptom tracking',
+                                '  • 📅 Weekly progress assessment',
+                                '  • 🔄 Monthly follow-up visits',
                               ],
                             ),
                             _buildRecommendationSection(
