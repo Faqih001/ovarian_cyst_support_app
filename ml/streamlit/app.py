@@ -23,6 +23,20 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Blood group mapping helper function
+def map_blood_group(blood_group_str):
+    mapping = {
+        'A+': 1,
+        'A-': 2,
+        'B+': 3,
+        'B-': 4,
+        'O+': 5,
+        'O-': 6,
+        'AB+': 7,
+        'AB-': 8
+    }
+    return mapping.get(blood_group_str, 1)  # Default to 1 if unknown
+
 # Model loading function
 def load_model():
     try:
@@ -331,59 +345,106 @@ with st.form("prediction_form"):
 
     if submitted:
         try:
-            # Prepare input data matching the model's expected format
-            input_data = {
-                "age": age,
-                "weight": weight,
-                "height": height,
-                "bmi": bmi,
-                "pulse_rate": pulse_rate,
-                "rr": rr,
-                "hb": hb,
-                "cycle_length": cycle_length,
-                "cycle_regularity": 1 if cycle_regularity else 0,
-                "marriage_status": marriage_status,
-                "waist": waist,
-                "hip": hip,
-                "waist_hip_ratio": waist / hip if waist > 0 and hip > 0 else 0,
-                "tsh": tsh,
-                "amh": amh,
-                "prl": prl,
-                "vit_d3": vit_d3,
-                "prg": prg,
-                "rbs": rbs,
-                "bp_systolic": bp_systolic,
-                "bp_diastolic": bp_diastolic,
-                "follicle_l": follicle_l,
-                "follicle_r": follicle_r,
-                "avg_f_size_l": avg_f_size_l,
-                "avg_f_size_r": avg_f_size_r,
-                "endometrium": endometrium,
-                "pregnant": 1 if pregnant else 0,
-                "weight_gain": 1 if weight_gain else 0,
-                "hair_growth": 1 if hair_growth else 0,
-                "skin_darkening": 1 if skin_darkening else 0,
-                "hair_loss": 1 if hair_loss else 0,
-                "pimples": 1 if pimples else 0,
-                "fast_food": 1 if fast_food else 0,
-                "regular_exercise": 1 if regular_exercise else 0,
-                "fsh": fsh,
-                "lh": lh,
-                "abortions": abortions,
-                "beta_hcg1": beta_hcg1,
-                "beta_hcg2": beta_hcg2
-            }
-
-            # Convert to array for model input
-            features = list(input_data.values())
+            # Convert blood group to numeric value
+            blood_group_num = map_blood_group(blood_group)
+            
+            # Create PredictionInput instance with validated data
+            prediction_input = PredictionInput(
+                age=age,
+                weight=weight,
+                height=height,
+                bmi=bmi,
+                blood_group=blood_group_num,
+                pulse_rate=pulse_rate,
+                rr=rr,
+                hb=hb,
+                cycle_ri=1 if cycle_regularity else 0,
+                cycle_length=cycle_length,
+                marriage_status=marriage_status,
+                pregnant=1 if pregnant else 0,
+                no_of_abortions=abortions,
+                beta_hcg1=beta_hcg1,
+                beta_hcg2=beta_hcg2,
+                fsh=fsh,
+                lh=lh,
+                fsh_lh_ratio=fsh/lh if lh > 0 else 0,
+                hip=hip,
+                waist=waist,
+                waist_hip_ratio=waist / hip if waist > 0 and hip > 0 else 0,
+                tsh=tsh,
+                amh=amh,
+                prl=prl,
+                vit_d3=vit_d3,
+                prg=prg,
+                rbs=rbs,
+                weight_gain=1 if weight_gain else 0,
+                hair_growth=1 if hair_growth else 0,
+                skin_darkening=1 if skin_darkening else 0,
+                hair_loss=1 if hair_loss else 0,
+                pimples=1 if pimples else 0,
+                fast_food=1 if fast_food else 0,
+                regular_exercise=1 if regular_exercise else 0,
+                bp_systolic=bp_systolic,
+                bp_diastolic=bp_diastolic,
+                follicle_l=follicle_l,
+                follicle_r=follicle_r,
+                avg_f_size_l=avg_f_size_l,
+                avg_f_size_r=avg_f_size_r,
+                endometrium=endometrium
+            )
+            
+            # Extract only the features needed for the model in the correct order and format
+            model_features = [
+                prediction_input.age,
+                prediction_input.weight,
+                prediction_input.height,
+                prediction_input.bmi,
+                prediction_input.blood_group,
+                prediction_input.pulse_rate,
+                prediction_input.rr,
+                prediction_input.hb,
+                prediction_input.cycle_ri,
+                prediction_input.cycle_length,
+                prediction_input.marriage_status,
+                prediction_input.pregnant,
+                prediction_input.no_of_abortions,  # This matches "No. of aborptions" in the model
+                prediction_input.beta_hcg1,
+                prediction_input.beta_hcg2,
+                prediction_input.fsh,
+                prediction_input.lh,
+                prediction_input.fsh_lh_ratio,
+                prediction_input.hip,
+                prediction_input.waist,
+                prediction_input.waist_hip_ratio,
+                prediction_input.tsh,
+                prediction_input.amh,
+                prediction_input.prl,
+                prediction_input.vit_d3,
+                prediction_input.prg,
+                prediction_input.rbs,
+                prediction_input.weight_gain,
+                prediction_input.hair_growth,
+                prediction_input.skin_darkening,
+                prediction_input.hair_loss,
+                prediction_input.pimples,
+                prediction_input.fast_food,
+                prediction_input.regular_exercise,
+                prediction_input.bp_systolic,
+                prediction_input.bp_diastolic,
+                prediction_input.follicle_l,
+                prediction_input.follicle_r,
+                prediction_input.avg_f_size_l,
+                prediction_input.avg_f_size_r,  # This matches "Avg. F size (R) (mm)" in the model
+                prediction_input.endometrium
+            ]
             
             # Make prediction
             if model is not None:
-                risk_probability = predict_probability(model, features)
+                risk_probability = predict_probability(model, model_features)
                 if risk_probability is None:
-                    risk_probability = fallback_predict(input_data)
+                    risk_probability = fallback_predict(prediction_input)
             else:
-                risk_probability = fallback_predict(input_data)
+                risk_probability = fallback_predict(prediction_input)
             
             # Show results
             st.success(f"Risk Score: {risk_probability:.2%}")

@@ -35,13 +35,15 @@ class MLPredictionService {
 
   // API Configuration
   static const bool _useLocalServer = true; // Set to false for production
-  static const String _localUrl = 'http://localhost:8000'; // Flask server
-  static const String _streamlitUrl = 'http://localhost:8502'; // Streamlit server
-  static const String _productionUrl = 'https://ovarian-cyst-ml-api.streamlit.app';
-  
+  static const String _localUrl = 'http://localhost:8001'; // FastAPI server
+  static const String _streamlitUrl =
+      'http://localhost:8502'; // Streamlit server
+  static const String _productionUrl =
+      'https://ovarian-cyst-ml-api.streamlit.app';
+
   String get _baseUrl => _useLocalServer ? _localUrl : _productionUrl;
   String get _fallbackUrl => _useLocalServer ? _streamlitUrl : _productionUrl;
-  
+
   static const int _maxRetries = 3;
   static const int _maxRedirects = 5;
   static const Duration _timeout = Duration(seconds: 30);
@@ -210,7 +212,7 @@ class MLPredictionService {
 
           while (redirectCount < _maxRedirects) {
             _logger.info('Making request to: ${currentUri.toString()}');
-            
+
             final response = await client
                 .post(
                   currentUri,
@@ -223,7 +225,8 @@ class MLPredictionService {
 
             if (response.statusCode == 200) {
               return response;
-            } else if (response.statusCode >= 300 && response.statusCode < 400) {
+            } else if (response.statusCode >= 300 &&
+                response.statusCode < 400) {
               final location = response.headers['location'];
               if (location == null) {
                 throw Exception('Redirect location header missing');
