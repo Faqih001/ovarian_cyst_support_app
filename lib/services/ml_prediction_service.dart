@@ -33,17 +33,18 @@ class MLPredictionService {
 
   final Logger _logger = Logger('MLPredictionService');
 
+  // Streamlit deployment URL
+  static const String _baseUrl = 'https://ovarian-cyst-ml-api.streamlit.app';
+  // Fallback URL if primary is not available
+  static const String _fallbackUrl = 'https://ovarian-cyst-ml-api-backup.streamlit.app';
+
   MLPredictionService._internal() {
-    // Initialize logging when the service is created
+    // Initialize logging
     Logger.root.level = Level.ALL;
     Logger.root.onRecord.listen((record) {
-      // In production, you might want to use a proper logging backend
       debugPrint('${record.level.name}: ${record.time}: ${record.message}');
     });
   }
-
-  static const String _baseUrl =
-      'http://localhost:8000'; // Update with your Flask server URL
 
   Future<PCOSPredictionResult> predictFromData({
     required double age,
@@ -89,10 +90,58 @@ class MLPredictionService {
     required double endometrium,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/predict'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
+      // Try primary URL first
+      final response = await _makeRequest(_baseUrl, {
+        'age': age,
+        'weight': weight,
+        'height': height,
+        'bmi': bmi,
+        'blood_group': bloodGroup,
+        'pulse_rate': pulseRate,
+        'rr': rr,
+        'hb': hb,
+        'cycle_ri': cycleRI,
+        'cycle_length': cycleLength,
+        'marriage_status': marriageStatus,
+        'pregnant': pregnant,
+        'no_of_abortions': noOfAbortions,
+        'beta_hcg1': betaHcg1,
+        'beta_hcg2': betaHcg2,
+        'fsh': fsh,
+        'lh': lh,
+        'fsh_lh_ratio': fshLhRatio,
+        'hip': hip,
+        'waist': waist,
+        'waist_hip_ratio': waistHipRatio,
+        'tsh': tsh,
+        'amh': amh,
+        'prl': prl,
+        'vit_d3': vitD3,
+        'prg': prg,
+        'rbs': rbs,
+        'weight_gain': weightGain,
+        'hair_growth': hairGrowth,
+        'skin_darkening': skinDarkening,
+        'hair_loss': hairLoss,
+        'pimples': pimples,
+        'fast_food': fastFood,
+        'regular_exercise': regularExercise,
+        'bp_systolic': bpSystolic,
+        'bp_diastolic': bpDiastolic,
+        'follicle_l': follicleL,
+        'follicle_r': follicleR,
+        'avg_f_size_l': avgFSizeL,
+        'avg_f_size_r': avgFSizeR,
+        'endometrium': endometrium,
+      });
+
+      return _processPredictionResponse(response);
+    } catch (e) {
+      _logger.warning('Error with primary URL: $e');
+
+      try {
+        // Try fallback URL
+        final response = await _makeRequest(_fallbackUrl, {
           'age': age,
           'weight': weight,
           'height': height,
@@ -134,20 +183,50 @@ class MLPredictionService {
           'avg_f_size_l': avgFSizeL,
           'avg_f_size_r': avgFSizeR,
           'endometrium': endometrium,
-        }),
-      );
+        });
 
-      if (response.statusCode == 200) {
-        final result = json.decode(response.body);
-        return PCOSPredictionResult.fromJson(result);
-      } else {
-        final error = 'Failed to get prediction: ${response.statusCode}';
-        _logger.severe(error);
-        throw Exception(error);
+        return _processPredictionResponse(response);
+      } catch (e) {
+        _logger.severe('Error making prediction', e);
+        throw Exception(
+            'Unable to connect to the prediction service. Please check your internet connection and try again.');
       }
-    } catch (e, stackTrace) {
-      _logger.severe('Error making prediction', e, stackTrace);
-      rethrow;
+    }
+  }
+
+  Future<http.Response> _makeRequest(
+      String baseUrl, Map<String, dynamic> data) async {
+    final uri = Uri.parse('$baseUrl/predict');
+    final response = await http
+        .post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: json.encode(data),
+    )
+        .timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        throw Exception('Request timed out. Please try again.');
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Server returned status code ${response.statusCode}');
+    }
+
+    return response;
+  }
+
+  PCOSPredictionResult _processPredictionResponse(http.Response response) {
+    try {
+      final result = json.decode(response.body);
+      return PCOSPredictionResult.fromJson(result);
+    } catch (e) {
+      _logger.severe('Error processing prediction response', e);
+      throw Exception('Invalid response from server. Please try again.');
     }
   }
 

@@ -176,6 +176,48 @@ class _OvarianCystPredictionScreenState
     });
 
     try {
+      // First validate all required numeric fields
+      final requiredFields = {
+        'Age': _ageController,
+        'Weight': _weightController,
+        'Height': _heightController,
+        'BMI': _bmiController,
+        'Pulse Rate': _pulseRateController,
+        'Respiratory Rate': _rrController,
+        'Hemoglobin': _hbController,
+        'Cycle Length': _cycleLengthController,
+        'Marriage Status': _marriageStatusController,
+        'Waist': _waistController,
+        'Hip': _hipController,
+      };
+
+      for (var entry in requiredFields.entries) {
+        final value = entry.value.text;
+        if (value.isEmpty) {
+          throw Exception('${entry.key} is required');
+        }
+        final numeric = double.tryParse(value);
+        if (numeric == null) {
+          throw Exception('${entry.key} must be a valid number');
+        }
+        if (numeric < 0) {
+          throw Exception('${entry.key} cannot be negative');
+        }
+      }
+
+      // Validate specific ranges
+      final bmi = double.parse(_bmiController.text);
+      if (bmi < 10 || bmi > 100) {
+        throw Exception('BMI should be between 10 and 100');
+      }
+
+      final waist = double.parse(_waistController.text);
+      final hip = double.parse(_hipController.text);
+      if (waist >= hip) {
+        throw Exception(
+            'Waist measurement should be less than hip measurement');
+      }
+
       final result = await _mlService.predictOvarianCyst(
         age: double.parse(_ageController.text),
         weight: double.parse(_weightController.text),
@@ -228,46 +270,97 @@ class _OvarianCystPredictionScreenState
       if (!mounted) return;
 
       if (result.riskScore > 0.7) {
-        // Use a local BuildContext that won't be used after an async gap
-        final shouldBook = await showDialog<bool>(
-          context: context,
-          builder: (BuildContext dialogContext) => AlertDialog(
-            title: const Text('High Risk Detected'),
-            content: const Text(
-              'Based on the test results, we recommend immediate medical attention. Would you like to book an appointment now?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Later'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Book Appointment'),
-              ),
-            ],
-          ),
-        );
-
-        if (!mounted) return;
-
-        if (shouldBook == true) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const FacilitySelectionScreen(),
-            ),
-          );
-        }
+        await _showHighRiskDialog();
       }
     } catch (e) {
       if (!mounted) return;
 
+      // Show error dialog
+      await _showErrorDialog(e.toString());
+
       setState(() {
         _isLoading = false;
-        _predictionResult = 'Error: ${e.toString()}';
+        _predictionResult = null;
       });
     }
+  }
+
+  Future<void> _showHighRiskDialog() async {
+    final shouldBook = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('High Risk Detected'),
+        content: const Text(
+          'Based on the test results, we recommend immediate medical attention. Would you like to book an appointment now?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Later'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+            ),
+            child: const Text('Book Appointment'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (shouldBook == true) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const FacilitySelectionScreen(),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showErrorDialog(String error) async {
+    String message = error;
+    String title = 'Error';
+
+    // Make error messages more user-friendly
+    if (error.contains('Unable to connect')) {
+      title = 'Connection Error';
+      message =
+          'Unable to connect to our servers. Please check your internet connection and try again.';
+    } else if (error.contains('Invalid response')) {
+      title = 'Server Error';
+      message =
+          'We encountered an issue processing your data. Please try again later.';
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(
+          child: ListBody(
+            children: [
+              Text(message),
+              if (!message.contains('try again')) ...[
+                const SizedBox(height: 16),
+                const Text('Please check your inputs and try again.'),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
