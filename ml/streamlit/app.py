@@ -1,162 +1,202 @@
+"""
+PCOS Risk Assessment Web Application using Streamlit.
+This module provides a web interface for predicting PCOS risk.
+"""
+
+from io import BytesIO
 import streamlit as st
 import pandas as pd
+import numpy as np
+import requests
 import joblib
-from pydantic import BaseModel
+from catboost import CatBoostClassifier
 
-# Load the model
 @st.cache_resource
 def load_model():
-    return joblib.load("models/pcos_model.joblib")
+    """
+    Load the model from Google Drive.
+    Returns:
+        Scikit-learn model or None if loading fails
+    """
+    try:
+        model_url = "https://drive.google.com/uc?export=download&id=1jL-UIq7lyGDMduNMbZHLKW-TytPgI2MS"
+        
+        if "model" not in st.session_state:
+            st.session_state.model = None
+            try:
+                response = requests.get(model_url)
+                model_bytes = BytesIO(response.content)
+                st.session_state.model = joblib.load(model_bytes)
+                return st.session_state.model
+            except Exception as e:
+                st.error(f"Error downloading model: {str(e)}")
+                return None
+        return st.session_state.model
+    except Exception as e:
+        st.error(f"Error loading model: {str(e)}")
+        return None
 
-try:
-    model = load_model()
-except Exception as e:
-    st.error(f"Error loading model: {str(e)}")
-    model = None
+def predict_probability(model, features):
+    """
+    Make prediction using scikit-learn model.
+    Args:
+        model: Scikit-learn model
+        features: List of input features
+    Returns:
+        Probability of PCOS risk
+    """
+    try:
+        # Convert features to numpy array
+        X = np.array(features).reshape(1, -1)
+        # Get probability prediction
+        probabilities = model.predict_proba(X)
+        return float(probabilities[0][1])
+    except Exception as e:
+        st.error(f"Error in prediction: {str(e)}")
+        return None
 
-# Title and description
-st.title("PCOS Risk Assessment")
-st.write("This service provides PCOS risk assessment predictions based on various health indicators.")
+def fallback_predict(input_data):
+    """
+    Simple rule-based prediction when model is not available.
+    Args:
+        input_data: Dictionary of input features
+    Returns:
+        Risk probability between 0 and 1
+    """
+    risk_factors = 0
+    risk_factors += input_data["bmi"] > 25
+    risk_factors += input_data["waist_hip_ratio"] > 0.85
+    risk_factors += input_data["cycle_regularity"] == 0  # Irregular cycle
+    risk_factors += input_data["weight_gain"] == 1
+    risk_factors += input_data["skin_darkening"] == 1
+    risk_factors += input_data["hair_growth"] == 1
+    risk_factors += input_data["pimples"] == 1
+    
+    return min(0.9, risk_factors / 10)
 
-# Create input form
+# Initialize the model
+model = load_model()
+
+# Streamlit UI
+st.title('PCOS Risk Assessment')
+st.write('Enter your health information for PCOS risk assessment.')
+
 with st.form("prediction_form"):
     # Basic Information
     st.subheader("Basic Information")
     col1, col2 = st.columns(2)
     with col1:
-        age = st.number_input("Age", min_value=0, max_value=100, value=25, step=1)
-        weight = st.number_input("Weight", min_value=30, max_value=200, value=65, help="Weight in kg")
-        height = st.number_input("Height", min_value=100, max_value=250, value=165, help="Height in cm")
+        age = st.number_input("Age (years)", min_value=15, max_value=50, value=25)
+        weight = st.number_input("Weight (kg)", min_value=30.0, max_value=150.0, value=60.0)
+        height = st.number_input("Height (cm)", min_value=140.0, max_value=200.0, value=160.0)
     with col2:
         bmi = weight / ((height/100) ** 2)
-        st.write(f"BMI: {bmi:.2f}")
-        blood_group = st.selectbox("Blood Group", ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"])
+        st.number_input("BMI", value=bmi, disabled=True)
+        blood_group = st.selectbox("Blood Group", 
+            ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'])
 
     # Vital Signs
     st.subheader("Vital Signs")
     col1, col2 = st.columns(2)
     with col1:
-        pulse_rate = st.number_input("Pulse Rate", min_value=40, max_value=200, value=80, help="Beats per minute")
-        respiratory_rate = st.number_input("Respiratory Rate", min_value=8, max_value=40, value=16, help="Breaths per minute")
-        hemoglobin = st.number_input("Hemoglobin", min_value=4.0, max_value=20.0, value=12.0, help="g/dL")
+        pulse_rate = st.number_input("Pulse Rate (bpm)", min_value=40, max_value=200)
+        rr = st.number_input("Respiratory Rate (breaths/min)", min_value=8, max_value=40)
+        bp_systolic = st.number_input("BP Systolic (mmHg)", min_value=70, max_value=200)
     with col2:
-        bp_systolic = st.number_input("BP Systolic", min_value=70, max_value=200, value=120, help="mmHg")
-        bp_diastolic = st.number_input("BP Diastolic", min_value=40, max_value=130, value=80, help="mmHg")
+        hb = st.number_input("Hemoglobin (g/dl)", min_value=5.0, max_value=20.0)
+        bp_diastolic = st.number_input("BP Diastolic (mmHg)", min_value=40, max_value=130)
 
     # Menstrual History
     st.subheader("Menstrual History")
-    cycle_regularity = st.checkbox("Regular Cycle")
-    cycle_length = st.number_input("Cycle Length", min_value=20, max_value=45, value=28, help="days")
+    col1, col2 = st.columns(2)
+    with col1:
+        cycle_regularity = st.checkbox("Regular Menstrual Cycle", value=True)
+        cycle_length = st.number_input("Cycle Length (days)", min_value=20, max_value=40, value=28)
 
     # Physical Measurements
     st.subheader("Physical Measurements")
     col1, col2 = st.columns(2)
     with col1:
-        waist = st.number_input("Waist", min_value=20, max_value=200, value=32, help="inches")
-        hip = st.number_input("Hip", min_value=25, max_value=200, value=40, help="inches")
-    waist_hip_ratio = waist / hip if hip != 0 else 0
-    st.write(f"Waist-Hip Ratio: {waist_hip_ratio:.2f}")
+        waist = st.number_input("Waist (inch)", min_value=20.0, max_value=60.0)
+        hip = st.number_input("Hip (inch)", min_value=25.0, max_value=80.0)
+    with col2:
+        if waist > 0 and hip > 0:
+            waist_hip_ratio = waist / hip
+            st.number_input("Waist-Hip Ratio", value=waist_hip_ratio, disabled=True)
 
     # Hormonal Tests
     st.subheader("Hormonal Tests")
     col1, col2 = st.columns(2)
     with col1:
-        fsh = st.number_input("FSH", value=6.0, help="mIU/mL")
-        lh = st.number_input("LH", value=5.0, help="mIU/mL")
-        tsh = st.number_input("TSH", value=2.5, help="mIU/L")
-        amh = st.number_input("AMH", value=4.2, help="ng/mL")
+        fsh = st.number_input("FSH (mIU/mL)", min_value=0.0, max_value=200.0)
+        lh = st.number_input("LH (mIU/mL)", min_value=0.0, max_value=200.0)
+        tsh = st.number_input("TSH (mIU/L)", min_value=0.0, max_value=50.0)
+        amh = st.number_input("AMH (ng/mL)", min_value=0.0, max_value=20.0)
+        prl = st.number_input("Prolactin (ng/mL)", min_value=0.0, max_value=200.0)
     with col2:
-        prl = st.number_input("Prolactin", value=15.0, help="ng/mL")
-        vit_d3 = st.number_input("Vitamin D3", value=30.0, help="ng/mL")
-        prg = st.number_input("Progesterone", value=10.0, help="ng/mL")
+        vit_d3 = st.number_input("Vitamin D3 (ng/mL)", min_value=0.0, max_value=100.0)
+        prg = st.number_input("Progesterone (ng/mL)", min_value=0.0, max_value=50.0)
+        beta_hcg1 = st.number_input("Beta HCG-1 (mIU/mL)", min_value=0.0, max_value=1000.0)
+        beta_hcg2 = st.number_input("Beta HCG-2 (mIU/mL)", min_value=0.0, max_value=1000.0)
 
     # Ultrasound Findings
     st.subheader("Ultrasound Findings")
     col1, col2 = st.columns(2)
     with col1:
-        follicle_l = st.number_input("Left Ovary Follicle Count", min_value=0, max_value=30, value=8)
-        follicle_r = st.number_input("Right Ovary Follicle Count", min_value=0, max_value=30, value=8)
+        follicle_l = st.number_input("Left Ovary Follicle Count", min_value=0, max_value=30)
+        follicle_r = st.number_input("Right Ovary Follicle Count", min_value=0, max_value=30)
+        avg_f_size_l = st.number_input("Left Follicle Size (mm)", min_value=0.0, max_value=30.0)
     with col2:
-        avg_f_size_l = st.number_input("Left Follicle Size", value=15.0, help="mm")
-        avg_f_size_r = st.number_input("Right Follicle Size", value=15.0, help="mm")
-    endometrium = st.number_input("Endometrium Thickness", value=8.0, help="mm")
+        avg_f_size_r = st.number_input("Right Follicle Size (mm)", min_value=0.0, max_value=30.0)
+        endometrium = st.number_input("Endometrium Thickness (mm)", min_value=0.0, max_value=30.0)
 
     # Additional Information
     st.subheader("Additional Information")
     col1, col2 = st.columns(2)
     with col1:
-        marriage_status = st.number_input("Marriage Status", min_value=0, max_value=50, value=0, help="years")
-        abortions = st.number_input("Number of Abortions", min_value=0, max_value=10, value=0)
-    with col2:
-        rbs = st.number_input("Random Blood Sugar", value=85.0, help="mg/dL")
+        marriage_status = st.number_input("Marriage Status (years)", min_value=0, max_value=40)
+        abortions = st.number_input("Number of Abortions", min_value=0, max_value=10)
+        rbs = st.number_input("Random Blood Sugar (mg/dl)", min_value=50.0, max_value=500.0)
 
     # Symptoms & Lifestyle
     st.subheader("Symptoms & Lifestyle")
     col1, col2 = st.columns(2)
     with col1:
         pregnant = st.checkbox("Pregnant")
-        weight_gain = st.checkbox("Weight Gain")
-        hair_growth = st.checkbox("Hair Growth")
-        skin_darkening = st.checkbox("Skin Darkening")
+        weight_gain = st.checkbox("Weight gain")
+        hair_growth = st.checkbox("Hair growth")
+        skin_darkening = st.checkbox("Skin darkening")
     with col2:
-        hair_loss = st.checkbox("Hair Loss")
+        hair_loss = st.checkbox("Hair loss")
         pimples = st.checkbox("Pimples")
-        fast_food = st.checkbox("Fast Food")
+        fast_food = st.checkbox("Fast food")
         regular_exercise = st.checkbox("Regular Exercise")
 
     submitted = st.form_submit_button("Calculate Risk")
 
-    if submitted and model is not None:
+    if submitted:
         try:
-            # Convert boolean fields to integers
-            boolean_fields = {
-                "pregnant": pregnant,
-                "weight_gain": weight_gain,
-                "hair_growth": hair_growth,
-                "skin_darkening": skin_darkening,
-                "hair_loss": hair_loss,
-                "pimples": pimples,
-                "fast_food": fast_food,
-                "regular_exercise": regular_exercise,
-            }
-            boolean_ints = {k: 1 if v else 0 for k, v in boolean_fields.items()}
-
-            # Blood group to numeric
-            blood_groups = {
-                "A+": 1, "A-": 2, "B+": 3, "B-": 4,
-                "O+": 5, "O-": 6, "AB+": 7, "AB-": 8
-            }
-            blood_group_num = blood_groups.get(blood_group, 1)
-
-            # Prepare input data
+            # Prepare input data matching the model's expected format
             input_data = {
                 "age": age,
                 "weight": weight,
                 "height": height,
                 "bmi": bmi,
-                "blood_group": blood_group_num,
                 "pulse_rate": pulse_rate,
-                "rr": respiratory_rate,
-                "hb": hemoglobin,
-                "cycle_ri": 1 if cycle_regularity else 0,
+                "rr": rr,
+                "hb": hb,
                 "cycle_length": cycle_length,
+                "cycle_regularity": 1 if cycle_regularity else 0,
                 "marriage_status": marriage_status,
-                "pregnant": boolean_ints["pregnant"],
-                "no_of_abortions": abortions,
-                "waist_hip_ratio": waist_hip_ratio,
+                "waist": waist,
+                "hip": hip,
+                "waist_hip_ratio": waist / hip if waist > 0 and hip > 0 else 0,
                 "tsh": tsh,
                 "amh": amh,
                 "prl": prl,
                 "vit_d3": vit_d3,
                 "prg": prg,
                 "rbs": rbs,
-                "weight_gain": boolean_ints["weight_gain"],
-                "hair_growth": boolean_ints["hair_growth"],
-                "skin_darkening": boolean_ints["skin_darkening"],
-                "hair_loss": boolean_ints["hair_loss"],
-                "pimples": boolean_ints["pimples"],
-                "fast_food": boolean_ints["fast_food"],
-                "regular_exercise": boolean_ints["regular_exercise"],
                 "bp_systolic": bp_systolic,
                 "bp_diastolic": bp_diastolic,
                 "follicle_l": follicle_l,
@@ -164,59 +204,65 @@ with st.form("prediction_form"):
                 "avg_f_size_l": avg_f_size_l,
                 "avg_f_size_r": avg_f_size_r,
                 "endometrium": endometrium,
+                "pregnant": 1 if pregnant else 0,
+                "weight_gain": 1 if weight_gain else 0,
+                "hair_growth": 1 if hair_growth else 0,
+                "skin_darkening": 1 if skin_darkening else 0,
+                "hair_loss": 1 if hair_loss else 0,
+                "pimples": 1 if pimples else 0,
+                "fast_food": 1 if fast_food else 0,
+                "regular_exercise": 1 if regular_exercise else 0,
                 "fsh": fsh,
                 "lh": lh,
-                "fsh_lh_ratio": fsh/lh if lh > 0 else 1.2,
+                "abortions": abortions,
+                "beta_hcg1": beta_hcg1,
+                "beta_hcg2": beta_hcg2
             }
 
+            # Convert to array for model input
+            features = list(input_data.values())
+            
             # Make prediction
-            input_df = pd.DataFrame([input_data])
-            risk_probability = float(model.predict_proba(input_df)[0][1])
-            feature_importance = dict(zip(input_df.columns, model.feature_importances_))
-
+            if model is not None:
+                risk_probability = predict_probability(model, features)
+                if risk_probability is None:
+                    risk_probability = fallback_predict(input_data)
+            else:
+                risk_probability = fallback_predict(input_data)
+            
             # Show results
             st.success(f"Risk Score: {risk_probability:.2%}")
             
-            # Determine stage and recommendations
+            # Risk interpretation
             if risk_probability < 0.3:
-                st.info("Stage: Low Risk")
-                recommendations = [
-                    "Continue regular health check-ups",
-                    "Maintain a healthy lifestyle",
-                    "Track your menstrual cycle"
-                ]
-            elif risk_probability < 0.7:
-                st.warning("Stage: Moderate Risk")
-                recommendations = [
-                    "Schedule a consultation with a gynecologist",
-                    "Consider hormonal tests",
-                    "Monitor symptoms closely",
-                    "Improve diet and exercise routine"
-                ]
+                risk_level = "Low"
+                color = "green"
+            elif risk_probability < 0.6:
+                risk_level = "Moderate"
+                color = "orange"
             else:
-                st.error("Stage: High Risk")
-                recommendations = [
-                    "Seek immediate medical attention",
-                    "Complete hormonal panel testing recommended",
-                    "Regular monitoring of ovarian cysts",
-                    "Consider medical treatment options",
-                    "Make lifestyle modifications"
-                ]
-
-            # Show recommendations
+                risk_level = "High"
+                color = "red"
+            
+            st.markdown(f"**Risk Level:** <span style='color:{color}'>{risk_level}</span>", unsafe_allow_html=True)
+            
+            # Recommendations based on risk level
             st.subheader("Recommendations")
-            for rec in recommendations:
-                st.write(f"• {rec}")
-
-            # Show top contributing factors
-            st.subheader("Top Contributing Factors")
-            sorted_features = dict(sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:5])
-            for feature, importance in sorted_features.items():
-                st.write(f"• {feature}: {importance:.1%}")
+            if risk_level == "Low":
+                st.write("- Continue maintaining a healthy lifestyle")
+                st.write("- Regular check-ups recommended")
+                st.write("- Monitor any changes in symptoms")
+            elif risk_level == "Moderate":
+                st.write("- Schedule a consultation with a healthcare provider")
+                st.write("- Consider lifestyle modifications")
+                st.write("- Monitor symptoms more closely")
+            else:
+                st.write("- Urgent consultation with a healthcare provider recommended")
+                st.write("- Immediate lifestyle changes may be necessary")
+                st.write("- Consider comprehensive PCOS screening")
 
         except Exception as e:
             st.error(f"Error making prediction: {str(e)}")
 
-# Footer
 st.markdown("---")
 st.markdown("*This is a part of the Ovarian Cyst Support App*")
