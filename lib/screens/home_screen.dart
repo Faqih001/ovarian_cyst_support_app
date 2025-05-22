@@ -1519,7 +1519,7 @@ class ChatbotBottomSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(25.0),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withAlpha(51), // 0.2 * 255 = 51
                   blurRadius: 10,
                   spreadRadius: 2,
                 ),
@@ -1558,7 +1558,7 @@ class ChatbotBottomSheet extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha(26), // 0.1 * 255 ≈ 26
             spreadRadius: 1,
             blurRadius: 2,
             offset: const Offset(0, 1),
