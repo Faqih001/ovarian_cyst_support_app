@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_entry.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_prediction.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:ovarian_cyst_support_app/services/gemini_service.dart';
 
 class AIService {
   // Base URL for FastAPI backend
@@ -15,6 +16,9 @@ class AIService {
 
   // Singleton instance
   static final AIService _instance = AIService._internal();
+  
+  // Gemini service for advanced AI capabilities
+  final GeminiService _geminiService = GeminiService();
 
   factory AIService() {
     return _instance;
@@ -168,27 +172,36 @@ class AIService {
     }
 
     try {
-      // Make API call to the chatbot AI backend
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl$chatbotEndpoint'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'query': userQuery}),
-          )
-          .timeout(const Duration(seconds: 10));
+      // Use Gemini API for smart responses
+      final response = await _geminiService.getResponse(userQuery);
+      return response;
+    } catch (e) {
+      debugPrint('Exception in Gemini API call: $e');
+      
+      // Try the previous implementation as a fallback
+      try {
+        // Make API call to the chatbot AI backend
+        final response = await http
+            .post(
+              Uri.parse('$baseUrl$chatbotEndpoint'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'query': userQuery}),
+            )
+            .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        return data['response'] as String;
-      } else {
-        debugPrint('Error from chatbot API: ${response.statusCode}');
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data = jsonDecode(response.body);
+          return data['response'] as String;
+        } else {
+          debugPrint('Error from chatbot API: ${response.statusCode}');
+          // Fallback to offline responses
+          return _getOfflineChatbotResponse(userQuery);
+        }
+      } catch (httpError) {
+        debugPrint('Exception in fallback chatbot API call: $httpError');
         // Fallback to offline responses
         return _getOfflineChatbotResponse(userQuery);
       }
-    } catch (e) {
-      debugPrint('Exception in chatbot API call: $e');
-      // Fallback to offline responses
-      return _getOfflineChatbotResponse(userQuery);
     }
   }
 

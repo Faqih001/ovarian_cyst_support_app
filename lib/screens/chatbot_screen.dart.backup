@@ -210,6 +210,45 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            const Text('OvaCare Assistant'),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.green.withAlpha(30),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.green),
+              ),
+              child: const Row(
+                children: [
+                  Text(
+                    'Gemini',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: 2),
+                  Icon(Icons.auto_awesome, size: 12, color: Colors.green),
+                ],
+              ),
+            ),
+          ],
+        ),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            onPressed: () {
+              _showHelpDialog();
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Offline indicator
@@ -227,32 +266,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       style: TextStyle(color: Colors.orange.shade800),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.help_outline, size: 20),
-                    onPressed: () {
-                      _showHelpDialog();
-                    },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    splashRadius: 24,
-                  ),
                 ],
-              ),
-            ),
-          
-          // Add help button if online
-          if (!_isOffline)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0, right: 8.0),
-              child: Align(
-                alignment: Alignment.topRight,
-                child: IconButton(
-                  icon: const Icon(Icons.help_outline),
-                  onPressed: () {
-                    _showHelpDialog();
-                  },
-                  splashRadius: 24,
-                ),
               ),
             ),
 
@@ -298,17 +312,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                           color: Theme.of(context).primaryColor.withAlpha(128),
                         ),
                       ),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                            maxWidth:
-                                MediaQuery.of(context).size.width * 0.7),
+                      child: Center(
                         child: Text(
                           _suggestedQuestions[index],
                           style: TextStyle(
                             color: Theme.of(context).primaryColor,
                             fontSize: 12,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -448,13 +458,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(12),
                 ),
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.85,
-                ),
                 child: Text(
                   message.text,
                   style: TextStyle(fontSize: 12, color: Colors.grey[800]),
-                  textAlign: TextAlign.center,
                 ),
               ),
             ),
@@ -512,15 +518,11 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       ),
                     ],
                   ),
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.7,
-                  ),
                   child: Text(
                     message.text,
                     style: TextStyle(
                       color: isUserMessage ? Colors.white : Colors.black87,
                     ),
-                    softWrap: true,
                   ),
                 ),
                 Padding(
@@ -581,9 +583,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         return AlertDialog(
           title: Row(
             children: [
-              const Flexible(
-                child: Text('Chatbot Help', overflow: TextOverflow.ellipsis),
-              ),
+              const Text('Chatbot Help'),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -593,7 +593,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   border: Border.all(color: Colors.green),
                 ),
                 child: const Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       'Gemini',
