@@ -1577,62 +1577,157 @@ class ChatbotBottomSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(2.5),
             ),
           ),
-          const SizedBox(height: 12),              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.smart_toy_rounded,
-                        color: AppColors.primary,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'OvaCare AI Assistant',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.help_outline,
-                          color: Colors.grey,
-                          size: 20,
-                        ),
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Chatbot Help'),
-                              content: const SingleChildScrollView(
-                                child: Text(
-                                  'This chatbot is powered by Google\'s Gemini AI, designed to provide intelligent and accurate information about ovarian cysts.',
+                  const Icon(
+                    Icons.smart_toy_rounded,
+                    color: AppColors.primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'OvaCare AI Assistant',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.help_outline,
+                      color: Colors.grey,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: Row(
+                              children: [
+                                const Flexible(
+                                  child: Text('Chatbot Help',
+                                      overflow: TextOverflow.ellipsis),
                                 ),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Got it'),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withAlpha(30),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.green),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Gemini',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: 2),
+                                      Icon(Icons.auto_awesome,
+                                          size: 12, color: Colors.green),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
+                            content: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'This chatbot is powered by Google\'s Gemini AI, designed to provide intelligent and accurate information about ovarian cysts.',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildDialogHelpItem(
+                                    'Medical Information',
+                                    'Ask questions about ovarian cysts, symptoms, treatments, etc.',
+                                  ),
+                                  const Divider(),
+                                  _buildDialogHelpItem(
+                                    'Symptom Tracking',
+                                    'Ask to track or review your symptoms',
+                                  ),
+                                  const Divider(),
+                                  _buildDialogHelpItem(
+                                    'Appointment Help',
+                                    'Get assistance with finding doctors or scheduling appointments',
+                                  ),
+                                  const Divider(),
+                                  _buildDialogHelpItem(
+                                    'Medication Reminders',
+                                    'Set up reminders for your medications',
+                                  ),
+                                  const Divider(),
+                                  const Text(
+                                    'Note: This chatbot provides general information and should not replace professional medical advice.',
+                                    style: TextStyle(
+                                      fontStyle: FontStyle.italic,
+                                      fontSize: 12,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Got it'),
+                              ),
+                            ],
                           );
                         },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        splashRadius: 20,
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
+                      );
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    splashRadius: 20,
                   ),
                 ],
               ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDialogHelpItem(String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          ),
         ],
       ),
     );
