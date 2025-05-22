@@ -20,9 +20,9 @@ class GeminiService {
   }
 
   GeminiService._internal() {
-    // Initialize the model with Gemini-pro (text only model)
+    // Initialize the model with the correct model name for Gemini
     _model = GenerativeModel(
-      model: 'gemini-pro',
+      model: 'gemini-1.5-pro',
       apiKey: apiKey,
     );
   }
@@ -41,11 +41,12 @@ class GeminiService {
         startNewChat();
       }
 
+      // Prepare prompt with context
+      final fullPrompt = prompt + _getOvarianCystContext();
+
       // Get response from the model
       final response = await _chatSession!.sendMessage(
-        Content.text(
-          prompt + _getOvarianCystContext(),
-        ),
+        Content.text(fullPrompt),
       );
 
       // Extract and return the text response
@@ -66,8 +67,11 @@ class GeminiService {
   /// Useful for one-time queries or when chat context isn't needed
   Future<String> getSingleResponse(String prompt) async {
     try {
+      // Prepare prompt with context
+      final fullPrompt = prompt + _getOvarianCystContext();
+      
       final response = await _model.generateContent(
-        [Content.text(prompt + _getOvarianCystContext())],
+        [Content.text(fullPrompt)],
       );
 
       final responseText = response.text;
