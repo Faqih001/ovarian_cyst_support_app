@@ -275,8 +275,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       ),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                            maxWidth:
-                                MediaQuery.of(context).size.width * 0.7),
+                            maxWidth: MediaQuery.of(context).size.width * 0.7),
                         child: Text(
                           _suggestedQuestions[index],
                           style: TextStyle(
