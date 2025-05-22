@@ -10,6 +10,7 @@ import 'package:ovarian_cyst_support_app/screens/provider_search_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/medication_tracking_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/kenyan_hospital_booking_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/ovarian_cyst_prediction_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/chatbot_screen.dart'; // Added chatbot screen import
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:ovarian_cyst_support_app/services/hospital_service.dart';
@@ -50,6 +51,41 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: _screens[_currentIndex],
+      floatingActionButton: SizedBox(
+        width: 60,
+        height: 60,
+        child: FloatingActionButton(
+          onPressed: () => _showChatbotSheet(context),
+          backgroundColor: AppColors.primary,
+          elevation: 4,
+          tooltip: 'AI Assistant',
+          child: Stack(
+            children: [
+              const Icon(
+                Icons.chat_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 10,
+                    minHeight: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -70,6 +106,22 @@ class _HomeScreenState extends State<HomeScreen>
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
+    );
+  }
+
+  void _showChatbotSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      enableDrag: true,
+      // Setting this to false allows the sheet to overlap the navigation bar
+      useSafeArea: false,
+      // Setting this to true makes the sheet cover full screen height
+      // but we'll handle spacing with our padding
+      showDragHandle: false,
+      builder: (context) => const ChatbotBottomSheet(),
     );
   }
 }
@@ -1433,6 +1485,126 @@ class _EditSymptomDialogState extends State<_EditSymptomDialog> {
           child: const Text('Save'),
         ),
       ],
+    );
+  }
+}
+
+class ChatbotBottomSheet extends StatelessWidget {
+  const ChatbotBottomSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Get screen dimensions
+    final screenSize = MediaQuery.of(context).size;
+    // Get the bottom padding to account for navigation bar
+    final bottomPadding = MediaQuery.of(context).padding.bottom + 80; // Add extra space for the navbar
+    // Calculate horizontal padding - 5% of screen width on each side
+    final horizontalPadding = screenSize.width * 0.05;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.8,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, controller) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: bottomPadding,
+            left: horizontalPadding,
+            right: horizontalPadding,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(25.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _buildSheetHeader(context),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(25.0),
+                      bottomRight: Radius.circular(25.0),
+                    ),
+                    child: const ChatbotScreen(),
+                  ),
+                ),
+                // Add padding at bottom for visual spacing from keyboard
+                SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSheetHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(25.0),
+          topRight: Radius.circular(25.0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Add a drag handle to make it clear it's draggable
+          Container(
+            width: 40,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2.5),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.smart_toy_rounded,
+                    color: AppColors.primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'OvaCare AI Assistant',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
