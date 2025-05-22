@@ -1497,7 +1497,8 @@ class ChatbotBottomSheet extends StatelessWidget {
     // Get screen dimensions
     final screenSize = MediaQuery.of(context).size;
     // Get the bottom padding to account for navigation bar
-    final bottomPadding = MediaQuery.of(context).padding.bottom + 80; // Add extra space for the navbar
+    final bottomPadding = MediaQuery.of(context).padding.bottom +
+        80; // Add extra space for the navbar
     // Calculate horizontal padding - 5% of screen width on each side
     final horizontalPadding = screenSize.width * 0.05;
 
