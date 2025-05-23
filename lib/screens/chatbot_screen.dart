@@ -53,7 +53,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     });
 
     // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) {
       setState(() {
         _isOffline = results.contains(ConnectivityResult.none);
       });

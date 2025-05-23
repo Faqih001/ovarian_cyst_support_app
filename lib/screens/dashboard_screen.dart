@@ -43,7 +43,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _checkConnectivity();
 
     // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) {
       final hasConnection = !results.contains(ConnectivityResult.none);
       if (hasConnection != _isOnline) {
         setState(() {

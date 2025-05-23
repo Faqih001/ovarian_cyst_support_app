@@ -16,7 +16,7 @@ class AIService {
 
   // Singleton instance
   static final AIService _instance = AIService._internal();
-  
+
   // Gemini service for advanced AI capabilities
   final GeminiService _geminiService = GeminiService();
 
@@ -39,17 +39,16 @@ class AIService {
 
     try {
       // Format the symptoms data for the API
-      final List<Map<String, dynamic>> symptomsData =
-          recentSymptoms
-              .map(
-                (symptom) => {
-                  'date': symptom.date.toIso8601String(),
-                  'painLevel': symptom.painLevel,
-                  'symptoms': symptom.symptoms,
-                  'mood': symptom.mood,
-                },
-              )
-              .toList();
+      final List<Map<String, dynamic>> symptomsData = recentSymptoms
+          .map(
+            (symptom) => {
+              'date': symptom.date.toIso8601String(),
+              'painLevel': symptom.painLevel,
+              'symptoms': symptom.symptoms,
+              'mood': symptom.mood,
+            },
+          )
+          .toList();
 
       // Make API call to the AI backend
       final response = await http
@@ -97,7 +96,7 @@ class AIService {
     // Calculate average pain level
     double avgPainLevel =
         recentSymptoms.fold(0, (sum, entry) => sum + entry.painLevel) /
-        recentSymptoms.length;
+            recentSymptoms.length;
 
     // Count frequency of concerning symptoms
     Map<String, int> symptomFrequency = {};
@@ -137,8 +136,7 @@ class AIService {
     }
 
     // Calculate final severity score (0-10 scale)
-    double severityScore =
-        (avgPainLevel * 10 / 5) +
+    double severityScore = (avgPainLevel * 10 / 5) +
         severityAdjustment; // Assuming pain is on 0-5 scale
     severityScore = severityScore.clamp(0, 10); // Ensure within 0-10 range
 
@@ -177,7 +175,7 @@ class AIService {
       return response;
     } catch (e) {
       debugPrint('Exception in Gemini API call: $e');
-      
+
       // Try the previous implementation as a fallback
       try {
         // Make API call to the chatbot AI backend

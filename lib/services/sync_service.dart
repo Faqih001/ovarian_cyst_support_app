@@ -372,8 +372,7 @@ class SyncService {
     final db = await _databaseService.database;
 
     // Get count of pending items
-    final pendingCount =
-        Sqflite.firstIntValue(
+    final pendingCount = Sqflite.firstIntValue(
           await db.rawQuery(
             'SELECT COUNT(*) FROM sync_status WHERE syncStatus = ?',
             ['pending'],
@@ -382,8 +381,7 @@ class SyncService {
         0;
 
     // Get count of failed items
-    final failedCount =
-        Sqflite.firstIntValue(
+    final failedCount = Sqflite.firstIntValue(
           await db.rawQuery(
             'SELECT COUNT(*) FROM sync_status WHERE syncStatus = ?',
             ['failed'],

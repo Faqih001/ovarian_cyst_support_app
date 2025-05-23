@@ -58,7 +58,9 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
     });
 
     // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) {
       setState(() {
         _isOffline = results.contains(ConnectivityResult.none);
       });
@@ -116,18 +118,16 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         setState(() {
-          _providers =
-              _providers.where((provider) {
-                final name = provider['name'].toString().toLowerCase();
-                final specialty =
-                    provider['specialty'].toString().toLowerCase();
-                final location = provider['location'].toString().toLowerCase();
-                final searchLower = query.toLowerCase();
+          _providers = _providers.where((provider) {
+            final name = provider['name'].toString().toLowerCase();
+            final specialty = provider['specialty'].toString().toLowerCase();
+            final location = provider['location'].toString().toLowerCase();
+            final searchLower = query.toLowerCase();
 
-                return name.contains(searchLower) ||
-                    specialty.contains(searchLower) ||
-                    location.contains(searchLower);
-              }).toList();
+            return name.contains(searchLower) ||
+                specialty.contains(searchLower) ||
+                location.contains(searchLower);
+          }).toList();
 
           _isLoading = false;
         });
@@ -196,17 +196,16 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
                   horizontal: 16,
                   vertical: 8,
                 ),
-                suffixIcon:
-                    _searchController.text.isNotEmpty
-                        ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            _searchProviders('');
-                            FocusScope.of(context).unfocus();
-                          },
-                        )
-                        : null,
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _searchProviders('');
+                          FocusScope.of(context).unfocus();
+                        },
+                      )
+                    : null,
               ),
               onChanged: (value) {
                 _searchProviders(value);
@@ -232,71 +231,70 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
 
           // Results
           Expanded(
-            child:
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _errorMessage.isNotEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage.isNotEmpty
                     ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: Colors.red,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _errorMessage,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _loadProviders,
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    )
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _errorMessage,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadProviders,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
                     : _providers.isEmpty
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.search_off,
-                            size: 48,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No providers found',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.search_off,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'No providers found',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Try adjusting your filters or search terms',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadProviders,
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              itemCount: _providers.length,
+                              padding: const EdgeInsets.all(16),
+                              itemBuilder: (context, index) {
+                                final provider = _providers[index];
+                                return _buildProviderCard(provider);
+                              },
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Try adjusting your filters or search terms',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                        ],
-                      ),
-                    )
-                    : RefreshIndicator(
-                      onRefresh: _loadProviders,
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        itemCount: _providers.length,
-                        padding: const EdgeInsets.all(16),
-                        itemBuilder: (context, index) {
-                          final provider = _providers[index];
-                          return _buildProviderCard(provider);
-                        },
-                      ),
-                    ),
           ),
         ],
       ),
@@ -304,10 +302,9 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
   }
 
   Widget _buildFilterChip(String label) {
-    final isSelected =
-        label == 'All'
-            ? _selectedSpecialty == 'All Specialties'
-            : _selectedSpecialty == label;
+    final isSelected = label == 'All'
+        ? _selectedSpecialty == 'All Specialties'
+        : _selectedSpecialty == label;
 
     return Padding(
       padding: const EdgeInsets.only(right: 8),
@@ -384,9 +381,8 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
                       itemCount: 5,
                       itemSize: 16,
                       ignoreGestures: true,
-                      itemBuilder:
-                          (context, _) =>
-                              const Icon(Icons.star, color: Colors.amber),
+                      itemBuilder: (context, _) =>
+                          const Icon(Icons.star, color: Colors.amber),
                       onRatingUpdate: (rating) {},
                     ),
                     const SizedBox(width: 4),
@@ -589,13 +585,12 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
                         vertical: 8,
                       ),
                     ),
-                    items:
-                        _specialties.map((specialty) {
-                          return DropdownMenuItem<String>(
-                            value: specialty,
-                            child: Text(specialty),
-                          );
-                        }).toList(),
+                    items: _specialties.map((specialty) {
+                      return DropdownMenuItem<String>(
+                        value: specialty,
+                        child: Text(specialty),
+                      );
+                    }).toList(),
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {
@@ -621,13 +616,12 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
                         vertical: 8,
                       ),
                     ),
-                    items:
-                        _locations.map((location) {
-                          return DropdownMenuItem<String>(
-                            value: location,
-                            child: Text(location),
-                          );
-                        }).toList(),
+                    items: _locations.map((location) {
+                      return DropdownMenuItem<String>(
+                        value: location,
+                        child: Text(location),
+                      );
+                    }).toList(),
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {
@@ -698,11 +692,10 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => AppointmentBookingScreen(
-              provider: provider,
-              initialDate: selectedDate,
-            ),
+        builder: (context) => AppointmentBookingScreen(
+          provider: provider,
+          initialDate: selectedDate,
+        ),
       ),
     );
   }
@@ -783,9 +776,8 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
                           itemCount: 5,
                           itemSize: 20,
                           ignoreGestures: true,
-                          itemBuilder:
-                              (context, _) =>
-                                  const Icon(Icons.star, color: Colors.amber),
+                          itemBuilder: (context, _) =>
+                              const Icon(Icons.star, color: Colors.amber),
                           onRatingUpdate: (rating) {},
                         ),
                         const SizedBox(width: 8),

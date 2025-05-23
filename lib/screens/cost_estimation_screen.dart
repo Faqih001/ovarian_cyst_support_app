@@ -82,7 +82,9 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
     });
 
     // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) {
       setState(() {
         _isOffline = results.contains(ConnectivityResult.none);
       });
@@ -329,13 +331,12 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
                   vertical: 8,
                 ),
               ),
-              items:
-                  _treatmentTypes.map((type) {
-                    return DropdownMenuItem<String>(
-                      value: type,
-                      child: Text(type),
-                    );
-                  }).toList(),
+              items: _treatmentTypes.map((type) {
+                return DropdownMenuItem<String>(
+                  value: type,
+                  child: Text(type),
+                );
+              }).toList(),
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
@@ -364,13 +365,12 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
                   vertical: 8,
                 ),
               ),
-              items:
-                  _facilityTypes.map((facility) {
-                    return DropdownMenuItem<String>(
-                      value: facility,
-                      child: Text(facility),
-                    );
-                  }).toList(),
+              items: _facilityTypes.map((facility) {
+                return DropdownMenuItem<String>(
+                  value: facility,
+                  child: Text(facility),
+                );
+              }).toList(),
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
@@ -399,13 +399,12 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
                   vertical: 8,
                 ),
               ),
-              items:
-                  _locations.map((location) {
-                    return DropdownMenuItem<String>(
-                      value: location,
-                      child: Text(location),
-                    );
-                  }).toList(),
+              items: _locations.map((location) {
+                return DropdownMenuItem<String>(
+                  value: location,
+                  child: Text(location),
+                );
+              }).toList(),
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
@@ -425,57 +424,56 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
             const SizedBox(height: 8),
             _isLoading
                 ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
                 : Column(
-                  children:
-                      _availableProcedures.map((procedure) {
-                        final isSelected = _selectedProcedures.contains(
-                          procedure['name'],
-                        );
+                    children: _availableProcedures.map((procedure) {
+                      final isSelected = _selectedProcedures.contains(
+                        procedure['name'],
+                      );
 
-                        return CheckboxListTile(
-                          title: Text(procedure['name']),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                procedure['description'] ?? '',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
+                      return CheckboxListTile(
+                        title: Text(procedure['name']),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              procedure['description'] ?? '',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                PaymentService.formatCurrency(
-                                  procedure['cost'] ?? 0,
-                                ),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              PaymentService.formatCurrency(
+                                procedure['cost'] ?? 0,
                               ),
-                            ],
-                          ),
-                          value: isSelected,
-                          onChanged: (selected) {
-                            setState(() {
-                              if (selected == true) {
-                                _selectedProcedures.add(procedure['name']);
-                              } else {
-                                _selectedProcedures.remove(procedure['name']);
-                              }
-                              _calculateEstimate();
-                            });
-                          },
-                          activeColor: Theme.of(context).primaryColor,
-                          contentPadding: EdgeInsets.zero,
-                        );
-                      }).toList(),
-                ),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        value: isSelected,
+                        onChanged: (selected) {
+                          setState(() {
+                            if (selected == true) {
+                              _selectedProcedures.add(procedure['name']);
+                            } else {
+                              _selectedProcedures.remove(procedure['name']);
+                            }
+                            _calculateEstimate();
+                          });
+                        },
+                        activeColor: Theme.of(context).primaryColor,
+                        contentPadding: EdgeInsets.zero,
+                      );
+                    }).toList(),
+                  ),
             const SizedBox(height: 24),
 
             // Cost summary
@@ -640,23 +638,22 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child:
-                            _isLoading
-                                ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                                : const Text(
-                                  'Pay Now',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
                                 ),
+                              )
+                            : const Text(
+                                'Pay Now',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                   ],
@@ -673,98 +670,99 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
             const SizedBox(height: 8),
             _loadingHistory
                 ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-                : _paymentHistory.isEmpty
-                ? const Card(
-                  elevation: 1,
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(
-                      child: Text(
-                        'No payment history available',
-                        style: TextStyle(color: Colors.grey),
-                      ),
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
                     ),
-                  ),
-                )
-                : Column(
-                  children:
-                      _paymentHistory.map((payment) {
-                        final status = payment['status'] ?? 'pending';
-                        final timestamp = DateTime.parse(payment['timestamp']);
-                        final amount = payment['amount'] ?? 0.0;
-                        final description = payment['description'] ?? 'Payment';
-
-                        // Set status color
-                        Color statusColor;
-                        switch (status) {
-                          case 'completed':
-                            statusColor = Colors.green;
-                            break;
-                          case 'failed':
-                            statusColor = Colors.red;
-                            break;
-                          case 'processing':
-                            statusColor = Colors.orange;
-                            break;
-                          default:
-                            statusColor = Colors.blue;
-                        }
-
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            title: Text(description),
-                            subtitle: Text(
-                              DateFormat(
-                                'MMM d, yyyy - h:mm a',
-                              ).format(timestamp),
+                  )
+                : _paymentHistory.isEmpty
+                    ? const Card(
+                        elevation: 1,
+                        child: Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(
+                            child: Text(
+                              'No payment history available',
+                              style: TextStyle(color: Colors.grey),
                             ),
-                            trailing: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  PaymentService.formatCurrency(amount),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withAlpha(
-                                      25,
-                                    ), // Replaced withOpacity(0.1)
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    status.toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 10,
+                          ),
+                        ),
+                      )
+                    : Column(
+                        children: _paymentHistory.map((payment) {
+                          final status = payment['status'] ?? 'pending';
+                          final timestamp =
+                              DateTime.parse(payment['timestamp']);
+                          final amount = payment['amount'] ?? 0.0;
+                          final description =
+                              payment['description'] ?? 'Payment';
+
+                          // Set status color
+                          Color statusColor;
+                          switch (status) {
+                            case 'completed':
+                              statusColor = Colors.green;
+                              break;
+                            case 'failed':
+                              statusColor = Colors.red;
+                              break;
+                            case 'processing':
+                              statusColor = Colors.orange;
+                              break;
+                            default:
+                              statusColor = Colors.blue;
+                          }
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              title: Text(description),
+                              subtitle: Text(
+                                DateFormat(
+                                  'MMM d, yyyy - h:mm a',
+                                ).format(timestamp),
+                              ),
+                              trailing: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    PaymentService.formatCurrency(amount),
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: statusColor,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withAlpha(
+                                        25,
+                                      ), // Replaced withOpacity(0.1)
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      status.toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: statusColor,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              onTap: () {
+                                // Show payment details
+                                _showPaymentDetails(payment);
+                              },
                             ),
-                            onTap: () {
-                              // Show payment details
-                              _showPaymentDetails(payment);
-                            },
-                          ),
-                        );
-                      }).toList(),
-                ),
+                          );
+                        }).toList(),
+                      ),
             const SizedBox(height: 24),
           ],
         ),

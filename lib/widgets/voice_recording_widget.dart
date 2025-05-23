@@ -66,7 +66,7 @@ class _VoiceRecordingWidgetState extends State<VoiceRecordingWidget>
           }
         },
       );
-      
+
       // Start a timer to update recording duration
       _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
         setState(() {

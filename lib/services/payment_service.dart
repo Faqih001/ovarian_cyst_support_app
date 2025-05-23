@@ -125,12 +125,10 @@ class PaymentService {
       }
 
       // Call backend to check status
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/payments/status/$transactionId'),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 15));
+      final response = await http.get(
+        Uri.parse('$baseUrl/payments/status/$transactionId'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -250,12 +248,10 @@ class PaymentService {
       }
 
       // Call backend to generate receipt
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/payments/receipt/$transactionId'),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 15));
+      final response = await http.get(
+        Uri.parse('$baseUrl/payments/receipt/$transactionId'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);

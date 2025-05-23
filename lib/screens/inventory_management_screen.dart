@@ -71,7 +71,9 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
     });
 
     // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) {
       setState(() {
         _isOffline = results.contains(ConnectivityResult.none);
       });
@@ -116,34 +118,33 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
 
   void _applyFilters() {
     setState(() {
-      _filteredInventory =
-          _inventory.where((item) {
-            // Apply type filter
-            if (_selectedType != 'All Types' &&
-                getTypeString(item.type) != _selectedType) {
-              return false;
-            }
+      _filteredInventory = _inventory.where((item) {
+        // Apply type filter
+        if (_selectedType != 'All Types' &&
+            getTypeString(item.type) != _selectedType) {
+          return false;
+        }
 
-            // Apply low stock filter
-            if (_showLowStock && (item.stockLevel ?? 0) > 10) {
-              return false;
-            }
+        // Apply low stock filter
+        if (_showLowStock && (item.stockLevel ?? 0) > 10) {
+          return false;
+        }
 
-            // Apply prescription filter
-            if (_requiresPrescription && !item.requiresPrescription) {
-              return false;
-            }
+        // Apply prescription filter
+        if (_requiresPrescription && !item.requiresPrescription) {
+          return false;
+        }
 
-            // Apply search query
-            if (_searchQuery.isNotEmpty) {
-              final String query = _searchQuery.toLowerCase();
-              return item.name.toLowerCase().contains(query) ||
-                  item.description.toLowerCase().contains(query) ||
-                  (item.manufacturer?.toLowerCase().contains(query) ?? false);
-            }
+        // Apply search query
+        if (_searchQuery.isNotEmpty) {
+          final String query = _searchQuery.toLowerCase();
+          return item.name.toLowerCase().contains(query) ||
+              item.description.toLowerCase().contains(query) ||
+              (item.manufacturer?.toLowerCase().contains(query) ?? false);
+        }
 
-            return true;
-          }).toList();
+        return true;
+      }).toList();
     });
   }
 
@@ -201,11 +202,10 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => TreatmentItemForm(
-              facilityId: widget.facilityId,
-              editItem: item,
-            ),
+        builder: (context) => TreatmentItemForm(
+          facilityId: widget.facilityId,
+          editItem: item,
+        ),
       ),
     );
 
@@ -322,10 +322,9 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                   labelStyle: TextStyle(
                     color:
                         _requiresPrescription ? Colors.purple : Colors.black87,
-                    fontWeight:
-                        _requiresPrescription
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                    fontWeight: _requiresPrescription
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                   checkmarkColor: Colors.purple,
                 ),
@@ -336,85 +335,83 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
 
           // Inventory list
           Expanded(
-            child:
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _errorMessage.isNotEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage.isNotEmpty
                     ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: Colors.red,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _errorMessage,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _loadInventory,
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    )
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _errorMessage,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadInventory,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
                     : _filteredInventory.isEmpty
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.inventory_2,
-                            size: 64,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No inventory items found',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.inventory_2,
+                                  size: 64,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'No inventory items found',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Try adjusting your filters or add new items',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                                const SizedBox(height: 16),
+                                if (widget.isAdmin)
+                                  ElevatedButton.icon(
+                                    onPressed: _addNewItem,
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Add Item'),
+                                  ),
+                              ],
                             ),
+                          )
+                        : ListView.builder(
+                            itemCount: _filteredInventory.length,
+                            padding: const EdgeInsets.all(8),
+                            itemBuilder: (context, index) {
+                              final item = _filteredInventory[index];
+                              return _buildInventoryItemCard(item);
+                            },
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Try adjusting your filters or add new items',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                          const SizedBox(height: 16),
-                          if (widget.isAdmin)
-                            ElevatedButton.icon(
-                              onPressed: _addNewItem,
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add Item'),
-                            ),
-                        ],
-                      ),
-                    )
-                    : ListView.builder(
-                      itemCount: _filteredInventory.length,
-                      padding: const EdgeInsets.all(8),
-                      itemBuilder: (context, index) {
-                        final item = _filteredInventory[index];
-                        return _buildInventoryItemCard(item);
-                      },
-                    ),
           ),
         ],
       ),
-      floatingActionButton:
-          widget.isAdmin
-              ? FloatingActionButton(
-                onPressed: _addNewItem,
-                tooltip: 'Add Item',
-                child: const Icon(Icons.add),
-              )
-              : null,
+      floatingActionButton: widget.isAdmin
+          ? FloatingActionButton(
+              onPressed: _addNewItem,
+              tooltip: 'Add Item',
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 
@@ -940,8 +937,7 @@ class _TreatmentItemFormState extends State<TreatmentItemForm> {
 
     try {
       final item = TreatmentItem(
-        id:
-            widget.editItem?.id ??
+        id: widget.editItem?.id ??
             'item_${DateTime.now().millisecondsSinceEpoch}',
         name: _name,
         type: _type,
@@ -1033,13 +1029,12 @@ class _TreatmentItemFormState extends State<TreatmentItemForm> {
                 labelText: 'Item Type *',
                 border: OutlineInputBorder(),
               ),
-              items:
-                  TreatmentType.values.map((type) {
-                    return DropdownMenuItem<TreatmentType>(
-                      value: type,
-                      child: Text(_getTreatmentTypeString(type)),
-                    );
-                  }).toList(),
+              items: TreatmentType.values.map((type) {
+                return DropdownMenuItem<TreatmentType>(
+                  value: type,
+                  child: Text(_getTreatmentTypeString(type)),
+                );
+              }).toList(),
               onChanged: (value) {
                 setState(() {
                   _type = value!;
@@ -1192,26 +1187,26 @@ class _TreatmentItemFormState extends State<TreatmentItemForm> {
             const SizedBox(height: 8),
             _sideEffects.isEmpty
                 ? const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text(
-                    'No side effects added',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontStyle: FontStyle.italic,
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(
+                      'No side effects added',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
-                  ),
-                )
+                  )
                 : Wrap(
-                  spacing: 8,
-                  children: List.generate(
-                    _sideEffects.length,
-                    (index) => Chip(
-                      label: Text(_sideEffects[index]),
-                      deleteIcon: const Icon(Icons.cancel, size: 16),
-                      onDeleted: () => _removeSideEffect(index),
+                    spacing: 8,
+                    children: List.generate(
+                      _sideEffects.length,
+                      (index) => Chip(
+                        label: Text(_sideEffects[index]),
+                        deleteIcon: const Icon(Icons.cancel, size: 16),
+                        onDeleted: () => _removeSideEffect(index),
+                      ),
                     ),
                   ),
-                ),
             const SizedBox(height: 24),
 
             // Submit button
@@ -1219,16 +1214,15 @@ class _TreatmentItemFormState extends State<TreatmentItemForm> {
               height: 50,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _saveItem,
-                child:
-                    _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                          widget.editItem != null ? 'Update Item' : 'Add Item',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        widget.editItem != null ? 'Update Item' : 'Add Item',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
+                      ),
               ),
             ),
           ],
