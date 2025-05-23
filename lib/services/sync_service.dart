@@ -19,6 +19,12 @@ class SyncService extends ChangeNotifier {
   bool get isSyncing => _isSyncing;
   DateTime? get lastSyncTime => _lastSyncTime;
 
+  /// Check if device has internet connectivity
+  Future<bool> _checkConnectivity() async {
+    final result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
+  }
+
   // Get user-specific collection
   CollectionReference _getUserCollection(String collection) {
     final userId = _auth.currentUser?.uid;
@@ -40,8 +46,7 @@ class SyncService extends ChangeNotifier {
 
     try {
       // Check connectivity
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
+      if (!await _checkConnectivity()) {
         throw Exception('No internet connection');
       }
 

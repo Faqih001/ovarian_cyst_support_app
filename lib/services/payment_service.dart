@@ -36,6 +36,12 @@ class PaymentService {
     }
   }
 
+  /// Check if device has internet connectivity
+  Future<bool> _checkConnectivity() async {
+    final result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
+  }
+
   /// Process a new payment
   Future<Map<String, dynamic>> processPayment(
     double amount,
@@ -44,8 +50,7 @@ class PaymentService {
   ) async {
     try {
       // Check connectivity
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
+      if (!await _checkConnectivity()) {
         throw Exception('No internet connection');
       }
 

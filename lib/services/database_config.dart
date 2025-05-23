@@ -1,4 +1,8 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flu      FirebaseFirestore.instance.settings = Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        persistenceSettings: PersistenceSettings(synchronizeTabs: true),
+      );/foundation.dart' show kIsWeb;
 import 'package:logger/logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
