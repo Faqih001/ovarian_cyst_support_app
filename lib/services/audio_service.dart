@@ -2,14 +2,16 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:ovarian_cyst_support_app/services/gemini_service.dart';
 import 'package:mime/mime.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:ovarian_cyst_support_app/utils/platform_helper.dart';
+import 'package:logger/logger.dart';
 
 class AudioService {
   static final AudioService _instance = AudioService._internal();
+  final Logger _logger = Logger();
 
   final _recorder = AudioRecorder();
   final AudioPlayer _player = AudioPlayer();
@@ -34,13 +36,15 @@ class AudioService {
 
   Future<void> _initializeRecorder() async {
     try {
-      // Initialize the recorder
-      bool hasPermission = await Permission.microphone.request().isGranted;
-      if (!hasPermission) {
-        debugPrint('No microphone permission');
+      // Initialize the recorder - skip permission request on web
+      if (!kIsWeb) {
+        bool hasPermission = await Permission.microphone.request().isGranted;
+        if (!hasPermission) {
+          _logger.w('No microphone permission');
+        }
       }
     } catch (e) {
-      debugPrint('Error initializing recorder: $e');
+      _logger.e('Error initializing recorder: $e');
     }
   }
 
@@ -51,28 +55,39 @@ class AudioService {
   // Start recording audio
   Future<void> startRecording({Function(String)? onError}) async {
     if (await _recorder.isRecording()) {
-      debugPrint('Already recording');
+      _logger.w('Already recording');
       return;
     }
 
     try {
       // Check if we have microphone permission
       if (!await _recorder.hasPermission()) {
-        debugPrint('No permission to record');
+        _logger.w('No permission to record');
         onError?.call('Microphone permission not granted');
         return;
       }
 
-      // Get temporary directory to store the recording
-      final tempDir = await getTemporaryDirectory();
-      final path =
-          '${tempDir.path}/voice_message_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      _recordingPath = path;
+      // For web, we use a different file format and don't need a real path
+      final String fileName = 'voice_message_${DateTime.now().millisecondsSinceEpoch}';
+      String path;
+      
+      if (kIsWeb) {
+        path = fileName + '.webm'; // Web uses webm format
+        _recordingPath = path;
+      } else {
+        // Use our platform helper to get temporary path
+        final tempPath = await PlatformHelper.getTemporaryPath();
+        path = '$tempPath/$fileName.m4a';
+        _recordingPath = path;
+      }
 
+      // Choose proper encoder based on platform
+      final AudioEncoder encoder = kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc;
+      
       // Configure recorder and start recording
       await _recorder.start(
           RecordConfig(
-            encoder: AudioEncoder.aacLc,
+            encoder: encoder,
             bitRate: 128000,
             sampleRate: 44100,
           ),

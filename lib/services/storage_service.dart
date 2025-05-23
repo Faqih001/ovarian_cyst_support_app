@@ -6,9 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:logger/logger.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:ovarian_cyst_support_app/utils/platform_helper.dart';
 
 class StorageService {
   static const int maxRetries = 3;
@@ -37,8 +37,8 @@ class StorageService {
 
         // For mobile platforms
         // Create a temporary file with UTF-8 encoding
-        final tempDir = await getTemporaryDirectory();
-        final tempFile = File('${tempDir.path}/temp_csv_file.csv');
+        final tempPath = await PlatformHelper.getTemporaryPath();
+        final tempFile = File('$tempPath/temp_csv_file.csv');
         await tempFile.writeAsBytes(bytes);
 
         // Create the storage reference
@@ -155,8 +155,8 @@ class StorageService {
         } else {
           // Mobile implementation
           // Create a temporary file
-          final tempDir = await getTemporaryDirectory();
-          final tempFile = File('${tempDir.path}/downloaded_csv.csv');
+          final tempPath = await PlatformHelper.getTemporaryPath();
+          final tempFile = File('$tempPath/downloaded_csv.csv');
 
           // Download to a temporary file with timeout
           final downloadTask = _storage.ref(storagePath).writeToFile(tempFile);
