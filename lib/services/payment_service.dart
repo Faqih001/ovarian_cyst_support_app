@@ -3,26 +3,65 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:ovarian_cyst_support_app/services/database_service.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 enum PaymentStatus { pending, processing, completed, failed, cancelled }
 
 class PaymentService {
-  // Base URL for API (Express.js backend)
-  static const String baseUrl = 'https://ovacare-backend.example.com/api';
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Singleton instance
-  static final PaymentService _instance = PaymentService._internal();
-
-  factory PaymentService() {
-    return _instance;
+  // Helper method to get user's payments collection
+  CollectionReference _getPaymentsCollection() {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) {
+      throw Exception('No user logged in');
+    }
+    return _firestore.collection('users').doc(userId).collection('payments');
   }
 
-  PaymentService._internal();
+  /// Save payment transaction
+  Future<void> savePaymentTransaction(Map<String, dynamic> transaction) async {
+    try {
+      await _getPaymentsCollection().add({
+        ...transaction,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error saving payment transaction: $e');
+      rethrow;
+    }
+  }
 
-  // Database service for offline handling
-  final DatabaseService _databaseService = DatabaseService();
+  /// Get payment history
+  Future<List<Map<String, dynamic>>> getPaymentHistory() async {
+    try {
+      final querySnapshot = await _getPaymentsCollection()
+          .orderBy('timestamp', descending: true)
+          .get();
+      
+      return querySnapshot.docs
+          .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting payment history: $e');
+      return [];
+    }
+  }
+
+  /// Update payment status
+  Future<void> updatePaymentStatus(String paymentId, PaymentStatus status) async {
+    try {
+      await _getPaymentsCollection().doc(paymentId).update({
+        'status': status.toString(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error updating payment status: $e');
+      rethrow;
+    }
+  }
 
   // Initialize payment service
   static Future<void> initialize() async {
@@ -53,8 +92,8 @@ class PaymentService {
       final fakeTransactionId =
           'FAKE_${appointmentId}_${DateTime.now().millisecondsSinceEpoch}';
 
-      // Store payment attempt in local DB for tracking
-      await _storePaymentAttempt({
+      // Store payment attempt in Firestore for tracking
+      await savePaymentTransaction({
         'id': '${appointmentId}_${DateTime.now().millisecondsSinceEpoch}',
         'appointmentId': appointmentId,
         'phoneNumber': phoneNumber,
@@ -77,7 +116,7 @@ class PaymentService {
       debugPrint('Error processing payment: $e');
 
       // Store failed payment attempt
-      await _storePaymentAttempt({
+      await savePaymentTransaction({
         'id': '${appointmentId}_${DateTime.now().millisecondsSinceEpoch}',
         'appointmentId': appointmentId,
         'phoneNumber': phoneNumber,
@@ -160,67 +199,23 @@ class PaymentService {
     }
   }
 
-  // Get payment history
-  Future<List<Map<String, dynamic>>> getPaymentHistory() async {
-    final db = await _databaseService.database;
-
-    final List<Map<String, dynamic>> results = await db.query(
-      'payment_attempts',
-      orderBy: 'timestamp DESC',
-    );
-
-    return results;
-  }
-
-  // Store payment attempt
-  Future<void> _storePaymentAttempt(Map<String, dynamic> payment) async {
-    final db = await _databaseService.database;
-
-    // Check if payment_attempts table exists, create if not
-    final tables = await db.rawQuery(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='payment_attempts'",
-    );
-    if (tables.isEmpty) {
-      await db.execute('''
-        CREATE TABLE payment_attempts(
-          id TEXT PRIMARY KEY,
-          appointmentId TEXT,
-          phoneNumber TEXT,
-          amount REAL,
-          description TEXT,
-          status TEXT,
-          transactionId TEXT,
-          error TEXT,
-          timestamp TEXT,
-          isUploaded INTEGER DEFAULT 0
-        )
-      ''');
-    }
-
-    await db.insert(
-      'payment_attempts',
-      payment,
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
   // Get local payment status
   Future<String?> _getLocalPaymentStatus(String transactionId) async {
-    final db = await _databaseService.database;
+    try {
+      final querySnapshot = await _getPaymentsCollection()
+          .where('transactionId', isEqualTo: transactionId)
+          .limit(1)
+          .get();
 
-    final List<Map<String, dynamic>> results = await db.query(
-      'payment_attempts',
-      columns: ['status'],
-      where: 'transactionId = ?',
-      whereArgs: [transactionId],
-      limit: 1,
-    );
+      if (querySnapshot.docs.isNotEmpty) {
+        return querySnapshot.docs.first['status'] as String;
+      }
 
-    if (results.isNotEmpty) {
-      return results.first['status'] as String;
+      return null;
+    } catch (e) {
+      debugPrint('Error getting local payment status: $e');
+      return null;
     }
-
-    return null;
   }
 
   // Update local payment status
@@ -228,14 +223,15 @@ class PaymentService {
     String transactionId,
     String status,
   ) async {
-    final db = await _databaseService.database;
-
-    await db.update(
-      'payment_attempts',
-      {'status': status},
-      where: 'transactionId = ?',
-      whereArgs: [transactionId],
-    );
+    try {
+      await _getPaymentsCollection().doc(transactionId).update({
+        'status': status,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error updating local payment status: $e');
+      rethrow;
+    }
   }
 
   // Generate receipt

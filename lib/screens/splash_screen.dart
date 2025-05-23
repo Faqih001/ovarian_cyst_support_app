@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/onboarding_screen.dart';
+import 'package:ovarian_cyst_support_app/services/migration_service.dart';
+import 'package:logger/logger.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,6 +17,7 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeInAnimation;
+  final Logger _logger = Logger();
 
   @override
   void initState() {
@@ -34,15 +37,33 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _handleNavigation() async {
-    // Wait for animation and loading
-    await Future.delayed(const Duration(seconds: 3));
+    try {
+      // Wait for animation and loading
+      await Future.delayed(const Duration(seconds: 2));
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    // Always navigate to onboarding screen
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-    );
+      // Check if migration is needed before navigation
+      final migrationCompleted = await MigrationService.checkAndShowMigrationScreen(context);
+      
+      _logger.i('Migration check completed: $migrationCompleted');
+      
+      if (!mounted) return;
+
+      // Navigate to onboarding screen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+      );
+    } catch (e) {
+      _logger.e('Error during splash navigation: $e');
+      
+      if (!mounted) return;
+      
+      // Fall back to onboarding screen in case of error
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+      );
+    }
   }
 
   @override

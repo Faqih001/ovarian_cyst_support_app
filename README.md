@@ -2,6 +2,12 @@
 
 A comprehensive mobile application to support women diagnosed with ovarian cysts. The app provides educational resources, symptom tracking, community support, and healthcare appointment booking specifically for Kenyan users.
 
+## 🔄 Recent Updates
+
+- **Firebase Database Migration**: We've transitioned from SQLite to Firebase Firestore for improved real-time data synchronization, offline support, and cross-platform consistency. [Learn more](docs/firebase_migration.md)
+- **Web Compatibility**: Enhanced app to work seamlessly on Chrome and other web browsers
+- **Multi-platform Support**: Now available on Android, iOS, and Web platforms
+
 ## 📱 Features
 
 ### AI-Powered PCOS Risk Assessment

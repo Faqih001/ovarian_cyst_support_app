@@ -54,31 +54,31 @@ class TreatmentItem {
     );
   }
 
-  // Convert from JSON
-  factory TreatmentItem.fromJson(Map<String, dynamic> json) {
+  // Convert from Map (for Firestore)
+  factory TreatmentItem.fromMap(Map<String, dynamic> map) {
     return TreatmentItem(
-      id: json['id'],
-      name: json['name'],
+      id: map['id'],
+      name: map['name'],
       type: TreatmentItemType.values.firstWhere(
-        (e) => e.toString() == 'TreatmentItemType.${json['type']}',
+        (e) => e.toString() == 'TreatmentItemType.${map['type']}',
         orElse: () => TreatmentItemType.medication,
       ),
-      description: json['description'],
-      cost: json['cost'],
-      requiresPrescription: json['requiresPrescription'] ?? false,
-      stockLevel: json['stockLevel'],
-      facilityId: json['facilityId'],
-      manufacturer: json['manufacturer'],
-      dosageInfo: json['dosageInfo'],
+      description: map['description'],
+      cost: map['cost'],
+      requiresPrescription: map['requiresPrescription'] ?? false,
+      stockLevel: map['stockLevel'],
+      facilityId: map['facilityId'],
+      manufacturer: map['manufacturer'],
+      dosageInfo: map['dosageInfo'],
       sideEffects:
-          json['sideEffects'] != null
-              ? List<String>.from(json['sideEffects'])
+          map['sideEffects'] != null
+              ? List<String>.from(map['sideEffects'])
               : null,
     );
   }
 
-  // Convert to JSON
-  Map<String, dynamic> toJson() {
+  // Convert to Map (for Firestore)
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
@@ -92,6 +92,16 @@ class TreatmentItem {
       'dosageInfo': dosageInfo,
       'sideEffects': sideEffects,
     };
+  }
+
+  // Convert from JSON
+  factory TreatmentItem.fromJson(Map<String, dynamic> json) {
+    return TreatmentItem.fromMap(json);
+  }
+
+  // Convert to JSON
+  Map<String, dynamic> toJson() {
+    return toMap();
   }
 }
 

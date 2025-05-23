@@ -1,56 +1,54 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:logger/logger.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-/// Database configuration helper to properly initialize database
+/// Database configuration helper to properly initialize Firestore
 /// based on the platform (web or mobile)
 class DatabaseConfig {
   static final _logger = Logger();
   static bool _initialized = false;
 
-  /// Initialize the database factory based on the platform
+  /// Initialize Firestore with the appropriate settings
   static Future<void> initializeDatabase() async {
     if (_initialized) return;
 
     try {
-      if (kIsWeb) {
-        // Configure for web platform
-        _logger.i('Initializing database factory for Web');
-        databaseFactory = databaseFactoryFfiWeb;
-      } else {
-        // Configure for mobile (Android/iOS) platforms
-        _logger.i('Initializing database factory for Mobile');
-        sqfliteFfiInit();
-        databaseFactory = databaseFactoryFfi;
-      }
-      _initialized = true;
-      _logger.i('Database factory initialized successfully');
-    } catch (e) {
-      _logger.e('Error initializing database factory: $e');
-      // Fallback to in-memory database if initialization fails
-      _logger.w('Using in-memory database as fallback');
+      _logger.i('Initializing Firestore for ${kIsWeb ? 'Web' : 'Mobile'}');
+      
+      // Initialize Firestore settings
+      FirebaseFirestore.instance.settings = Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+      );
 
-      // This is a simple fallback approach - adjust based on your needs
-      try {
-        if (kIsWeb) {
-          databaseFactory = databaseFactoryFfiWeb;
-        }
-      } catch (e) {
-        _logger.e('Failed to initialize fallback database: $e');
-      }
+      _initialized = true;
+      _logger.i('Firestore initialized successfully');
+    } catch (e) {
+      _logger.e('Error initializing Firestore: $e');
+      throw Exception('Failed to initialize Firestore: $e');
     }
   }
 
-  /// Get the proper path for database storage based on platform
-  static Future<String> getDatabasePath(String dbName) async {
+  /// Get the path for any local files needed by the app
+  static Future<String> getDatabasePath(String fileName) async {
+    // This is now only used for local file caching, not SQLite
     if (kIsWeb) {
-      // Web uses a virtual path
-      return dbName;
-    } else {
-      // Mobile uses actual file system path
-      final dbPath = await getDatabasesPath();
-      return '$dbPath/$dbName';
+      return 'cache/$fileName';
+    }
+    // For mobile platforms, you might want to use path_provider
+    // to get the appropriate local storage path
+    return 'cache/$fileName';
+  }
+
+  /// Clear any cached data
+  static Future<void> clearCache() async {
+    try {
+      await FirebaseFirestore.instance.clearPersistence();
+      _logger.i('Cache cleared successfully');
+    } catch (e) {
+      _logger.e('Error clearing cache: $e');
+      throw Exception('Failed to clear cache: $e');
     }
   }
 }

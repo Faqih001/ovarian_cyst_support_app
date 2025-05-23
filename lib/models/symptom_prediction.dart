@@ -1,4 +1,5 @@
 class SymptomPrediction {
+  final String id; // Added ID field
   final DateTime predictionDate;
   final double severityScore; // 0-10 scale
   final String riskLevel; // Low, Medium, High
@@ -7,6 +8,7 @@ class SymptomPrediction {
   final bool requiresMedicalAttention;
 
   SymptomPrediction({
+    required this.id,
     required this.predictionDate,
     required this.severityScore,
     required this.riskLevel,
@@ -37,21 +39,27 @@ class SymptomPrediction {
     }
   }
 
-  // Factory method for creating from JSON
-  factory SymptomPrediction.fromJson(Map<String, dynamic> json) {
+  // Factory method for creating from map (for Firestore)
+  factory SymptomPrediction.fromMap(Map<String, dynamic> map) {
     return SymptomPrediction(
-      predictionDate: DateTime.parse(json['predictionDate']),
-      severityScore: json['severityScore'],
-      riskLevel: json['riskLevel'],
-      potentialIssues: List<String>.from(json['potentialIssues']),
-      recommendation: json['recommendation'],
-      requiresMedicalAttention: json['requiresMedicalAttention'],
+      id: map['id'],
+      predictionDate: map['predictionDate'] is DateTime
+          ? map['predictionDate']
+          : DateTime.parse(map['predictionDate']),
+      severityScore: map['severityScore'] is int
+          ? (map['severityScore'] as int).toDouble()
+          : map['severityScore'],
+      riskLevel: map['riskLevel'],
+      potentialIssues: List<String>.from(map['potentialIssues']),
+      recommendation: map['recommendation'],
+      requiresMedicalAttention: map['requiresMedicalAttention'],
     );
   }
 
-  // Convert to JSON
-  Map<String, dynamic> toJson() {
+  // Convert to map (for Firestore)
+  Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'predictionDate': predictionDate.toIso8601String(),
       'severityScore': severityScore,
       'riskLevel': riskLevel,
@@ -59,5 +67,15 @@ class SymptomPrediction {
       'recommendation': recommendation,
       'requiresMedicalAttention': requiresMedicalAttention,
     };
+  }
+
+  // Factory method for creating from JSON
+  factory SymptomPrediction.fromJson(Map<String, dynamic> json) {
+    return SymptomPrediction.fromMap(json);
+  }
+
+  // Convert to JSON
+  Map<String, dynamic> toJson() {
+    return toMap();
   }
 }

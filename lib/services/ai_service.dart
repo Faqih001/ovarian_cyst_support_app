@@ -61,7 +61,15 @@ class AIService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
-        return SymptomPrediction.fromJson(data);
+        return SymptomPrediction(
+          id: DateTime.now().toIso8601String(), // Generate a unique ID
+          predictionDate: DateTime.parse(data['prediction_date']),
+          severityScore: data['severity_score'].toDouble(),
+          riskLevel: data['risk_level'],
+          potentialIssues: List<String>.from(data['potential_issues']),
+          recommendation: data['recommendation'],
+          requiresMedicalAttention: data['requires_medical_attention'],
+        );
       } else {
         debugPrint('Error from prediction API: ${response.statusCode}');
         // Fallback to offline prediction
@@ -84,6 +92,7 @@ class AIService {
 
     if (recentSymptoms.isEmpty) {
       return SymptomPrediction(
+        id: DateTime.now().toIso8601String(),
         predictionDate: DateTime.now(),
         severityScore: 1.0,
         riskLevel: 'Low',
@@ -151,6 +160,7 @@ class AIService {
         detectedIssues.isEmpty ? ['Mild discomfort'] : detectedIssues;
 
     return SymptomPrediction(
+      id: DateTime.now().toIso8601String(),
       predictionDate: DateTime.now(),
       severityScore: severityScore,
       riskLevel: riskLevel,
@@ -211,6 +221,7 @@ class AIService {
 
       // For now, return a placeholder prediction
       return SymptomPrediction(
+        id: DateTime.now().toIso8601String(),
         predictionDate: DateTime.now(),
         severityScore: 3.5,
         riskLevel: 'Moderate',

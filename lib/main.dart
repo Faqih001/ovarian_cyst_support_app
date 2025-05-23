@@ -10,26 +10,22 @@ import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/payment_service.dart';
 import 'package:ovarian_cyst_support_app/services/firestore_service.dart';
 import 'package:ovarian_cyst_support_app/services/hospital_service.dart';
-import 'package:ovarian_cyst_support_app/services/database_service.dart';
-import 'package:ovarian_cyst_support_app/services/database_config.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:ovarian_cyst_support_app/firebase_options.dart';
+import 'package:ovarian_cyst_support_app/services/database_service_factory.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final logger = Logger();
 
   try {
-    // Initialize database configuration first
-    await DatabaseConfig.initializeDatabase();
-    logger.i('Database configuration initialized');
-
-    // Initialize database service
-    final databaseService = DatabaseService();
-    await databaseService.initialize();
-
     // Initialize Firebase with retry mechanism
     await _initializeFirebaseWithRetry(logger);
+
+    // Initialize appropriate database service based on configuration
+    final databaseService = await DatabaseServiceFactory.getDatabaseService();
+    await databaseService.initialize();
+    logger.i('Database Service initialized');
 
     // Initialize Firestore with persistence
     final firestoreService = FirestoreService();
