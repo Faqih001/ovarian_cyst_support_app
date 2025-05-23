@@ -96,11 +96,6 @@ class _ImageAnalysisChatScreenState extends State<ImageAnalysisChatScreen> {
 
       CroppedFile? croppedFile = await ImageCropper().cropImage(
         sourcePath: pickedFile.path,
-        aspectRatioPresets: [
-          CropAspectRatioPreset.square,
-          CropAspectRatioPreset.ratio3x2,
-          CropAspectRatioPreset.original,
-        ],
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Crop Image',
@@ -108,6 +103,14 @@ class _ImageAnalysisChatScreenState extends State<ImageAnalysisChatScreen> {
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.original,
             lockAspectRatio: false,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.original,
+            ],
+          ),
+          WebUiSettings(
+            context: context,
           ),
         ],
       );
