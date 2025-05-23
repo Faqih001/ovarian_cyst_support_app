@@ -137,7 +137,7 @@ class HomeContent extends StatefulWidget {
 class _HomeContentState extends State<HomeContent>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final DatabaseService _databaseService = DatabaseService();
+  late final DatabaseService _databaseService;
   Map<String, dynamic>? _upcomingAppointment;
   bool _isLoading = true;
 
@@ -145,6 +145,7 @@ class _HomeContentState extends State<HomeContent>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _databaseService = Provider.of<DatabaseService>(context, listen: false);
     _loadUpcomingAppointment();
   }
 
@@ -1366,7 +1367,7 @@ class _HomeContentState extends State<HomeContent>
                 .currentUser
                 ?.uid;
             if (userId != null) {
-              _editSymptom(context, docId, userId, severity, description);
+              _editSymptom(docId, userId, severity, description);
             }
           },
         );

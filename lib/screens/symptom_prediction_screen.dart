@@ -6,6 +6,7 @@ import 'package:ovarian_cyst_support_app/models/symptom_entry.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_prediction.dart';
 import 'package:ovarian_cyst_support_app/services/ai_service.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
+import 'package:ovarian_cyst_support_app/services/database_service_factory.dart';
 
 class SymptomPredictionScreen extends StatefulWidget {
   const SymptomPredictionScreen({super.key});
@@ -24,12 +25,27 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
   bool _isGeneratingPrediction = false;
 
   final AIService _aiService = AIService();
-  final DatabaseService _databaseService = DatabaseService();
+  late DatabaseService _databaseService;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _initializeServices();
+  }
+  
+  Future<void> _initializeServices() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      _databaseService = await DatabaseServiceFactory.getDatabaseService();
+      _loadData();
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to initialize services: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadData() async {
@@ -40,7 +56,12 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
 
     try {
       // Load recent symptom entries
-      final symptoms = await _databaseService.getSymptomEntries();
+      final symptomsData = await _databaseService.getSymptomEntries();
+      
+      // Convert dynamic data to SymptomEntry objects
+      final symptoms = symptomsData.map((data) {
+        return SymptomEntry.fromMap(data as Map<String, dynamic>);
+      }).toList();
 
       // Sort by date descending
       symptoms.sort((a, b) => b.date.compareTo(a.date));
@@ -51,7 +72,12 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
           symptoms.where((s) => s.date.isAfter(thirtyDaysAgo)).toList();
 
       // Load prediction history
-      final predictions = await _databaseService.getSymptomPredictions();
+      final predictionsData = await _databaseService.getSymptomPredictions();
+      
+      // Convert dynamic data to SymptomPrediction objects
+      final predictions = predictionsData.map((data) {
+        return SymptomPrediction.fromMap(data as Map<String, dynamic>);
+      }).toList();
 
       // Get the latest prediction
       SymptomPrediction? latestPrediction;
@@ -92,8 +118,9 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
       );
 
       if (prediction != null) {
-        // Save prediction to database
-        await _databaseService.saveSymptomPrediction(prediction);
+        // Convert SymptomPrediction to Map before saving to database
+        final predictionMap = prediction.toMap();
+        await _databaseService.saveSymptomPrediction(predictionMap);
 
         // Reload data to include the new prediction
         await _loadData();

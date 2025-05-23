@@ -129,6 +129,43 @@ class FirestoreDatabaseService extends DatabaseService {
     }
   }
 
+  @override
+  Future<List<Map<String, dynamic>>> getTodaysSymptoms() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      final QuerySnapshot snapshot = await _getUserCollection(_symptomEntriesCollection)
+          .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+          .where('timestamp', isLessThan: endOfDay)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      _logger.e('Error getting today\'s symptoms: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAllSymptomEntries() async {
+    try {
+      final QuerySnapshot snapshot = await _getUserCollection(_symptomEntriesCollection)
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      _logger.e('Error getting all symptom entries: $e');
+      return [];
+    }
+  }
+
   // APPOINTMENTS
 
   Future<void> insertAppointment(Appointment appointment) async {
@@ -253,6 +290,22 @@ class FirestoreDatabaseService extends DatabaseService {
     } catch (e) {
       _logger.e('Error deleting medication: $e');
       throw Exception('Failed to delete medication: $e');
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAllMedications() async {
+    try {
+      final QuerySnapshot snapshot = await _getUserCollection(_medicationsCollection)
+          .orderBy('name')
+          .get();
+
+      return snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      _logger.e('Error getting all medications: $e');
+      return [];
     }
   }
 
@@ -462,6 +515,21 @@ class FirestoreDatabaseService extends DatabaseService {
     } catch (e) {
       _logger.e('Error getting non-uploaded items: $e');
       return [];
+    }
+  }
+
+  @override
+  Future<void> logSymptom(Map<String, dynamic> symptom) async {
+    try {
+      await _getUserCollection(_symptomEntriesCollection)
+          .doc()
+          .set({
+            ...symptom,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      _logger.e('Error logging symptom: $e');
+      throw Exception('Failed to log symptom: $e');
     }
   }
 }

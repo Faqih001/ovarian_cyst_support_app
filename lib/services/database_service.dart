@@ -12,6 +12,9 @@ abstract class DatabaseService {
 
   String get userId => _auth.currentUser?.uid ?? '';
 
+  /// Initialize the database service
+  Future<void> initialize();
+
   /// Get a collection reference with the user's ID in the path
   CollectionReference getUserCollection(String collection) {
     if (userId.isEmpty) {
@@ -76,4 +79,43 @@ abstract class DatabaseService {
   Future<void> close() async {
     // No need to close Firestore connections
   }
+
+  /// Get today's symptoms
+  Future<List<Map<String, dynamic>>> getTodaysSymptoms();
+
+  /// Get all symptom entries
+  Future<List<Map<String, dynamic>>> getAllSymptomEntries();
+
+  /// Get all medications
+  Future<List<Map<String, dynamic>>> getAllMedications();
+
+  /// Log a symptom
+  Future<void> logSymptom(Map<String, dynamic> symptom);
+
+  /// Get upcoming appointments
+  Future<List<dynamic>> getUpcomingAppointments();
+
+  /// Update appointment status
+  Future<void> updateAppointmentStatus(String appointmentId, String status);
+
+  /// Get recent symptom entries
+  Future<List<Map<String, dynamic>>> getRecentSymptomEntries();
+  
+  /// Get symptom entries for AI prediction
+  Future<List<dynamic>> getSymptomEntries();
+  
+  /// Get symptom predictions history
+  Future<List<dynamic>> getSymptomPredictions();
+  
+  /// Save a symptom prediction
+  Future<void> saveSymptomPrediction(Map<String, dynamic> prediction);
+
+  /// Get medications
+  Future<List<Map<String, dynamic>>> getMedications();
+
+  /// Save medication
+  Future<void> saveMedication(Map<String, dynamic> medication);
+
+  /// Delete medication
+  Future<void> deleteMedication(String id);
 }

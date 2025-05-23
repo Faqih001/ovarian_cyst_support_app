@@ -45,8 +45,8 @@ class _TrackingScreenState extends State<TrackingScreen>
   @override
   void initState() {
     super.initState();
-    _databaseService = Provider.of<DatabaseService>(context, listen: false);
     _tabController = TabController(length: 3, vsync: this);
+    _databaseService = Provider.of<DatabaseService>(context, listen: false);
     _loadSymptoms();
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:logger/logger.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/auth/login_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
@@ -17,6 +18,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final _logger = Logger();
   bool _notificationsEnabled = true;
   bool _reminderNotificationsEnabled = true;
   bool _communityNotificationsEnabled = true;
@@ -94,21 +96,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Now safe to use context
       Navigator.of(context).pushReplacementNamed('/login');
-
-      // Show success message
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('Account deleted successfully')),
-      );
     } catch (e) {
-      // Check if widget is still mounted after async operation
+      _logger.e('Error deleting account: $e');
+      // Check if widget is still mounted before showing error
       if (!mounted) return;
 
-      // Close loading dialog
-      navigator.pop();
-
-      // Show error message
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text('Error deleting account: $e')),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to delete account. Please try again.'),
+        ),
       );
     }
   }
@@ -268,6 +264,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+  }
+
+  Future<void> _deleteAccount(BuildContext context) async {
+    // Show confirmation dialog
+    final bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'Are you sure you want to delete your account? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    ) ??
+        false;
+
+    if (!confirm) return;
+
+    // Show loading indicator
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+
+    // Get auth service before async operation
+    final authService = Provider.of<AuthService>(context, listen: false);
+
+    try {
+      // Delete user account
+      await authService.deleteAccount();
+
+      // Check if widget is still mounted before using context
+      if (!mounted) return;
+
+      // Now safe to use context
+      Navigator.of(context).pushReplacementNamed('/login');
+    } catch (e) {
+      _logger.e('Error deleting account: $e');
+      // Check if widget is still mounted before showing error
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to delete account. Please try again.'),
+        ),
+      );
+    }
   }
 
   @override

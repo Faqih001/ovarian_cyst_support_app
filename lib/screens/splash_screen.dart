@@ -44,10 +44,9 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       // Check if migration is needed before navigation
-      final migrationCompleted =
-          await MigrationService.checkAndShowMigrationScreen(context);
+      await MigrationService.checkAndShowMigrationScreen(context);
 
-      _logger.i('Migration check completed: $migrationCompleted');
+      _logger.i('Migration check completed');
 
       if (!mounted) return;
 
