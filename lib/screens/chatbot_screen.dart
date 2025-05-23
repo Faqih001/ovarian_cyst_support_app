@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:ovarian_cyst_support_app/models/chat_message.dart';
 import 'package:ovarian_cyst_support_app/services/ai_service.dart';
+import 'package:ovarian_cyst_support_app/services/chat_storage_service.dart';
+import 'package:ovarian_cyst_support_app/widgets/voice_recording_widget.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -17,11 +18,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final AIService _aiService = AIService();
+  final ChatStorageService _chatStorage = ChatStorageService();
 
   final List<ChatMessage> _messages = [];
   bool _isComposing = false;
   bool _isTyping = false;
   bool _isOffline = false;
+
+  // Track voice processing state
+  bool _isProcessingVoice = false;
 
   // Common questions for quick access
   final List<String> _suggestedQuestions = [
@@ -67,19 +72,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   Future<void> _loadChatHistory() async {
     try {
-      // In a full implementation, we would load messages from SQLite
-      final prefs = await SharedPreferences.getInstance();
-      final historyJson = prefs.getString('chat_history');
+      // Load messages from Firebase Storage
+      final loadedMessages = await _chatStorage.loadMessages();
 
-      if (historyJson != null) {
-        // Would decode and load chat history in a full implementation
-        // For example:
-        // final List<dynamic> decodedMessages = jsonDecode(historyJson);
-        // final List<ChatMessage> loadedMessages = decodedMessages
-        //    .map((item) => ChatMessage.fromJson(item)).toList();
-        // setState(() {
-        //    _messages.addAll(loadedMessages);
-        // });
+      if (loadedMessages.isNotEmpty) {
+        setState(() {
+          _messages.addAll(loadedMessages);
+        });
+        debugPrint(
+            'Loaded ${loadedMessages.length} messages from Firebase Storage');
       }
     } catch (e) {
       debugPrint('Error loading chat history: $e');
@@ -185,31 +186,327 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   Future<void> _saveChatHistory() async {
     try {
-      // This would save to SQLite in a full implementation
-      // For now using a placeholder implementation with SharedPreferences
-      // Only commenting out unused variables to show implementation intent
-
-      // final prefs = await SharedPreferences.getInstance();
-
       // Only save the last 50 messages to prevent excessive storage use
-      final messagesToFilter = _messages.length > 50
+      final messagesToSave = _messages.length > 50
           ? _messages.sublist(_messages.length - 50)
           : List<ChatMessage>.from(_messages);
 
-      // Would encode and save chat history - implement this when needed
-      // String encodedMessages = jsonEncode(messagesToFilter.map((msg) => msg.toJson()).toList());
-      // await prefs.setString('chat_history', encodedMessages);
+      // Save to Firebase Storage
+      await _chatStorage.saveMessages(messagesToSave);
 
-      // Using the variable to avoid unused variable warning
-      debugPrint('Prepared ${messagesToFilter.length} messages for saving');
+      debugPrint('Saved ${messagesToSave.length} messages to Firebase Storage');
     } catch (e) {
       debugPrint('Error saving chat history: $e');
+    }
+  }
+
+  void _showMessage(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  Future<void> _clearChatHistory() async {
+    try {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Clear Chat History'),
+          content: const Text(
+              'Are you sure you want to clear your chat history? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                // Clear chat history in Firebase Storage
+                await _chatStorage.clearChatHistory();
+
+                // Clear local messages list except welcome message
+                setState(() {
+                  _messages.clear();
+                  _addWelcomeMessage();
+                });
+
+                _showMessage('Chat history cleared');
+              },
+              child: const Text('Clear'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error clearing chat history: $e');
+      _showMessage('Failed to clear chat history');
+    }
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Flexible(
+                child: Text('Chatbot Help', overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green.withAlpha(30),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.green),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Gemini',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(width: 2),
+                    Icon(Icons.auto_awesome, size: 12, color: Colors.green),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'This chatbot is powered by Google\'s Gemini AI, designed to provide intelligent and accurate information about ovarian cysts.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildHelpItem(
+                  'Voice & Text Input',
+                  'Ask questions by typing or using voice messages. Tap the microphone icon to record your question.',
+                ),
+                const Divider(),
+                _buildHelpItem(
+                  'Medical Information',
+                  'Ask questions about ovarian cysts, symptoms, treatments, etc.',
+                ),
+                const Divider(),
+                _buildHelpItem(
+                  'Symptom Tracking',
+                  'Ask to track or review your symptoms',
+                ),
+                const Divider(),
+                _buildHelpItem(
+                  'Appointment Help',
+                  'Get assistance with finding doctors or scheduling appointments',
+                ),
+                const Divider(),
+                _buildHelpItem(
+                  'Medication Reminders',
+                  'Set up reminders for your medications',
+                ),
+                const Divider(),
+                const Text(
+                  'Note: This chatbot provides general information and should not replace professional medical advice.',
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    fontSize: 12,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Got it'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHelpItem(String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showVoiceRecordingModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      builder: (context) {
+        return VoiceRecordingWidget(
+          onMessageReady: _handleVoiceMessage,
+          onError: (error) {
+            Navigator.pop(context);
+            _showMessage(error);
+          },
+        );
+      },
+    );
+  }
+
+  void _handleVoiceMessage(String message) async {
+    Navigator.pop(context);
+
+    setState(() {
+      _isProcessingVoice = true;
+      _messages.add(ChatMessage(
+        text: "🎤 $message",
+        source: MessageSource.user,
+      ));
+      _isTyping = true;
+    });
+
+    _scrollToBottom();
+
+    try {
+      // Process the voice message
+      final botResponse = await _aiService.getChatbotResponse(
+        "Processing voice message: $message",
+      );
+
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _isProcessingVoice = false;
+          _messages.add(
+            ChatMessage(
+              text: botResponse,
+              source: MessageSource.bot,
+              isOffline: _isOffline,
+            ),
+          );
+        });
+
+        _saveChatHistory();
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _isProcessingVoice = false;
+          _messages.add(
+            ChatMessage(
+              text: _isOffline
+                  ? "I'm sorry, but I can't process voice messages while offline. Please try again when you're back online, or type your question instead."
+                  : "I apologize, but I couldn't process your voice message. This could be due to background noise or unclear audio. Please try again in a quieter environment or type your question.",
+              source: MessageSource.bot,
+              isOffline: _isOffline,
+            ),
+          );
+        });
+        _scrollToBottom();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            const Icon(
+              Icons.smart_toy_rounded,
+              color: Colors.blue,
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            const Text('OvaCare AI Assistant',
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                )),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.green.withAlpha(30),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Gemini',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: 2),
+                  Icon(Icons.auto_awesome, size: 10, color: Colors.green),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          // Help button
+          IconButton(
+            icon: const Icon(Icons.help_outline, color: Colors.grey),
+            onPressed: _showHelpDialog,
+            tooltip: 'Help',
+          ),
+          // Clear chat history button
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.grey),
+            onPressed: _clearChatHistory,
+            tooltip: 'Clear Chat History',
+          ),
+          // Close button
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.grey),
+            onPressed: () => Navigator.pop(context),
+            tooltip: 'Close',
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Offline indicator
@@ -346,13 +643,17 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 children: [
                   IconButton(
                     icon: Icon(
-                      Icons.mic,
-                      color: Theme.of(context).primaryColor,
+                      _isProcessingVoice ? Icons.more_horiz : Icons.mic,
+                      color: _isProcessingVoice
+                          ? Colors.grey
+                          : Theme.of(context).primaryColor,
                     ),
-                    onPressed: () {
-                      // Voice input would be implemented here
-                      _showMessage('Voice input is not yet implemented.');
-                    },
+                    onPressed: _isProcessingVoice
+                        ? null
+                        : () => _showVoiceRecordingModal(),
+                    tooltip: _isProcessingVoice
+                        ? 'Processing voice message...'
+                        : 'Send voice message',
                   ),
                   Expanded(
                     child: TextField(
@@ -545,12 +846,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           ],
         ],
       ),
-    );
-  }
-
-  void _showMessage(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
     );
   }
 }

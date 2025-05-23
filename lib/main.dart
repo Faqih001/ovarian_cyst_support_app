@@ -83,7 +83,8 @@ Future<void> _initializeAppCheck(Logger logger) async {
   try {
     await FirebaseAppCheck.instance.activate(
       // Use debug provider for web in development
-      webProvider: ReCaptchaV3Provider('6Lf16b8pAAAAAEkLzl-RQQ9cj7dLWm_32QDmEr_d'),
+      webProvider:
+          ReCaptchaV3Provider('6Lf16b8pAAAAAEkLzl-RQQ9cj7dLWm_32QDmEr_d'),
       androidProvider: AndroidProvider.debug,
       appleProvider: AppleProvider.appAttest,
     );

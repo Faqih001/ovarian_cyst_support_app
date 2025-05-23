@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to your microphone to record voice messages for the AI assistant to analyze and respond to your questions about ovarian cysts.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>This app uses audio capabilities to allow you to record voice questions for the AI assistant.</string>
 </dict>
 </plist>

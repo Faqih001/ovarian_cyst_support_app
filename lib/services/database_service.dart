@@ -1,14 +1,11 @@
 import 'dart:async';
-import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_entry.dart';
 import 'package:ovarian_cyst_support_app/models/appointment.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:ovarian_cyst_support_app/models/treatment_item.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_prediction.dart';
 import 'package:flutter/foundation.dart';
-
-// Import for web support
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class DatabaseService {
   static Database? _database;
@@ -44,7 +41,7 @@ class DatabaseService {
 
     try {
       String path = join(await getDatabasesPath(), 'ovarian_cyst_support.db');
-      
+
       return await openDatabase(path, version: 1, onCreate: _createDb);
     } catch (e) {
       // Fallback for web if the above fails

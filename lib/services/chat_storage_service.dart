@@ -32,20 +32,20 @@ class ChatStorageService {
       if (messages.isEmpty) return;
 
       // Convert messages to JSON
-      final List<Map<String, dynamic>> jsonMessages = 
+      final List<Map<String, dynamic>> jsonMessages =
           messages.map((msg) => msg.toJson()).toList();
       final String jsonData = jsonEncode(jsonMessages);
-      
+
       // Create a reference to the file location
       final ref = _storage.ref().child(_userChatPath);
-      
+
       // Upload the JSON data as a string
       await ref.putString(
         jsonData,
         format: PutStringFormat.raw,
         metadata: SettableMetadata(contentType: 'application/json'),
       );
-      
+
       debugPrint('Chat history saved to Firebase Storage');
     } catch (e) {
       debugPrint('Error saving chat history: $e');
@@ -57,7 +57,7 @@ class ChatStorageService {
     try {
       // Create a reference to the file
       final ref = _storage.ref().child(_userChatPath);
-      
+
       // Check if the file exists
       try {
         // Try to download the file
@@ -66,16 +66,15 @@ class ChatStorageService {
           debugPrint('No chat history found in storage');
           return [];
         }
-        
+
         // Decode the JSON data
         final String jsonData = utf8.decode(bytes);
         final List<dynamic> decodedMessages = jsonDecode(jsonData);
-        
+
         // Convert to ChatMessage objects
-        final List<ChatMessage> messages = decodedMessages
-            .map((item) => ChatMessage.fromJson(item))
-            .toList();
-        
+        final List<ChatMessage> messages =
+            decodedMessages.map((item) => ChatMessage.fromJson(item)).toList();
+
         debugPrint('Loaded ${messages.length} messages from Firebase Storage');
         return messages;
       } on FirebaseException catch (e) {
@@ -95,7 +94,7 @@ class ChatStorageService {
   Future<void> clearChatHistory() async {
     try {
       final ref = _storage.ref().child(_userChatPath);
-      
+
       try {
         await ref.delete();
         debugPrint('Chat history deleted successfully');
