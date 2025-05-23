@@ -30,9 +30,9 @@ dependencies:
   ml_preprocessing: ^7.0.2
   google_generative_ai: ^0.4.7
   google_ml_kit: ^0.16.3
-  image_cropper: ^4.0.1
-  image_cropper_platform_interface: ^4.0.0
-  image_cropper_for_web: ^3.0.0
+  image_cropper: ^9.1.0
+  image_cropper_platform_interface: ^7.1.0
+  image_cropper_for_web: ^6.1.0
 
   # Core Dependencies
   provider: ^6.1.1
