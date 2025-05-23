@@ -7,7 +7,8 @@ import 'package:ovarian_cyst_support_app/models/symptom_prediction.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class FirestoreDatabaseService {
-  static final FirestoreDatabaseService _instance = FirestoreDatabaseService._internal();
+  static final FirestoreDatabaseService _instance =
+      FirestoreDatabaseService._internal();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Logger _logger = Logger();
   bool _initialized = false;
@@ -74,12 +75,14 @@ class FirestoreDatabaseService {
 
   Future<List<SymptomEntry>> getSymptomEntries() async {
     try {
-      final QuerySnapshot snapshot = await _getUserCollection(_symptomEntriesCollection)
-          .orderBy('date', descending: true)
-          .get();
-          
+      final QuerySnapshot snapshot =
+          await _getUserCollection(_symptomEntriesCollection)
+              .orderBy('date', descending: true)
+              .get();
+
       return snapshot.docs
-          .map((doc) => SymptomEntry.fromMap(doc.data() as Map<String, dynamic>))
+          .map(
+              (doc) => SymptomEntry.fromMap(doc.data() as Map<String, dynamic>))
           .toList();
     } catch (e) {
       _logger.e('Error getting symptom entries: $e');
@@ -89,8 +92,9 @@ class FirestoreDatabaseService {
 
   Future<SymptomEntry?> getSymptomEntryById(String id) async {
     try {
-      final DocumentSnapshot doc = await _getUserCollection(_symptomEntriesCollection).doc(id).get();
-      
+      final DocumentSnapshot doc =
+          await _getUserCollection(_symptomEntriesCollection).doc(id).get();
+
       if (doc.exists) {
         return SymptomEntry.fromMap(doc.data() as Map<String, dynamic>);
       }
@@ -136,10 +140,11 @@ class FirestoreDatabaseService {
 
   Future<List<Appointment>> getAppointments() async {
     try {
-      final QuerySnapshot snapshot = await _getUserCollection(_appointmentsCollection)
-          .orderBy('dateTime', descending: true)
-          .get();
-          
+      final QuerySnapshot snapshot =
+          await _getUserCollection(_appointmentsCollection)
+              .orderBy('dateTime', descending: true)
+              .get();
+
       return snapshot.docs
           .map((doc) => Appointment.fromMap(doc.data() as Map<String, dynamic>))
           .toList();
@@ -151,8 +156,9 @@ class FirestoreDatabaseService {
 
   Future<Appointment?> getAppointmentById(String id) async {
     try {
-      final DocumentSnapshot doc = await _getUserCollection(_appointmentsCollection).doc(id).get();
-      
+      final DocumentSnapshot doc =
+          await _getUserCollection(_appointmentsCollection).doc(id).get();
+
       if (doc.exists) {
         return Appointment.fromMap(doc.data() as Map<String, dynamic>);
       }
@@ -198,8 +204,9 @@ class FirestoreDatabaseService {
 
   Future<List<Map<String, dynamic>>> getMedications() async {
     try {
-      final QuerySnapshot snapshot = await _getUserCollection(_medicationsCollection).get();
-      
+      final QuerySnapshot snapshot =
+          await _getUserCollection(_medicationsCollection).get();
+
       return snapshot.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
           .toList();
@@ -211,8 +218,9 @@ class FirestoreDatabaseService {
 
   Future<Map<String, dynamic>?> getMedicationById(String id) async {
     try {
-      final DocumentSnapshot doc = await _getUserCollection(_medicationsCollection).doc(id).get();
-      
+      final DocumentSnapshot doc =
+          await _getUserCollection(_medicationsCollection).doc(id).get();
+
       if (doc.exists) {
         return doc.data() as Map<String, dynamic>;
       }
@@ -223,9 +231,12 @@ class FirestoreDatabaseService {
     }
   }
 
-  Future<void> updateMedication(String id, Map<String, dynamic> medication) async {
+  Future<void> updateMedication(
+      String id, Map<String, dynamic> medication) async {
     try {
-      await _getUserCollection(_medicationsCollection).doc(id).update(medication);
+      await _getUserCollection(_medicationsCollection)
+          .doc(id)
+          .update(medication);
     } catch (e) {
       _logger.e('Error updating medication: $e');
       throw Exception('Failed to update medication: $e');
@@ -254,12 +265,14 @@ class FirestoreDatabaseService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getPaymentAttemptsByAppointmentId(String appointmentId) async {
+  Future<List<Map<String, dynamic>>> getPaymentAttemptsByAppointmentId(
+      String appointmentId) async {
     try {
-      final QuerySnapshot snapshot = await _getUserCollection(_paymentAttemptsCollection)
-          .where('appointmentId', isEqualTo: appointmentId)
-          .get();
-      
+      final QuerySnapshot snapshot =
+          await _getUserCollection(_paymentAttemptsCollection)
+              .where('appointmentId', isEqualTo: appointmentId)
+              .get();
+
       return snapshot.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
           .toList();
@@ -273,7 +286,8 @@ class FirestoreDatabaseService {
 
   Future<void> insertCommunityPost(Map<String, dynamic> post) async {
     try {
-      final DocumentReference postRef = _firestore.collection(_communityPostsCollection).doc(post['id']);
+      final DocumentReference postRef =
+          _firestore.collection(_communityPostsCollection).doc(post['id']);
       await postRef.set(post);
     } catch (e) {
       _logger.e('Error inserting community post: $e');
@@ -287,7 +301,7 @@ class FirestoreDatabaseService {
           .collection(_communityPostsCollection)
           .orderBy('datePosted', descending: true)
           .get();
-      
+
       return snapshot.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
           .toList();
@@ -306,13 +320,14 @@ class FirestoreDatabaseService {
           .doc(comment['postId'])
           .collection(_commentsCollection)
           .doc(comment['id']);
-          
+
       await commentRef.set(comment);
-      
+
       // Update comment count
-      await _firestore.collection(_communityPostsCollection).doc(comment['postId']).update({
-        'commentCount': FieldValue.increment(1)
-      });
+      await _firestore
+          .collection(_communityPostsCollection)
+          .doc(comment['postId'])
+          .update({'commentCount': FieldValue.increment(1)});
     } catch (e) {
       _logger.e('Error inserting comment: $e');
       throw Exception('Failed to insert comment: $e');
@@ -327,7 +342,7 @@ class FirestoreDatabaseService {
           .collection(_commentsCollection)
           .orderBy('datePosted', descending: false)
           .get();
-      
+
       return snapshot.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
           .toList();
@@ -353,12 +368,12 @@ class FirestoreDatabaseService {
 
   Future<List<TreatmentItem>> getTreatmentItems() async {
     try {
-      final QuerySnapshot snapshot = await _firestore
-          .collection(_treatmentItemsCollection)
-          .get();
-      
+      final QuerySnapshot snapshot =
+          await _firestore.collection(_treatmentItemsCollection).get();
+
       return snapshot.docs
-          .map((doc) => TreatmentItem.fromMap(doc.data() as Map<String, dynamic>))
+          .map((doc) =>
+              TreatmentItem.fromMap(doc.data() as Map<String, dynamic>))
           .toList();
     } catch (e) {
       _logger.e('Error getting treatment items: $e');
@@ -381,12 +396,14 @@ class FirestoreDatabaseService {
 
   Future<List<SymptomPrediction>> getSymptomPredictions() async {
     try {
-      final QuerySnapshot snapshot = await _getUserCollection(_symptomPredictionsCollection)
-          .orderBy('predictionDate', descending: true)
-          .get();
-      
+      final QuerySnapshot snapshot =
+          await _getUserCollection(_symptomPredictionsCollection)
+              .orderBy('predictionDate', descending: true)
+              .get();
+
       return snapshot.docs
-          .map((doc) => SymptomPrediction.fromMap(doc.data() as Map<String, dynamic>))
+          .map((doc) =>
+              SymptomPrediction.fromMap(doc.data() as Map<String, dynamic>))
           .toList();
     } catch (e) {
       _logger.e('Error getting symptom predictions: $e');
@@ -407,12 +424,13 @@ class FirestoreDatabaseService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getNonUploadedItems(String collection) async {
+  Future<List<Map<String, dynamic>>> getNonUploadedItems(
+      String collection) async {
     try {
       final QuerySnapshot snapshot = await _getUserCollection(collection)
           .where('isUploaded', isEqualTo: 0)
           .get();
-      
+
       return snapshot.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
           .toList();

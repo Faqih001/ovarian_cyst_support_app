@@ -7,7 +7,6 @@ import 'package:ovarian_cyst_support_app/models/appointment.dart';
 import 'package:ovarian_cyst_support_app/models/treatment_item.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_prediction.dart';
 
-
 class DatabaseMigrationService {
   static final _logger = Logger();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -19,7 +18,10 @@ class DatabaseMigrationService {
     if (userId == null) {
       throw Exception('No user logged in');
     }
-    return _firestore.collection('users').doc(userId).collection(collectionName);
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection(collectionName);
   }
 
   /// Migrate symptom entries
@@ -99,7 +101,8 @@ class DatabaseMigrationService {
   }
 
   /// Migrate medications
-  Future<void> migrateMedications(List<Map<String, dynamic>> medications) async {
+  Future<void> migrateMedications(
+      List<Map<String, dynamic>> medications) async {
     try {
       final batch = _firestore.batch();
       final collection = _getUserCollection('medications');
@@ -118,7 +121,8 @@ class DatabaseMigrationService {
   }
 
   /// Migrate payment attempts
-  Future<void> migratePaymentAttempts(List<Map<String, dynamic>> attempts) async {
+  Future<void> migratePaymentAttempts(
+      List<Map<String, dynamic>> attempts) async {
     try {
       final batch = _firestore.batch();
       final collection = _getUserCollection('paymentAttempts');
@@ -140,7 +144,8 @@ class DatabaseMigrationService {
   }
 
   /// Migrate symptom predictions
-  Future<void> migrateSymptomPredictions(List<SymptomPrediction> predictions) async {
+  Future<void> migrateSymptomPredictions(
+      List<SymptomPrediction> predictions) async {
     try {
       final batch = _firestore.batch();
       final collection = _getUserCollection('symptomPredictions');
@@ -151,7 +156,8 @@ class DatabaseMigrationService {
       }
 
       await batch.commit();
-      _logger.i('Successfully migrated ${predictions.length} symptom predictions');
+      _logger
+          .i('Successfully migrated ${predictions.length} symptom predictions');
     } catch (e) {
       _logger.e('Error migrating symptom predictions: $e');
       rethrow;

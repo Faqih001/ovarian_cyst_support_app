@@ -45,9 +45,9 @@ class SymptomEntryRepository extends FirestoreRepository<SymptomEntry> {
       field: 'date',
       isLessThan: DateTime.now().toIso8601String(),
     );
-    
+
     if (entries.isEmpty) return null;
-    
+
     entries.sort((a, b) => b.date.compareTo(a.date));
     return entries.first;
   }
@@ -55,8 +55,9 @@ class SymptomEntryRepository extends FirestoreRepository<SymptomEntry> {
   /// Get real-time stream of entries for a specific month
   Stream<List<SymptomEntry>> getMonthlyEntriesStream(int year, int month) {
     final startDate = DateTime(year, month, 1).toIso8601String().split('T')[0];
-    final endDate = '${DateTime(year, month + 1, 0).toIso8601String().split('T')[0]}Z';
-    
+    final endDate =
+        '${DateTime(year, month + 1, 0).toIso8601String().split('T')[0]}Z';
+
     return queryStream(
       field: 'date',
       isGreaterThanOrEqualTo: startDate,

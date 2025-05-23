@@ -6,14 +6,15 @@ class DatabaseMigrationScreen extends StatefulWidget {
   const DatabaseMigrationScreen({super.key});
 
   @override
-  State<DatabaseMigrationScreen> createState() => _DatabaseMigrationScreenState();
+  State<DatabaseMigrationScreen> createState() =>
+      _DatabaseMigrationScreenState();
 }
 
 class _DatabaseMigrationScreenState extends State<DatabaseMigrationScreen> {
   final _totalTasks = 5; // Total number of migration tasks
   final _logger = Logger();
   final _migrationService = DatabaseMigrationService();
-  
+
   int _completedTasks = 0;
   String _currentTask = 'Preparing for migration...';
   bool _isMigrating = false;

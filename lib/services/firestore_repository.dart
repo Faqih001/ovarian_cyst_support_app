@@ -11,19 +11,19 @@ class FirestoreRepository<T> {
   final Map<String, dynamic> Function(T) toMap;
 
   FirebaseFirestore get _firestore => DatabaseConfig.getOptimizedFirestore();
-  
+
   FirestoreRepository({
     required this.collectionPath,
     required this.fromMap,
     required this.toMap,
   });
-  
+
   // Get current user ID
   String _getCurrentUserId() {
     final user = FirebaseAuth.instance.currentUser;
     return user?.uid ?? 'guest_user';
   }
-  
+
   // Get collection reference for personal data (user-specific)
   CollectionReference _getUserCollection() {
     return _firestore
@@ -31,12 +31,12 @@ class FirestoreRepository<T> {
         .doc(_getCurrentUserId())
         .collection(collectionPath);
   }
-  
+
   // Get collection reference for global data (shared across users)
   CollectionReference _getGlobalCollection() {
     return _firestore.collection(collectionPath);
   }
-  
+
   // Determine if this is user-specific data
   bool _isUserSpecific() {
     // These collections are typically user-specific
@@ -48,12 +48,12 @@ class FirestoreRepository<T> {
       'symptom_predictions'
     ].contains(collectionPath);
   }
-  
+
   // Get the appropriate collection reference
   CollectionReference _getCollectionRef() {
     return _isUserSpecific() ? _getUserCollection() : _getGlobalCollection();
   }
-  
+
   // Add a new document
   Future<DocumentReference> add(T item) async {
     try {
@@ -63,7 +63,7 @@ class FirestoreRepository<T> {
       rethrow;
     }
   }
-  
+
   // Set a document with specific ID
   Future<void> set(String id, T item) async {
     try {
@@ -73,7 +73,7 @@ class FirestoreRepository<T> {
       rethrow;
     }
   }
-  
+
   // Get a document by ID
   Future<T?> get(String id) async {
     try {
@@ -85,7 +85,7 @@ class FirestoreRepository<T> {
       return null;
     }
   }
-  
+
   // Update a document
   Future<void> update(String id, Map<String, dynamic> data) async {
     try {
@@ -95,7 +95,7 @@ class FirestoreRepository<T> {
       rethrow;
     }
   }
-  
+
   // Delete a document
   Future<void> delete(String id) async {
     try {
@@ -105,7 +105,7 @@ class FirestoreRepository<T> {
       rethrow;
     }
   }
-  
+
   // Get all documents
   Future<List<T>> getAll() async {
     try {
@@ -119,7 +119,7 @@ class FirestoreRepository<T> {
       return [];
     }
   }
-  
+
   // Query documents
   Future<List<T>> query({
     String? field,
@@ -137,7 +137,7 @@ class FirestoreRepository<T> {
   }) async {
     try {
       Query query = _getCollectionRef();
-      
+
       if (field != null) {
         if (isEqualTo != null) {
           query = query.where(field, isEqualTo: isEqualTo);
@@ -155,7 +155,8 @@ class FirestoreRepository<T> {
           query = query.where(field, isGreaterThan: isGreaterThan);
         }
         if (isGreaterThanOrEqualTo != null) {
-          query = query.where(field, isGreaterThanOrEqualTo: isGreaterThanOrEqualTo);
+          query = query.where(field,
+              isGreaterThanOrEqualTo: isGreaterThanOrEqualTo);
         }
         if (arrayContains != null) {
           query = query.where(field, arrayContains: arrayContains);
@@ -173,7 +174,7 @@ class FirestoreRepository<T> {
           query = query.where(field, isNull: isNull);
         }
       }
-      
+
       final snapshot = await query.get();
       return snapshot.docs
           .where((doc) => doc.data() != null)
@@ -184,7 +185,7 @@ class FirestoreRepository<T> {
       return [];
     }
   }
-  
+
   // Get real-time updates for a document
   Stream<T?> getStream(String id) {
     return _getCollectionRef().doc(id).snapshots().map((doc) {
@@ -192,7 +193,7 @@ class FirestoreRepository<T> {
       return fromMap(doc.data() as Map<String, dynamic>);
     });
   }
-  
+
   // Get real-time updates for a collection
   Stream<List<T>> getAllStream() {
     return _getCollectionRef().snapshots().map((snapshot) {
@@ -202,7 +203,7 @@ class FirestoreRepository<T> {
           .toList();
     });
   }
-  
+
   // Get real-time updates for a query
   Stream<List<T>> queryStream({
     String? field,
@@ -221,7 +222,7 @@ class FirestoreRepository<T> {
     bool? descending,
   }) {
     Query query = _getCollectionRef();
-    
+
     if (field != null) {
       if (isEqualTo != null) {
         query = query.where(field, isEqualTo: isEqualTo);
@@ -239,7 +240,8 @@ class FirestoreRepository<T> {
         query = query.where(field, isGreaterThan: isGreaterThan);
       }
       if (isGreaterThanOrEqualTo != null) {
-        query = query.where(field, isGreaterThanOrEqualTo: isGreaterThanOrEqualTo);
+        query =
+            query.where(field, isGreaterThanOrEqualTo: isGreaterThanOrEqualTo);
       }
       if (arrayContains != null) {
         query = query.where(field, arrayContains: arrayContains);
@@ -257,11 +259,11 @@ class FirestoreRepository<T> {
         query = query.where(field, isNull: isNull);
       }
     }
-    
+
     if (orderBy != null) {
       query = query.orderBy(orderBy, descending: descending ?? false);
     }
-    
+
     return query.snapshots().map((snapshot) {
       return snapshot.docs
           .where((doc) => doc.data() != null)
@@ -269,7 +271,7 @@ class FirestoreRepository<T> {
           .toList();
     });
   }
-  
+
   // Handle transactions
   Future<void> runTransaction(
       Future<void> Function(Transaction) updateFunction) async {
@@ -282,7 +284,7 @@ class FirestoreRepository<T> {
       rethrow;
     }
   }
-  
+
   // Handle batched writes
   Future<WriteBatch> batch() async {
     return _firestore.batch();

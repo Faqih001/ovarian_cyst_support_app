@@ -70,10 +70,9 @@ class TreatmentItem {
       facilityId: map['facilityId'],
       manufacturer: map['manufacturer'],
       dosageInfo: map['dosageInfo'],
-      sideEffects:
-          map['sideEffects'] != null
-              ? List<String>.from(map['sideEffects'])
-              : null,
+      sideEffects: map['sideEffects'] != null
+          ? List<String>.from(map['sideEffects'])
+          : null,
     );
   }
 

@@ -43,17 +43,21 @@ class TreatmentItemRepository extends FirestoreRepository<TreatmentItem> {
   }
 
   /// Get treatments by price range
-  Future<List<TreatmentItem>> getTreatmentsByPriceRange(double min, double max) async {
+  Future<List<TreatmentItem>> getTreatmentsByPriceRange(
+      double min, double max) async {
     final items = await query(
       field: 'cost',
       isGreaterThanOrEqualTo: min,
     );
-    
-    return items.where((item) => (item.cost ?? double.infinity) <= max).toList();
+
+    return items
+        .where((item) => (item.cost ?? double.infinity) <= max)
+        .toList();
   }
 
   /// Get treatments with a specific manufacturer
-  Future<List<TreatmentItem>> getTreatmentsByManufacturer(String manufacturer) async {
+  Future<List<TreatmentItem>> getTreatmentsByManufacturer(
+      String manufacturer) async {
     return await query(
       field: 'manufacturer',
       isEqualTo: manufacturer,

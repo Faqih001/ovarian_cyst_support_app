@@ -43,7 +43,8 @@ class AppointmentRepository extends FirestoreRepository<Appointment> {
   }
 
   /// Get appointments by facility
-  Future<List<Appointment>> getAppointmentsByFacility(String facilityName) async {
+  Future<List<Appointment>> getAppointmentsByFacility(
+      String facilityName) async {
     return await query(
       field: 'facilityName',
       isEqualTo: facilityName,
@@ -53,14 +54,14 @@ class AppointmentRepository extends FirestoreRepository<Appointment> {
   /// Get next appointment
   Future<Appointment?> getNextAppointment() async {
     final now = DateTime.now().toIso8601String();
-    
+
     final upcomingAppointments = await query(
       field: 'dateTime',
       isGreaterThanOrEqualTo: now,
     );
-    
+
     if (upcomingAppointments.isEmpty) return null;
-    
+
     upcomingAppointments.sort((a, b) => a.dateTime.compareTo(b.dateTime));
     return upcomingAppointments.first;
   }

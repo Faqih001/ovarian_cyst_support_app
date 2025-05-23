@@ -10,7 +10,7 @@ enum PaymentStatus { pending, processing, completed, failed, cancelled }
 
 class PaymentService {
   static const String baseUrl = 'https://api.ovarianapp.com/v1';
-  
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -70,7 +70,7 @@ class PaymentService {
       }
 
       final responseData = jsonDecode(response.body);
-      
+
       // Save to Firestore
       final docRef = await _getPaymentsCollection().add({
         'amount': amount,
@@ -215,7 +215,7 @@ class PaymentService {
       final querySnapshot = await _getPaymentsCollection()
           .orderBy('createdAt', descending: true)
           .get();
-      
+
       return querySnapshot.docs
           .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
           .toList();
@@ -226,7 +226,8 @@ class PaymentService {
   }
 
   /// Update payment status
-  Future<void> updatePaymentStatus(String paymentId, PaymentStatus status) async {
+  Future<void> updatePaymentStatus(
+      String paymentId, PaymentStatus status) async {
     try {
       await _getPaymentsCollection().doc(paymentId).update({
         'status': status.toString(),

@@ -18,7 +18,8 @@ class DatabaseServiceFactory {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      _useFirestore = prefs.getBool(_dbChoiceKey) ?? kIsWeb; // Default to Firestore on web
+      _useFirestore =
+          prefs.getBool(_dbChoiceKey) ?? kIsWeb; // Default to Firestore on web
       return _useFirestore!;
     } catch (e) {
       _logger.e('Error checking database preference: $e');
@@ -41,7 +42,7 @@ class DatabaseServiceFactory {
   /// Gets the appropriate database service based on the app's configuration.
   static Future<dynamic> getDatabaseService() async {
     final useFirestore = await shouldUseFirestore();
-    
+
     if (useFirestore) {
       _logger.i('Using Firebase Firestore database service');
       return FirestoreDatabaseService();

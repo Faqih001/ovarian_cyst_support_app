@@ -44,10 +44,11 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       // Check if migration is needed before navigation
-      final migrationCompleted = await MigrationService.checkAndShowMigrationScreen(context);
-      
+      final migrationCompleted =
+          await MigrationService.checkAndShowMigrationScreen(context);
+
       _logger.i('Migration check completed: $migrationCompleted');
-      
+
       if (!mounted) return;
 
       // Navigate to onboarding screen
@@ -56,9 +57,9 @@ class _SplashScreenState extends State<SplashScreen>
       );
     } catch (e) {
       _logger.e('Error during splash navigation: $e');
-      
+
       if (!mounted) return;
-      
+
       // Fall back to onboarding screen in case of error
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const OnboardingScreen()),

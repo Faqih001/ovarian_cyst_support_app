@@ -46,21 +46,21 @@ class MigrationService {
     // Check if migration is needed
     final migrationCompleted = await isMigrationCompleted();
     final useFirestore = await DatabaseServiceFactory.shouldUseFirestore();
-    
+
     if (!migrationCompleted && !useFirestore) {
       _logger.i('Migration needed, showing migration screen');
-      
+
       // Show the migration screen
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => const DatabaseMigrationScreen(),
         ),
       );
-      
+
       // Check if migration was completed
       return await isMigrationCompleted();
     }
-    
+
     return true;
   }
 }

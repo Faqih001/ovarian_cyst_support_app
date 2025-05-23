@@ -12,7 +12,7 @@ class SyncService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Logger _logger = Logger();
-  
+
   bool _isSyncing = false;
   DateTime? _lastSyncTime;
 
@@ -52,7 +52,7 @@ class SyncService extends ChangeNotifier {
 
       // Get pending items
       final pendingItems = await _getPendingSyncItems();
-      
+
       // Process items
       for (var item in pendingItems) {
         try {
@@ -66,7 +66,7 @@ class SyncService extends ChangeNotifier {
       _lastSyncTime = DateTime.now();
       _isSyncing = false;
       notifyListeners();
-      
+
       return true;
     } catch (e) {
       _logger.e('Error during sync: $e');
@@ -90,11 +90,11 @@ class SyncService extends ChangeNotifier {
   Future<void> clearSyncQueue() async {
     final batch = _firestore.batch();
     final docs = await _getUserCollection('syncQueue').get();
-    
+
     for (var doc in docs.docs) {
       batch.delete(doc.reference);
     }
-    
+
     await batch.commit();
   }
 
@@ -112,7 +112,7 @@ class SyncService extends ChangeNotifier {
         .orderBy('timestamp')
         .limit(100)
         .get();
-    
+
     return querySnapshot.docs;
   }
 
@@ -128,7 +128,9 @@ class SyncService extends ChangeNotifier {
         await _getUserCollection(collection).add(itemData);
         break;
       case 'update':
-        await _getUserCollection(collection).doc(itemData['id']).update(itemData);
+        await _getUserCollection(collection)
+            .doc(itemData['id'])
+            .update(itemData);
         break;
       case 'delete':
         await _getUserCollection(collection).doc(itemData['id']).delete();

@@ -15,7 +15,7 @@ class DatabaseConfig {
 
     try {
       _logger.i('Initializing Firestore for ${kIsWeb ? 'Web' : 'Mobile'}');
-      
+
       // Initialize Firestore settings
       FirebaseFirestore.instance.settings = Settings(
         persistenceEnabled: true,
@@ -36,7 +36,7 @@ class DatabaseConfig {
     if (kIsWeb) {
       return 'cache/$fileName';
     }
-    
+
     // For mobile platforms, use path_provider to get the app's documents directory
     final appDir = await path_provider.getApplicationDocumentsDirectory();
     return '${appDir.path}/$fileName';
