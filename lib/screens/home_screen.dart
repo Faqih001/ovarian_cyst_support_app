@@ -10,7 +10,8 @@ import 'package:ovarian_cyst_support_app/screens/provider_search_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/medication_tracking_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/kenyan_hospital_booking_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/ovarian_cyst_prediction_screen.dart';
-import 'package:ovarian_cyst_support_app/screens/chatbot_screen.dart'; // Added chatbot screen import
+import 'package:ovarian_cyst_support_app/screens/chatbot_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/image_analysis_chat_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:ovarian_cyst_support_app/services/hospital_service.dart';
@@ -381,6 +382,18 @@ class _HomeContentState extends State<HomeContent>
                               ),
                             ],
                           ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              _buildQuickActionButton(
+                                context: context,
+                                icon: Icons.image_search,
+                                label: 'Image Analysis',
+                                color: Colors.indigo,
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -628,6 +641,12 @@ class _HomeContentState extends State<HomeContent>
             Navigator.of(context).push(
               MaterialPageRoute(
                   builder: (_) => const OvarianCystPredictionScreen()),
+            );
+            break;
+          case 'Image Analysis':
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const ImageAnalysisChatScreen()),
             );
             break;
         }
@@ -1526,25 +1545,99 @@ class ChatbotBottomSheet extends StatelessWidget {
               ],
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Add a drag handle to make it clear it's draggable
-                Container(
-                  width: 40,
-                  height: 5,
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2.5),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
                   ),
                 ),
+                
+                // Title and assistant options
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "OvaCare Assistant",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        "Choose how you'd like assistance:",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      
+                      // Option buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildAssistantOption(
+                              context,
+                              icon: Icons.chat,
+                              title: "Text Chat",
+                              description: "Ask questions about ovarian cysts",
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context, 
+                                  MaterialPageRoute(
+                                    builder: (context) => const ChatbotScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildAssistantOption(
+                              context,
+                              icon: Icons.image_search,
+                              title: "Image Analysis",
+                              description: "Upload medical images for educational insights",
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context, 
+                                  MaterialPageRoute(
+                                    builder: (context) => const ImageAnalysisChatScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
                 Expanded(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(25.0),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(25.0),
+                      bottomRight: Radius.circular(25.0),
+                    ),
                     child: const ChatbotScreen(),
                   ),
                 ),
-                // Add padding at bottom for visual spacing from keyboard
-                SizedBox(height: 10),
               ],
             ),
           ),
@@ -1552,4 +1645,47 @@ class ChatbotBottomSheet extends StatelessWidget {
       },
     );
   }
+  
+  Widget _buildAssistantOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String description,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: AppColors.primary, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 }

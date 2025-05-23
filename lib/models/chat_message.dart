@@ -1,24 +1,35 @@
 enum MessageSource { user, bot, system }
 
+enum MessageType { text, image, loading, error }
+
 class ChatMessage {
   final String text;
+  final bool isUser;
   final DateTime timestamp;
+  final MessageType messageType;
+  final String? imageUrl;
   final MessageSource source;
   final bool isOffline;
 
   ChatMessage({
     required this.text,
-    required this.source,
+    required this.isUser,
+    required this.timestamp,
+    this.messageType = MessageType.text,
+    this.imageUrl,
+    this.source = MessageSource.user,
     this.isOffline = false,
-    DateTime? timestamp,
-  }) : timestamp = timestamp ?? DateTime.now();
+  });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
       text: json['text'],
-      source: MessageSource.values.byName(json['source']),
-      isOffline: json['isOffline'] ?? false,
+      isUser: json['isUser'] ?? false,
       timestamp: DateTime.parse(json['timestamp']),
+      messageType: MessageType.values.byName(json['messageType'] ?? 'text'),
+      imageUrl: json['imageUrl'],
+      source: MessageSource.values.byName(json['source'] ?? 'user'),
+      isOffline: json['isOffline'] ?? false,
     );
   }
 
@@ -26,6 +37,8 @@ class ChatMessage {
     return {
       'text': text,
       'timestamp': timestamp.toIso8601String(),
+      'messageType': messageType.name,
+      'imageUrl': imageUrl,
       'source': source.name,
       'isOffline': isOffline,
     };

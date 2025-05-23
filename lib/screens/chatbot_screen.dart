@@ -92,6 +92,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       text:
           "Hello! I'm your OvaCare assistant, powered by Google's Gemini AI. I can provide more accurate answers about ovarian cysts, track symptoms, and offer personalized support. How can I help you today?",
       source: MessageSource.bot,
+      isUser: false,
+      timestamp: DateTime.now(),
       isOffline: _isOffline,
     );
 
@@ -101,7 +103,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 
   void _addSystemMessage(String text) {
-    final systemMessage = ChatMessage(text: text, source: MessageSource.system);
+    final systemMessage = ChatMessage(
+      text: text,
+      source: MessageSource.system,
+      isUser: false,
+      timestamp: DateTime.now(),
+    );
 
     setState(() {
       _messages.add(systemMessage);
@@ -125,7 +132,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     // Add user message
     setState(() {
       _isComposing = false;
-      _messages.add(ChatMessage(text: text, source: MessageSource.user));
+      _messages.add(ChatMessage(
+        text: text,
+        source: MessageSource.user,
+        isUser: true,
+        timestamp: DateTime.now(),
+      ));
       _isTyping = true;
     });
 
@@ -143,6 +155,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               text: botResponse,
               source: MessageSource.bot,
               isOffline: _isOffline,
+              isUser: false,
+              timestamp: DateTime.now(),
             ),
           );
         });
@@ -162,6 +176,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   "I'm sorry, I couldn't process your request. Please try again later.",
               source: MessageSource.bot,
               isOffline: true,
+              isUser: false,
+              timestamp: DateTime.now(),
             ),
           );
         });
@@ -391,6 +407,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       _messages.add(ChatMessage(
         text: "🎤 $message",
         source: MessageSource.user,
+        isUser: true,
+        timestamp: DateTime.now(),
       ));
       _isTyping = true;
     });
@@ -412,6 +430,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               text: botResponse,
               source: MessageSource.bot,
               isOffline: _isOffline,
+              isUser: false,
+              timestamp: DateTime.now(),
             ),
           );
         });
@@ -431,6 +451,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   : "I apologize, but I couldn't process your voice message. This could be due to background noise or unclear audio. Please try again in a quieter environment or type your question.",
               source: MessageSource.bot,
               isOffline: _isOffline,
+              isUser: false,
+              timestamp: DateTime.now(),
             ),
           );
         });

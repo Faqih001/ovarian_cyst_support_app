@@ -13,6 +13,7 @@ import '../services/ai_service.dart';
 
 import 'symptom_prediction_screen.dart';
 import 'chatbot_screen.dart';
+import 'image_analysis_chat_screen.dart';
 import 'provider_search_screen.dart';
 import 'tracking_screen.dart';
 import 'educational_screen.dart';
@@ -155,30 +156,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      body:
-          _isLoading
-              ? _buildLoadingView()
-              : RefreshIndicator(
-                onRefresh: _loadData,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildQuickActions(),
-                        const SizedBox(height: 24),
-                        _buildHealthInsights(),
-                        const SizedBox(height: 24),
-                        _buildUpcomingAppointments(),
-                        const SizedBox(height: 24),
-                        _buildRecentActivity(),
-                      ],
-                    ),
+      body: _isLoading
+          ? _buildLoadingView()
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildQuickActions(),
+                      const SizedBox(height: 24),
+                      _buildHealthInsights(),
+                      const SizedBox(height: 24),
+                      _buildUpcomingAppointments(),
+                      const SizedBox(height: 24),
+                      _buildRecentActivity(),
+                    ],
                   ),
                 ),
               ),
+            ),
       bottomNavigationBar: BottomAppBar(
         elevation: 8,
         child: Padding(
@@ -375,9 +375,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   'AI Insights',
                   Colors.purple[700]!,
                   () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const SymptomPredictionScreen(),
+                    // Show options for AI features
+                    showModalBottomSheet(
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                      ),
+                      builder: (context) => Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "AI Features",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              "Choose an AI-powered feature:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ListTile(
+                              leading: const Icon(Icons.analytics,
+                                  color: Colors.purple),
+                              title: const Text("Symptom Prediction"),
+                              subtitle: const Text(
+                                  "AI analysis based on your symptoms"),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const SymptomPredictionScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.image_search,
+                                  color: Colors.indigo),
+                              title: const Text("Image Analysis"),
+                              subtitle: const Text(
+                                  "Upload medical images for educational insights"),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ImageAnalysisChatScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            ListTile(
+                              leading:
+                                  const Icon(Icons.chat, color: Colors.teal),
+                              title: const Text("AI Assistant Chat"),
+                              subtitle: const Text(
+                                  "Ask questions about ovarian cysts"),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ChatbotScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -511,8 +590,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Placeholder data, replace with actual prediction data
     final risk = _latestPrediction?.riskLevel ?? 'Low';
     final riskScore = _latestPrediction?.severityScore ?? 0.2;
-    final recommendations =
-        _latestPrediction?.potentialIssues ??
+    final recommendations = _latestPrediction?.potentialIssues ??
         [
           'Keep tracking your symptoms',
           'Stay hydrated',
@@ -787,37 +865,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 16),
             SizedBox(
               height: 200,
-              child:
-                  _recentSymptoms.isEmpty
-                      ? const Center(
-                        child: Text(
-                          'No recent symptom entries',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                      : LineChart(
-                        LineChartData(
-                          gridData: const FlGridData(show: false),
-                          titlesData: const FlTitlesData(show: false),
-                          borderData: FlBorderData(show: false),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: _getChartDataFromSymptoms(),
-                              isCurved: true,
-                              color: Theme.of(context).primaryColor,
-                              barWidth: 3,
-                              isStrokeCapRound: true,
-                              dotData: const FlDotData(show: true),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: Theme.of(
-                                  context,
-                                ).primaryColor.withAlpha((0.2 * 255).toInt()),
-                              ),
-                            ),
-                          ],
-                        ),
+              child: _recentSymptoms.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No recent symptom entries',
+                        style: TextStyle(color: Colors.grey),
                       ),
+                    )
+                  : LineChart(
+                      LineChartData(
+                        gridData: const FlGridData(show: false),
+                        titlesData: const FlTitlesData(show: false),
+                        borderData: FlBorderData(show: false),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: _getChartDataFromSymptoms(),
+                            isCurved: true,
+                            color: Theme.of(context).primaryColor,
+                            barWidth: 3,
+                            isStrokeCapRound: true,
+                            dotData: const FlDotData(show: true),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              color: Theme.of(
+                                context,
+                              ).primaryColor.withAlpha((0.2 * 255).toInt()),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
             ),
             if (_recentSymptoms.isNotEmpty) ...[
               const SizedBox(height: 16),
@@ -851,9 +928,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     // Sort symptoms by date
-    final sortedSymptoms =
-        _recentSymptoms.toList()
-          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    final sortedSymptoms = _recentSymptoms.toList()
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     // Convert to chart data
     for (int i = 0; i < sortedSymptoms.length; i++) {

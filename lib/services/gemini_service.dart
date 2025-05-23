@@ -12,6 +12,7 @@ class GeminiService {
 
   // Model instance
   late final GenerativeModel _model;
+  late final GenerativeModel _visionModel;
 
   // Chat session for maintaining conversation history
   ChatSession? _chatSession;
@@ -24,6 +25,12 @@ class GeminiService {
     // Initialize the model with the correct model name for Gemini
     _model = GenerativeModel(
       model: 'gemini-2.0-flash',
+      apiKey: apiKey,
+    );
+
+    // Initialize a separate model for vision capabilities
+    _visionModel = GenerativeModel(
+      model: 'gemini-2.0-flash', // Using the vision-capable model
       apiKey: apiKey,
     );
   }
@@ -149,6 +156,38 @@ $enhancedPrompt
     }
   }
 
+  /// Process image content with Gemini Vision
+  Future<String> analyzeImage({
+    required Uint8List imageBytes,
+    String prompt =
+        "Analyze this medical image for potential ovarian cysts. Describe what you see, but clarify that only a medical professional can provide an accurate diagnosis.",
+  }) async {
+    try {
+      // Create the model content with image data
+      final promptContent = [
+        Content.multi([
+          TextPart(_getOvarianCystImageAnalysisContext()),
+          TextPart(prompt),
+          DataPart('image/jpeg', imageBytes),
+        ])
+      ];
+
+      // Generate content using the vision model
+      final response = await _visionModel.generateContent(promptContent);
+
+      final responseText = response.text;
+
+      if (responseText == null || responseText.isEmpty) {
+        return _getImageFallbackResponse();
+      }
+
+      return responseText;
+    } catch (e) {
+      debugPrint('Error in Gemini API image analysis: $e');
+      return _getImageFallbackResponse();
+    }
+  }
+
   /// Provides domain context to help the model generate better responses
   String _getOvarianCystContext() {
     return """You are OvaCare, a specialized AI assistant for women with ovarian cysts. 
@@ -156,6 +195,22 @@ You provide accurate and empathetic medical information related to ovarian cysts
 Keep responses concise (under 3-4 sentences when possible) and easy to understand.
 Remember you are not a doctor, and should recommend seeking medical attention for concerning symptoms.
 When in doubt or for specific medical advice, remind users to consult healthcare professionals.""";
+  }
+
+  /// Provides image analysis context to help the model generate better responses
+  String _getOvarianCystImageAnalysisContext() {
+    return """You are analyzing a potential medical image related to ovarian cysts.
+
+IMPORTANT GUIDELINES:
+1. Always emphasize that you cannot provide a medical diagnosis and the user should consult a healthcare professional.
+2. Be descriptive but cautious about what you observe in the image.
+3. If the image appears to be an ultrasound, MRI, or CT scan that might show ovarian cysts, describe general characteristics without making definitive claims.
+4. If the image is unclear or not relevant to ovarian cysts, politely inform the user.
+5. Never claim to detect cancer or other serious conditions.
+6. Focus on educational information about ovarian cysts if you can't determine specifics from the image.
+7. Maintain a compassionate and professional tone throughout your response.
+
+Begin your response with a disclaimer about not providing medical diagnosis.""";
   }
 
   /// Fallback response for when the API fails
@@ -171,5 +226,12 @@ When in doubt or for specific medical advice, remind users to consult healthcare
     return "I received your voice message. While I'm still improving my voice understanding capabilities, "
         "I'd be happy to help with any questions about ovarian cysts. "
         "Could you please type your specific question or concern so I can provide the most accurate information?";
+  }
+
+  /// Fallback response specifically for image processing issues
+  String _getImageFallbackResponse() {
+    return "I received your image, but I'm having trouble analyzing it at the moment. "
+        "For accurate assessment of any images related to ovarian cysts, please consult with your healthcare provider. "
+        "If you have specific questions about ovarian cysts, I'd be happy to help answer them.";
   }
 }
