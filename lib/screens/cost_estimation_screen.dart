@@ -239,11 +239,9 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
     try {
       // Process payment
       final paymentResult = await _paymentService.processPayment(
-        phoneNumber: _phoneController.text,
-        amount: _estimatedTotal,
-        appointmentId: 'prepay_${DateTime.now().millisecondsSinceEpoch}',
-        description:
-            'Pre-payment for $_selectedTreatmentType at $_selectedFacility',
+        _estimatedTotal,
+        'USD',
+        'Pre-payment for $_selectedTreatmentType at $_selectedFacility',
       );
 
       setState(() {
@@ -870,7 +868,7 @@ class _CostEstimationScreenState extends State<CostEstimationScreen> {
     });
 
     try {
-      final receiptUrl = await _paymentService.generateReceipt(transactionId);
+      final receiptUrl = await _paymentService.getPaymentReceipt(transactionId);
 
       setState(() {
         _isLoading = false;

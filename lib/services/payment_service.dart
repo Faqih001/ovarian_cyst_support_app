@@ -9,6 +9,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 enum PaymentStatus { pending, processing, completed, failed, cancelled }
 
 class PaymentService {
+  static const String baseUrl = 'https://api.ovarianapp.com/v1';
+  
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -34,109 +36,59 @@ class PaymentService {
     }
   }
 
-  /// Get payment history
-  Future<List<Map<String, dynamic>>> getPaymentHistory() async {
+  /// Process a new payment
+  Future<Map<String, dynamic>> processPayment(
+    double amount,
+    String currency,
+    String description,
+  ) async {
     try {
-      final querySnapshot = await _getPaymentsCollection()
-          .orderBy('timestamp', descending: true)
-          .get();
-      
-      return querySnapshot.docs
-          .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
-          .toList();
-    } catch (e) {
-      debugPrint('Error getting payment history: $e');
-      return [];
-    }
-  }
+      // Check connectivity
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        throw Exception('No internet connection');
+      }
 
-  /// Update payment status
-  Future<void> updatePaymentStatus(String paymentId, PaymentStatus status) async {
-    try {
-      await _getPaymentsCollection().doc(paymentId).update({
-        'status': status.toString(),
-        'updatedAt': FieldValue.serverTimestamp(),
+      // Create payment intent
+      final response = await http.post(
+        Uri.parse('$baseUrl/payments/create'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'amount': (amount * 100).toInt(), // Convert to cents
+          'currency': currency,
+          'description': description,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to create payment: ${response.body}');
+      }
+
+      final responseData = jsonDecode(response.body);
+      
+      // Save to Firestore
+      final docRef = await _getPaymentsCollection().add({
+        'amount': amount,
+        'currency': currency,
+        'description': description,
+        'status': PaymentStatus.pending.toString(),
+        'paymentIntentId': responseData['id'],
+        'createdAt': FieldValue.serverTimestamp(),
       });
+
+      return {
+        'id': docRef.id,
+        'clientSecret': responseData['clientSecret'],
+        ...responseData,
+      };
     } catch (e) {
-      debugPrint('Error updating payment status: $e');
+      debugPrint('Error processing payment: $e');
       rethrow;
     }
   }
 
-  // Initialize payment service
-  static Future<void> initialize() async {
-    debugPrint('Payment service initialized');
-  }
-
-  // Process payment (stub implementation, since M-Pesa plugin is unavailable)
-  Future<Map<String, dynamic>> processPayment({
-    required String phoneNumber,
-    required double amount,
-    required String appointmentId,
-    required String description,
-  }) async {
-    try {
-      // Check connectivity first
-      final connectivityResults = await Connectivity().checkConnectivity();
-      if (connectivityResults.contains(ConnectivityResult.none)) {
-        debugPrint('No internet connection, cannot process payment now.');
-        return {
-          'success': false,
-          'message':
-              'No internet connection. Please try again when you are online.',
-          'status': PaymentStatus.failed.toString(),
-        };
-      }
-
-      // Simulate payment processing (since M-Pesa plugin is missing)
-      final fakeTransactionId =
-          'FAKE_${appointmentId}_${DateTime.now().millisecondsSinceEpoch}';
-
-      // Store payment attempt in Firestore for tracking
-      await savePaymentTransaction({
-        'id': '${appointmentId}_${DateTime.now().millisecondsSinceEpoch}',
-        'appointmentId': appointmentId,
-        'phoneNumber': phoneNumber,
-        'amount': amount,
-        'description': description,
-        'status': PaymentStatus.processing.toString(),
-        'transactionId': fakeTransactionId,
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-
-      // Return initial response
-      return {
-        'success': true,
-        'message':
-            'Payment request simulated. (M-Pesa plugin not available in this build.)',
-        'status': PaymentStatus.processing.toString(),
-        'transactionId': fakeTransactionId,
-      };
-    } catch (e) {
-      debugPrint('Error processing payment: $e');
-
-      // Store failed payment attempt
-      await savePaymentTransaction({
-        'id': '${appointmentId}_${DateTime.now().millisecondsSinceEpoch}',
-        'appointmentId': appointmentId,
-        'phoneNumber': phoneNumber,
-        'amount': amount,
-        'description': description,
-        'status': PaymentStatus.failed.toString(),
-        'error': e.toString(),
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-
-      return {
-        'success': false,
-        'message': 'Payment failed: ${e.toString()}',
-        'status': PaymentStatus.failed.toString(),
-      };
-    }
-  }
-
-  // Check payment status
-  Future<Map<String, dynamic>> checkPaymentStatus(String transactionId) async {
+  /// Check payment status
+  Future<PaymentStatus> checkPaymentStatus(String transactionId) async {
     try {
       // Check connectivity first
       final connectivityResults = await Connectivity().checkConnectivity();
@@ -146,21 +98,10 @@ class PaymentService {
         // Return local status if available
         final localStatus = await _getLocalPaymentStatus(transactionId);
         if (localStatus != null) {
-          return {
-            'success': true,
-            'status': localStatus,
-            'message':
-                'Using locally cached payment status due to offline mode.',
-            'offline': true,
-          };
+          return _parsePaymentStatus(localStatus);
         }
 
-        return {
-          'success': false,
-          'message': 'Cannot check payment status while offline.',
-          'status': PaymentStatus.pending.toString(),
-          'offline': true,
-        };
+        return PaymentStatus.pending;
       }
 
       // Call backend to check status
@@ -175,27 +116,56 @@ class PaymentService {
         // Update local payment status
         await _updateLocalPaymentStatus(transactionId, data['status']);
 
-        return {
-          'success': true,
-          'status': data['status'],
-          'message': data['message'],
-          'details': data['details'],
-        };
+        return _parsePaymentStatus(data['status']);
       } else {
-        return {
-          'success': false,
-          'message':
-              'Failed to check payment status. Server returned ${response.statusCode}',
-          'status': PaymentStatus.pending.toString(),
-        };
+        throw Exception(
+            'Failed to check payment status. Server returned ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error checking payment status: $e');
-      return {
-        'success': false,
-        'message': 'Error checking payment status: ${e.toString()}',
-        'status': PaymentStatus.pending.toString(),
-      };
+      rethrow;
+    }
+  }
+
+  /// Get payment receipt
+  Future<String> getPaymentReceipt(String transactionId) async {
+    try {
+      // Check connectivity first
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult.contains(ConnectivityResult.none)) {
+        return 'Cannot generate receipt while offline.';
+      }
+
+      // Call backend to generate receipt
+      final response = await http.get(
+        Uri.parse('$baseUrl/payments/receipt/$transactionId'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        return response.body;
+      } else {
+        throw Exception('Failed to generate receipt.');
+      }
+    } catch (e) {
+      debugPrint('Error generating receipt: $e');
+      rethrow;
+    }
+  }
+
+  /// Parse payment status from string
+  PaymentStatus _parsePaymentStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return PaymentStatus.pending;
+      case 'processing':
+        return PaymentStatus.processing;
+      case 'completed':
+        return PaymentStatus.completed;
+      case 'cancelled':
+        return PaymentStatus.cancelled;
+      default:
+        return PaymentStatus.failed;
     }
   }
 
@@ -234,30 +204,32 @@ class PaymentService {
     }
   }
 
-  // Generate receipt
-  Future<String> generateReceipt(String transactionId) async {
+  /// Get payment history
+  Future<List<Map<String, dynamic>>> getPaymentHistory() async {
     try {
-      // Check connectivity first
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult.contains(ConnectivityResult.none)) {
-        return 'Cannot generate receipt while offline.';
-      }
-
-      // Call backend to generate receipt
-      final response = await http.get(
-        Uri.parse('$baseUrl/payments/receipt/$transactionId'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        return data['receiptUrl'];
-      } else {
-        return 'Failed to generate receipt.';
-      }
+      final querySnapshot = await _getPaymentsCollection()
+          .orderBy('createdAt', descending: true)
+          .get();
+      
+      return querySnapshot.docs
+          .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+          .toList();
     } catch (e) {
-      debugPrint('Error generating receipt: $e');
-      return 'Error generating receipt: ${e.toString()}';
+      debugPrint('Error getting payment history: $e');
+      return [];
+    }
+  }
+
+  /// Update payment status
+  Future<void> updatePaymentStatus(String paymentId, PaymentStatus status) async {
+    try {
+      await _getPaymentsCollection().doc(paymentId).update({
+        'status': status.toString(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error updating payment status: $e');
+      rethrow;
     }
   }
 
