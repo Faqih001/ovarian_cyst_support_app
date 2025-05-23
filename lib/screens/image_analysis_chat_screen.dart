@@ -93,7 +93,7 @@ class _ImageAnalysisChatScreenState extends State<ImageAnalysisChatScreen> {
 
       // Optionally crop the image for better focus
       if (!mounted) return;
-      
+
       CroppedFile? croppedFile = await ImageCropper().cropImage(
         sourcePath: pickedFile.path,
         aspectRatioPresets: [
