@@ -82,33 +82,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final navigator = Navigator.of(context);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-    // Show loading dialog before async operations
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const Center(child: CircularProgressIndicator());
-      },
-    );
-
     try {
-      // Get auth service
+      // Get auth service before async operation
       final authService = Provider.of<AuthService>(context, listen: false);
 
       // Delete user account
       await authService.deleteAccount();
 
-      // Check if widget is still mounted after async operation
+      // Check if widget is still mounted before using context
       if (!mounted) return;
 
-      // Close loading dialog
-      navigator.pop();
-
-      // Navigate to login screen
-      navigator.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false,
-      );
+      // Now safe to use context
+      Navigator.of(context).pushReplacementNamed('/login');
 
       // Show success message
       scaffoldMessenger.showSnackBar(

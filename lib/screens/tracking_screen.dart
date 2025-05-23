@@ -4,6 +4,7 @@ import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:ovarian_cyst_support_app/screens/medication_tracking_screen.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 class TrackingScreen extends StatefulWidget {
   final Map<String, dynamic>? initialSymptom;
@@ -20,7 +21,7 @@ class TrackingScreen extends StatefulWidget {
 class _TrackingScreenState extends State<TrackingScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final DatabaseService _databaseService = DatabaseService();
+  late final DatabaseService _databaseService;
   bool _isLoading = false;
   DateTime _selectedDay = DateTime.now();
   DateTime _focusedDay = DateTime.now();
@@ -44,6 +45,7 @@ class _TrackingScreenState extends State<TrackingScreen>
   @override
   void initState() {
     super.initState();
+    _databaseService = Provider.of<DatabaseService>(context, listen: false);
     _tabController = TabController(length: 3, vsync: this);
     _loadSymptoms();
   }

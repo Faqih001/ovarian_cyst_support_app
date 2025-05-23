@@ -38,8 +38,19 @@ class PaymentService {
 
   /// Check if device has internet connectivity
   Future<bool> _checkConnectivity() async {
-    final result = await Connectivity().checkConnectivity();
-    return result != ConnectivityResult.none;
+    try {
+      final result = await Connectivity().checkConnectivity();
+      // Use list.contains instead of direct comparison
+      return [
+        ConnectivityResult.wifi,
+        ConnectivityResult.mobile,
+        ConnectivityResult.ethernet,
+        ConnectivityResult.vpn
+      ].contains(result);
+    } catch (e) {
+      debugPrint('Error checking connectivity: $e');
+      return false;
+    }
   }
 
   /// Process a new payment

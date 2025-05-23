@@ -370,6 +370,7 @@ class FirestoreDatabaseService extends DatabaseService {
     }
   }
 
+  @override
   Future<void> saveTreatmentItem(TreatmentItem item) async {
     try {
       await _firestore
@@ -383,6 +384,7 @@ class FirestoreDatabaseService extends DatabaseService {
     }
   }
 
+  @override
   Future<List<TreatmentItem>> getTreatmentItems({String? facilityId}) async {
     try {
       Query query = _firestore.collection(_treatmentItemsCollection);

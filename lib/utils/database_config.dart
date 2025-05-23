@@ -42,10 +42,9 @@ class DatabaseConfig {
 
       if (!kIsWeb) {
         // Persistence is handled differently on web
-        await instance.enablePersistence(
-          const PersistenceSettings(
-            synchronizeTabs: true,
-          ),
+        instance.settings = Settings(
+          persistenceEnabled: true,
+          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
         );
         _logger.i('Firestore offline persistence enabled');
       }
