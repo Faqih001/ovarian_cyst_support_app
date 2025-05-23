@@ -568,10 +568,7 @@ class _HomeContentState extends State<HomeContent>
   }
 
   Future<void> _editSymptom(
-      String docId,
-      String userId,
-      int severity,
-      String description) async {
+      String docId, String userId, int severity, String description) async {
     // Capture scaffoldMessenger before async operation
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
@@ -1591,10 +1588,11 @@ class ChatbotBottomSheet extends StatelessWidget {
                     ),
                   ),
                 ),
-                
+
                 // Title and assistant options
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0, vertical: 10.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1614,7 +1612,7 @@ class ChatbotBottomSheet extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 15),
-                      
+
                       // Option buttons
                       Row(
                         children: [
@@ -1627,7 +1625,7 @@ class ChatbotBottomSheet extends StatelessWidget {
                               onTap: () {
                                 Navigator.pop(context);
                                 Navigator.push(
-                                  context, 
+                                  context,
                                   MaterialPageRoute(
                                     builder: (context) => const ChatbotScreen(),
                                   ),
@@ -1641,13 +1639,15 @@ class ChatbotBottomSheet extends StatelessWidget {
                               context,
                               icon: Icons.image_search,
                               title: "Image Analysis",
-                              description: "Upload medical images for educational insights",
+                              description:
+                                  "Upload medical images for educational insights",
                               onTap: () {
                                 Navigator.pop(context);
                                 Navigator.push(
-                                  context, 
+                                  context,
                                   MaterialPageRoute(
-                                    builder: (context) => const ImageAnalysisChatScreen(),
+                                    builder: (context) =>
+                                        const ImageAnalysisChatScreen(),
                                   ),
                                 );
                               },
@@ -1658,9 +1658,9 @@ class ChatbotBottomSheet extends StatelessWidget {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 Expanded(
                   child: ClipRRect(
                     borderRadius: const BorderRadius.only(
@@ -1677,7 +1677,7 @@ class ChatbotBottomSheet extends StatelessWidget {
       },
     );
   }
-  
+
   Widget _buildAssistantOption(
     BuildContext context, {
     required IconData icon,

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
+import 'package:ovarian_cyst_support_app/models/treatment_item.dart';
 
 /// Base class for Firebase database operations
 abstract class DatabaseService {
@@ -18,6 +19,12 @@ abstract class DatabaseService {
     }
     return _firestore.collection('users').doc(userId).collection(collection);
   }
+
+  /// Get treatment items with optional facilityId filter
+  Future<List<TreatmentItem>> getTreatmentItems({String? facilityId});
+
+  /// Save a treatment item to the database
+  Future<void> saveTreatmentItem(TreatmentItem item);
 
   /// Clear all data for testing
   @visibleForTesting

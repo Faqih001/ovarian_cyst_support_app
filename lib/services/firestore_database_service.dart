@@ -5,8 +5,9 @@ import 'package:ovarian_cyst_support_app/models/appointment.dart';
 import 'package:ovarian_cyst_support_app/models/treatment_item.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_prediction.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:ovarian_cyst_support_app/services/database_service.dart';
 
-class FirestoreDatabaseService {
+class FirestoreDatabaseService extends DatabaseService {
   static final FirestoreDatabaseService _instance =
       FirestoreDatabaseService._internal();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -38,7 +39,7 @@ class FirestoreDatabaseService {
         FirebaseFirestore.instance.settings = Settings(
           persistenceEnabled: true,
           cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-          persistenceSettings: const PersistenceSettings(synchronizeTabs: true),
+          // Updated to support newer Firebase version
         );
       } catch (e) {
         _logger.w('Persistence already enabled or not available: $e');
@@ -369,10 +370,29 @@ class FirestoreDatabaseService {
     }
   }
 
-  Future<List<TreatmentItem>> getTreatmentItems() async {
+  Future<void> saveTreatmentItem(TreatmentItem item) async {
     try {
-      final QuerySnapshot snapshot =
-          await _firestore.collection(_treatmentItemsCollection).get();
+      await _firestore
+          .collection(_treatmentItemsCollection)
+          .doc(item.id)
+          .set(item.toMap(), SetOptions(merge: true));
+      _logger.i('Treatment item saved: ${item.id}');
+    } catch (e) {
+      _logger.e('Error saving treatment item: $e');
+      throw Exception('Failed to save treatment item: $e');
+    }
+  }
+
+  Future<List<TreatmentItem>> getTreatmentItems({String? facilityId}) async {
+    try {
+      Query query = _firestore.collection(_treatmentItemsCollection);
+
+      // Add facility filter if provided
+      if (facilityId != null) {
+        query = query.where('facilityId', isEqualTo: facilityId);
+      }
+
+      final QuerySnapshot snapshot = await query.get();
 
       return snapshot.docs
           .map((doc) =>

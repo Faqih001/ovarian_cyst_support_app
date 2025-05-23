@@ -11,32 +11,32 @@ class TreatmentItemRepository extends FirestoreRepository<TreatmentItem> {
         );
 
   /// Get treatments by type
-  Future<List<TreatmentItem>> getTreatmentsByType(String type) async {
-    return await query(
+  Future<List<TreatmentItem>> getTreatmentsByType(String type) {
+    return query(
       field: 'type',
       isEqualTo: type,
     );
   }
 
   /// Get treatments by facility
-  Future<List<TreatmentItem>> getTreatmentsByFacility(String facilityId) async {
-    return await query(
+  Future<List<TreatmentItem>> getTreatmentsByFacility(String facilityId) {
+    return query(
       field: 'facilityId',
       isEqualTo: facilityId,
     );
   }
 
   /// Get treatments that require prescription
-  Future<List<TreatmentItem>> getPrescriptionTreatments() async {
-    return await query(
+  Future<List<TreatmentItem>> getPrescriptionTreatments() {
+    return query(
       field: 'requiresPrescription',
       isEqualTo: true,
     );
   }
 
   /// Get low stock treatments
-  Future<List<TreatmentItem>> getLowStockTreatments(int threshold) async {
-    return await query(
+  Future<List<TreatmentItem>> getLowStockTreatments(int threshold) {
+    return query(
       field: 'stockLevel',
       isLessThanOrEqualTo: threshold,
     );
@@ -45,6 +45,10 @@ class TreatmentItemRepository extends FirestoreRepository<TreatmentItem> {
   /// Get treatments by price range
   Future<List<TreatmentItem>> getTreatmentsByPriceRange(
       double min, double max) async {
+    if (min > max) {
+      throw ArgumentError('Minimum price cannot be greater than maximum price');
+    }
+
     final items = await query(
       field: 'cost',
       isGreaterThanOrEqualTo: min,
@@ -57,8 +61,8 @@ class TreatmentItemRepository extends FirestoreRepository<TreatmentItem> {
 
   /// Get treatments with a specific manufacturer
   Future<List<TreatmentItem>> getTreatmentsByManufacturer(
-      String manufacturer) async {
-    return await query(
+      String manufacturer) {
+    return query(
       field: 'manufacturer',
       isEqualTo: manufacturer,
     );

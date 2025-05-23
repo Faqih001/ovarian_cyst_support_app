@@ -1,3 +1,18 @@
+import 'package:flutter/foundation.dart';
+
+enum TreatmentItemType {
+  medication,
+  therapy,
+  surgery,
+  consultation,
+  procedure,
+  equipment,
+  service,
+  test,
+  other
+}
+
+@immutable
 class TreatmentItem {
   final String id;
   final String name;
@@ -11,7 +26,7 @@ class TreatmentItem {
   final String? dosageInfo;
   final List<String>? sideEffects;
 
-  TreatmentItem({
+  const TreatmentItem({
     required this.id,
     required this.name,
     required this.type,
@@ -23,7 +38,22 @@ class TreatmentItem {
     this.manufacturer,
     this.dosageInfo,
     this.sideEffects,
-  });
+  }) : assert(
+          name.isNotEmpty,
+          'Treatment name cannot be empty',
+        ),
+        assert(
+          description.isNotEmpty,
+          'Treatment description cannot be empty',
+        ),
+        assert(
+          cost == null || cost >= 0,
+          'Cost must be null or non-negative',
+        ),
+        assert(
+          stockLevel == null || stockLevel >= 0,
+          'Stock level must be null or non-negative',
+        );
 
   // Create a copy with updated values
   TreatmentItem copyWith({
@@ -56,24 +86,29 @@ class TreatmentItem {
 
   // Convert from Map (for Firestore)
   factory TreatmentItem.fromMap(Map<String, dynamic> map) {
-    return TreatmentItem(
-      id: map['id'],
-      name: map['name'],
-      type: TreatmentItemType.values.firstWhere(
-        (e) => e.toString() == 'TreatmentItemType.${map['type']}',
-        orElse: () => TreatmentItemType.medication,
-      ),
-      description: map['description'],
-      cost: map['cost'],
-      requiresPrescription: map['requiresPrescription'] ?? false,
-      stockLevel: map['stockLevel'],
-      facilityId: map['facilityId'],
-      manufacturer: map['manufacturer'],
-      dosageInfo: map['dosageInfo'],
-      sideEffects: map['sideEffects'] != null
-          ? List<String>.from(map['sideEffects'])
-          : null,
-    );
+    try {
+      return TreatmentItem(
+        id: map['id'] as String? ?? '',
+        name: map['name'] as String? ?? '',
+        type: TreatmentItemType.values.firstWhere(
+          (e) => e.toString() == 'TreatmentItemType.${map['type']}',
+          orElse: () => TreatmentItemType.other,
+        ),
+        description: map['description'] as String? ?? '',
+        cost: (map['cost'] as num?)?.toDouble(),
+        requiresPrescription: map['requiresPrescription'] as bool? ?? false,
+        stockLevel: map['stockLevel'] as int?,
+        facilityId: map['facilityId'] as String?,
+        manufacturer: map['manufacturer'] as String?,
+        dosageInfo: map['dosageInfo'] as String?,
+        sideEffects: map['sideEffects'] != null
+            ? List<String>.from(map['sideEffects'] as List)
+            : null,
+      );
+    } catch (e) {
+      debugPrint('Error creating TreatmentItem from map: $e');
+      rethrow;
+    }
   }
 
   // Convert to Map (for Firestore)
@@ -93,22 +128,38 @@ class TreatmentItem {
     };
   }
 
-  // Convert from JSON
-  factory TreatmentItem.fromJson(Map<String, dynamic> json) {
-    return TreatmentItem.fromMap(json);
-  }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TreatmentItem &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          type == other.type &&
+          description == other.description &&
+          cost == other.cost &&
+          requiresPrescription == other.requiresPrescription &&
+          stockLevel == other.stockLevel &&
+          facilityId == other.facilityId &&
+          manufacturer == other.manufacturer &&
+          dosageInfo == other.dosageInfo &&
+          listEquals(sideEffects, other.sideEffects);
 
-  // Convert to JSON
-  Map<String, dynamic> toJson() {
-    return toMap();
-  }
-}
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      type.hashCode ^
+      description.hashCode ^
+      cost.hashCode ^
+      requiresPrescription.hashCode ^
+      stockLevel.hashCode ^
+      facilityId.hashCode ^
+      manufacturer.hashCode ^
+      dosageInfo.hashCode ^
+      (sideEffects?.hashCode ?? 0);
 
-enum TreatmentItemType {
-  medication,
-  equipment,
-  procedure,
-  service,
-  test,
-  other,
+  @override
+  String toString() =>
+      'TreatmentItem(id: $id, name: $name, type: $type, cost: $cost, requiresPrescription: $requiresPrescription)';
 }

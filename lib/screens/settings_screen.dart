@@ -313,27 +313,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Appointment Reminders'),
             subtitle: const Text('Notifications for upcoming appointments'),
             value: _reminderNotificationsEnabled,
-            onChanged:
-                _notificationsEnabled
-                    ? (value) {
-                      setState(() {
-                        _reminderNotificationsEnabled = value;
-                      });
-                    }
-                    : null,
+            onChanged: _notificationsEnabled
+                ? (value) {
+                    setState(() {
+                      _reminderNotificationsEnabled = value;
+                    });
+                  }
+                : null,
           ),
           SwitchListTile(
             title: const Text('Community Updates'),
             subtitle: const Text('Notifications from the community'),
             value: _communityNotificationsEnabled,
-            onChanged:
-                _notificationsEnabled
-                    ? (value) {
-                      setState(() {
-                        _communityNotificationsEnabled = value;
-                      });
-                    }
-                    : null,
+            onChanged: _notificationsEnabled
+                ? (value) {
+                    setState(() {
+                      _communityNotificationsEnabled = value;
+                    });
+                  }
+                : null,
           ),
 
           const Divider(),
@@ -398,18 +396,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 builder: (BuildContext context) {
                   return SimpleDialog(
                     title: const Text('Select Language'),
-                    children:
-                        _languages.map((language) {
-                          return SimpleDialogOption(
-                            onPressed: () {
-                              setState(() {
-                                _selectedLanguage = language;
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: Text(language),
-                          );
-                        }).toList(),
+                    children: _languages.map((language) {
+                      return SimpleDialogOption(
+                        onPressed: () {
+                          setState(() {
+                            _selectedLanguage = language;
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: Text(language),
+                      );
+                    }).toList(),
                   );
                 },
               );
@@ -446,14 +443,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ListTile(
             title: const Text('Log Out'),
-            trailing:
-                _isLoggingOut
-                    ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                    : const Icon(Icons.logout),
+            trailing: _isLoggingOut
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.logout),
             onTap: _isLoggingOut ? null : _logout,
           ),
           ListTile(
