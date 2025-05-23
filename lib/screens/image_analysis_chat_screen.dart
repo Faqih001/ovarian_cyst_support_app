@@ -1,6 +1,4 @@
 import 'dart:typed_data';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -9,7 +7,7 @@ import '../services/gemini_service.dart';
 import '../widgets/chat_message_widget.dart';
 
 class ImageAnalysisChatScreen extends StatefulWidget {
-  const ImageAnalysisChatScreen({Key? key}) : super(key: key);
+  const ImageAnalysisChatScreen({super.key});
 
   @override
   State<ImageAnalysisChatScreen> createState() =>
@@ -21,9 +19,7 @@ class _ImageAnalysisChatScreenState extends State<ImageAnalysisChatScreen> {
   final List<ChatMessage> _messages = [];
   final GeminiService _geminiService = GeminiService();
   final ImagePicker _picker = ImagePicker();
-  File? _selectedImage;
   bool _isProcessing = false;
-  String? _analysisResult;
 
   @override
   void initState() {
@@ -96,6 +92,8 @@ class _ImageAnalysisChatScreenState extends State<ImageAnalysisChatScreen> {
       if (pickedFile == null) return;
 
       // Optionally crop the image for better focus
+      if (!mounted) return;
+      
       CroppedFile? croppedFile = await ImageCropper().cropImage(
         sourcePath: pickedFile.path,
         aspectRatioPresets: [
@@ -136,11 +134,13 @@ class _ImageAnalysisChatScreenState extends State<ImageAnalysisChatScreen> {
         });
       }
     } catch (e) {
-      showToast(
-        'Error picking or processing the image',
-        context: context,
-        duration: const Duration(seconds: 3),
-      );
+      if (mounted) {
+        showToast(
+          'Error picking or processing the image',
+          context: context,
+          duration: const Duration(seconds: 3),
+        );
+      }
     }
   }
 

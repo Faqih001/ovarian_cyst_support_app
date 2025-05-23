@@ -1688,4 +1688,3 @@ class ChatbotBottomSheet extends StatelessWidget {
     );
   }
 }
-}

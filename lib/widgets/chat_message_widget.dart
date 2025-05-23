@@ -9,6 +9,7 @@ class ChatMessage extends StatelessWidget {
   final Uint8List? imageData;
 
   ChatMessage({
+    super.key,
     required this.text,
     required this.isUser,
     this.imageData,
