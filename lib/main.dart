@@ -3,12 +3,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:provider/provider.dart';
 import 'package:logger/logger.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ovarian_cyst_support_app/constants.dart';
 import 'package:ovarian_cyst_support_app/screens/splash_screen.dart';
 import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/payment_service.dart';
 import 'package:ovarian_cyst_support_app/services/firestore_service.dart';
 import 'package:ovarian_cyst_support_app/services/hospital_service.dart';
+import 'package:ovarian_cyst_support_app/services/database_service.dart';
+import 'package:ovarian_cyst_support_app/services/database_config.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:ovarian_cyst_support_app/firebase_options.dart';
 
@@ -17,11 +20,23 @@ void main() async {
   final logger = Logger();
 
   try {
+    // Initialize database configuration first
+    await DatabaseConfig.initializeDatabase();
+    logger.i('Database configuration initialized');
+    
+    // Initialize database service
+    final databaseService = DatabaseService();
+    await databaseService.initialize();
+    
     // Initialize Firebase with retry mechanism
     await _initializeFirebaseWithRetry(logger);
 
+    // Initialize Firestore with persistence
     final firestoreService = FirestoreService();
-    firestoreService.enablePersistence();
+    if (!kIsWeb) {
+      // Enable persistence only on non-web platforms to avoid warnings
+      firestoreService.enablePersistence();
+    }
 
     final hospitalService = HospitalService();
 

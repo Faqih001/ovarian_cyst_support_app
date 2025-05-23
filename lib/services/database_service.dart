@@ -2,14 +2,18 @@ import 'dart:async';
 import 'package:path/path.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_entry.dart';
 import 'package:ovarian_cyst_support_app/models/appointment.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:ovarian_cyst_support_app/models/treatment_item.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_prediction.dart';
 import 'package:flutter/foundation.dart';
+import 'package:logger/logger.dart';
+import 'package:ovarian_cyst_support_app/services/database_config.dart';
 
 class DatabaseService {
   static Database? _database;
   static final DatabaseService _instance = DatabaseService._internal();
+  final _logger = Logger();
+  bool _initialized = false;
 
   factory DatabaseService() {
     return _instance;
@@ -17,36 +21,34 @@ class DatabaseService {
 
   DatabaseService._internal();
 
+  Future<void> initialize() async {
+    if (!_initialized) {
+      await DatabaseConfig.initializeDatabase();
+      _initialized = true;
+    }
+  }
+
   Future<Database> get database async {
     if (_database != null) {
       return _database!;
     }
 
+    await initialize();
     _database = await _initDatabase();
     return _database!;
   }
 
   Future<Database> _initDatabase() async {
-    // Initialize FFI for web and desktop platforms
-    if (kIsWeb) {
-      // For web platforms, we need to use a different approach
-      // since the regular sqflite doesn't work on web
-      try {
-        sqfliteFfiInit();
-        databaseFactory = databaseFactoryFfi;
-      } catch (e) {
-        debugPrint('Error initializing sqflite_ffi: $e');
-      }
-    }
-
     try {
-      String path = join(await getDatabasesPath(), 'ovarian_cyst_support.db');
+      final dbName = 'ovarian_cyst_support.db';
+      String path = await DatabaseConfig.getDatabasePath(dbName);
+      _logger.i('Initializing database at path: $path');
 
       return await openDatabase(path, version: 1, onCreate: _createDb);
     } catch (e) {
-      // Fallback for web if the above fails
+      _logger.e('Error initializing database: $e');
       if (kIsWeb) {
-        debugPrint('Using in-memory database for web: $e');
+        _logger.w('Using in-memory database for web');
         // Use in-memory database as fallback for web
         return await openDatabase(
           inMemoryDatabasePath,
