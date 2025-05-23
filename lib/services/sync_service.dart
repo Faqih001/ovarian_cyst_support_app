@@ -69,8 +69,8 @@ class SyncService {
     }
 
     // Check connectivity
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    final connectivityResults = await Connectivity().checkConnectivity();
+    if (connectivityResults.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection, skipping sync...');
       return;
     }
@@ -92,8 +92,8 @@ class SyncService {
     }
 
     // Check connectivity
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    final connectivityResults = await Connectivity().checkConnectivity();
+    if (connectivityResults.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection, manual sync failed.');
       return false;
     }
@@ -340,8 +340,8 @@ class SyncService {
     }
 
     // Check connectivity
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    final connectivityResults = await Connectivity().checkConnectivity();
+    if (connectivityResults.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection, sync all failed.');
       return false;
     }

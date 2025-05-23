@@ -33,7 +33,7 @@ class ProviderService {
   }) async {
     // Check for internet connectivity
     final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    if (connectivityResult.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection. Using cached providers data.');
       return _getCachedProviders();
     }
@@ -83,7 +83,7 @@ class ProviderService {
   ) async {
     // Check for internet connectivity
     final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    if (connectivityResult.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection. Using cached availability data.');
       return _getCachedAvailability(providerId, startDate, endDate);
     }
@@ -157,7 +157,7 @@ class ProviderService {
   ) async {
     // Check for internet connectivity
     final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    if (connectivityResult.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection. Using cached services data.');
       return _getCachedProviderServices(providerId);
     }
@@ -242,7 +242,7 @@ class ProviderService {
   ) async {
     // Check for internet connectivity
     final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    if (connectivityResult.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection. Using approximate cost estimate.');
       return _getApproximateCostEstimate(purpose);
     }
@@ -285,7 +285,7 @@ class ProviderService {
 
     // Check for internet connectivity
     final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    if (connectivityResult.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection. Cannot process payment now.');
       return null;
     }
@@ -329,7 +329,7 @@ class ProviderService {
 
     // Check for internet connectivity
     final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    if (connectivityResult.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection. Using locally stored appointments.');
       return localAppointments;
     }

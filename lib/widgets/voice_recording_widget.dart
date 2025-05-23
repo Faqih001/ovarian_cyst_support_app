@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ovarian_cyst_support_app/services/audio_service.dart';
 import 'package:ovarian_cyst_support_app/widgets/gemini_badge.dart';
@@ -26,6 +27,7 @@ class _VoiceRecordingWidgetState extends State<VoiceRecordingWidget>
   bool _hasRecording = false;
   int _recordingDuration = 0;
   String? _recordingPath;
+  Timer? _recordingTimer;
 
   // Animation for recording effect
   late AnimationController _animationController;
@@ -42,6 +44,7 @@ class _VoiceRecordingWidgetState extends State<VoiceRecordingWidget>
   @override
   void dispose() {
     _animationController.dispose();
+    _recordingTimer?.cancel();
     _audioService.dispose();
     super.dispose();
   }
@@ -57,17 +60,19 @@ class _VoiceRecordingWidgetState extends State<VoiceRecordingWidget>
   void _startRecording() async {
     try {
       await _audioService.startRecording(
-        onProgress: (duration) {
-          setState(() {
-            _recordingDuration = duration;
-          });
-        },
         onError: (errorMessage) {
           if (widget.onError != null) {
             widget.onError!(errorMessage);
           }
         },
       );
+      
+      // Start a timer to update recording duration
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        setState(() {
+          _recordingDuration = _audioService.recordingDuration;
+        });
+      });
 
       setState(() {
         _isRecording = true;
@@ -111,10 +116,7 @@ class _VoiceRecordingWidgetState extends State<VoiceRecordingWidget>
     });
 
     try {
-      final result = await _audioService.processAudio(
-        prompt: 'Analyze this voice message about ovarian cysts',
-        filePath: _recordingPath!,
-      );
+      final result = await _audioService.processRecordedAudio();
 
       widget.onMessageReady(result);
 

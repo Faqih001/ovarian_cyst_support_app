@@ -11,7 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 class AudioService {
   static final AudioService _instance = AudioService._internal();
 
-  final _recorder = AudioRecorder(); // Use AudioRecorder instead of Record
+  final _recorder = AudioRecorder();
   final AudioPlayer _player = AudioPlayer();
   final GeminiService _geminiService = GeminiService();
 
@@ -48,16 +48,18 @@ class AudioService {
   bool get isPlaying => _isPlaying;
   int get recordingDuration => _recordingDuration;
 
-  /// Start recording audio
-  Future<void> startRecording({
-    required Function(int duration) onProgress,
-    required Function(String errorMessage) onError,
-  }) async {
+  // Start recording audio
+  Future<void> startRecording({Function(String)? onError}) async {
+    if (await _recorder.isRecording()) {
+      debugPrint('Already recording');
+      return;
+    }
+
     try {
-      // Check permission again just in case
-      bool hasPermission = await Permission.microphone.request().isGranted;
-      if (!hasPermission) {
-        onError('Microphone permission not granted');
+      // Check if we have microphone permission
+      if (!await _recorder.hasPermission()) {
+        debugPrint('No permission to record');
+        onError?.call('Microphone permission not granted');
         return;
       }
 
@@ -67,67 +69,69 @@ class AudioService {
           '${tempDir.path}/voice_message_${DateTime.now().millisecondsSinceEpoch}.m4a';
       _recordingPath = path;
 
-      // Configure recorder
+      // Configure recorder and start recording
       await _recorder.start(
-        RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          bitRate: 128000,
-          sampleRate: 44100,
-        ),
-        path: path,
-      );
+          RecordConfig(
+            encoder: AudioEncoder.aacLc,
+            bitRate: 128000,
+            sampleRate: 44100,
+          ),
+          path: path);
 
       _isRecording = true;
       _recordingDuration = 0;
 
-      // Set up timer to track recording duration
+      // Start a timer to track recording duration
       _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         _recordingDuration++;
-        onProgress(_recordingDuration);
 
-        // Auto-stop if max duration is reached
+        // Stop recording if max duration is reached
         if (_recordingDuration >= maxRecordingDuration) {
           stopRecording();
         }
       });
+
+      debugPrint('Started recording to: $path');
     } catch (e) {
       debugPrint('Error starting recording: $e');
-      onError('Failed to start recording: $e');
+      onError?.call('Could not start recording: ${e.toString()}');
     }
   }
 
-  /// Stop recording and return the file path
+  // Stop recording
   Future<String?> stopRecording() async {
-    if (!_isRecording) return null;
-
-    _recordingTimer?.cancel();
-    _recordingTimer = null;
+    if (!_isRecording) {
+      debugPrint('Not recording');
+      return null;
+    }
 
     try {
-      final path = _recordingPath;
-      await _recorder.stop();
+      _recordingTimer?.cancel();
+      _recordingTimer = null;
+
+      // Stop recording
+      final path = await _recorder.stop();
       _isRecording = false;
+
+      debugPrint('Recording stopped: $path');
       return path;
     } catch (e) {
       debugPrint('Error stopping recording: $e');
+      _isRecording = false;
       return null;
     }
   }
 
-  /// Play the recorded audio
+  // Play recorded audio
   Future<void> playRecording() async {
-    final path = _recordingPath;
-    if (path == null || !File(path).existsSync()) {
-      debugPrint('No recording to play');
-      return;
-    }
+    if (_isPlaying || _recordingPath == null) return;
 
     try {
-      await _player.setFilePath(path);
+      await _player.setFilePath(_recordingPath!);
       await _player.play();
       _isPlaying = true;
 
-      // Update isPlaying when playback completes
+      // Listen for playback to complete
       _player.playerStateStream.listen((state) {
         if (state.processingState == ProcessingState.completed) {
           _isPlaying = false;
@@ -135,10 +139,11 @@ class AudioService {
       });
     } catch (e) {
       debugPrint('Error playing recording: $e');
+      _isPlaying = false;
     }
   }
 
-  /// Stop playing the recording
+  // Stop playing
   Future<void> stopPlaying() async {
     if (!_isPlaying) return;
 
@@ -150,61 +155,42 @@ class AudioService {
     }
   }
 
-  /// Process audio with Gemini API
-  Future<String> processAudio({
-    required String prompt,
-    required String filePath,
-  }) async {
+  // Process the recorded audio with Gemini API
+  Future<String> processRecordedAudio() async {
+    if (_recordingPath == null) {
+      return 'No recording available to process';
+    }
+
     try {
-      final file = File(filePath);
-      if (!file.existsSync()) {
-        return 'Audio file not found. Please try recording again.';
+      File recordingFile = File(_recordingPath!);
+
+      if (!recordingFile.existsSync()) {
+        return 'Recording file not found';
       }
 
-      // Check file size (limit to 10MB for better performance)
-      final fileSize = await file.length();
-      if (fileSize > 10 * 1024 * 1024) {
-        return 'Your voice recording is too long. Please keep it under 1 minute for better results.';
-      }
-
-      // Read the file as bytes
-      final Uint8List fileBytes = await file.readAsBytes();
+      // Get file as bytes
+      Uint8List audioBytes = await recordingFile.readAsBytes();
 
       // Determine MIME type
-      final mimeType = lookupMimeType(filePath) ?? 'audio/mp4a-latm';
+      String? mimeType = lookupMimeType(_recordingPath!) ?? 'audio/m4a';
 
-      // Format the prompt for audio processing
-      final String enhancedPrompt = '''
-$prompt
-
-Please analyze this voice recording about ovarian cysts. The user may be asking a question about symptoms, treatments, or sharing concerns.
-Respond with accurate, empathetic information appropriate for a healthcare support app. 
-If it's unclear, acknowledge receipt of the voice message and ask for clarification.
-''';
-
-      // Process with Gemini API
-      final response = await _geminiService.processAudioContent(
-        prompt: enhancedPrompt,
-        audioBytes: fileBytes,
+      // Process with Gemini
+      final result = await _geminiService.processAudioContent(
+        prompt: "Interpret this audio recording about ovarian cysts",
+        audioBytes: audioBytes,
         mimeType: mimeType,
       );
 
-      return response;
+      return result;
     } catch (e) {
-      debugPrint('Error processing audio with Gemini: $e');
-      if (e.toString().contains('permission')) {
-        return 'I need microphone permission to process voice messages. Please enable it in your device settings.';
-      } else if (e.toString().contains('network')) {
-        return 'Network error. Please check your internet connection and try again.';
-      }
-      return 'I couldn\'t process your voice message. Please try speaking more clearly or typing your question.';
+      debugPrint('Error processing audio: $e');
+      return 'Unable to process audio: ${e.toString()}';
     }
   }
 
-  /// Clean up resources
   void dispose() {
     _recordingTimer?.cancel();
-    _recorder.dispose();
     _player.dispose();
+    _recorder.dispose();
   }
 }

@@ -108,21 +108,19 @@ class _KenyanHospitalBookingScreenState
 
   // Check initial connectivity
   Future<void> _checkConnectivity() async {
-    var connectivityResult = await (Connectivity().checkConnectivity());
-    _updateConnectionStatus(connectivityResult);
+    var connectivityResults = await Connectivity().checkConnectivity();
+    _updateConnectionStatus(connectivityResults);
   }
 
   // Set up listener for connectivity changes
   void _setupConnectivityListener() {
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
-      _updateConnectionStatus(result);
-    });
+    Connectivity().onConnectivityChanged.listen(_updateConnectionStatus);
   }
 
   // Update connectivity status
-  void _updateConnectionStatus(ConnectivityResult result) {
+  void _updateConnectionStatus(List<ConnectivityResult> results) {
     setState(() {
-      _isOnline = result != ConnectivityResult.none;
+      _isOnline = !results.contains(ConnectivityResult.none);
     });
 
     if (_isOnline) {

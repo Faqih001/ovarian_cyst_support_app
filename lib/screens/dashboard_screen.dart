@@ -43,8 +43,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _checkConnectivity();
 
     // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((result) {
-      final hasConnection = result != ConnectivityResult.none;
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      final hasConnection = !results.contains(ConnectivityResult.none);
       if (hasConnection != _isOnline) {
         setState(() {
           _isOnline = hasConnection;
@@ -92,7 +92,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _checkConnectivity() async {
     final result = await Connectivity().checkConnectivity();
     setState(() {
-      _isOnline = result != ConnectivityResult.none;
+      _isOnline = !result.contains(ConnectivityResult.none);
     });
   }
 

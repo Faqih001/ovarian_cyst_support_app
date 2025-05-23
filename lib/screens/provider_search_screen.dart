@@ -52,15 +52,15 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
   }
 
   Future<void> _checkConnectivity() async {
-    var connectivityResult = await Connectivity().checkConnectivity();
+    var connectivityResults = await Connectivity().checkConnectivity();
     setState(() {
-      _isOffline = connectivityResult == ConnectivityResult.none;
+      _isOffline = connectivityResults.contains(ConnectivityResult.none);
     });
 
     // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
       setState(() {
-        _isOffline = result == ConnectivityResult.none;
+        _isOffline = results.contains(ConnectivityResult.none);
       });
 
       if (!_isOffline) {

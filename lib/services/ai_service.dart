@@ -31,8 +31,8 @@ class AIService {
     List<SymptomEntry> recentSymptoms,
   ) async {
     // Check for internet connectivity
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    final connectivityResults = await Connectivity().checkConnectivity();
+    if (connectivityResults.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection. Using offline prediction logic.');
       return _generateOfflinePrediction(recentSymptoms);
     }
@@ -165,8 +165,8 @@ class AIService {
   // Method to get chatbot response
   Future<String> getChatbotResponse(String userQuery) async {
     // Check for internet connectivity
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    final connectivityResults = await Connectivity().checkConnectivity();
+    if (connectivityResults.contains(ConnectivityResult.none)) {
       debugPrint('No internet connection. Using offline chatbot responses.');
       return _getOfflineChatbotResponse(userQuery);
     }

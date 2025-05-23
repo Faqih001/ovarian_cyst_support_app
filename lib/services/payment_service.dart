@@ -38,8 +38,8 @@ class PaymentService {
   }) async {
     try {
       // Check connectivity first
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
+      final connectivityResults = await Connectivity().checkConnectivity();
+      if (connectivityResults.contains(ConnectivityResult.none)) {
         debugPrint('No internet connection, cannot process payment now.');
         return {
           'success': false,
@@ -100,8 +100,8 @@ class PaymentService {
   Future<Map<String, dynamic>> checkPaymentStatus(String transactionId) async {
     try {
       // Check connectivity first
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
+      final connectivityResults = await Connectivity().checkConnectivity();
+      if (connectivityResults.contains(ConnectivityResult.none)) {
         debugPrint('No internet connection, cannot check payment status now.');
 
         // Return local status if available
@@ -245,7 +245,7 @@ class PaymentService {
     try {
       // Check connectivity first
       final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
+      if (connectivityResult.contains(ConnectivityResult.none)) {
         return 'Cannot generate receipt while offline.';
       }
 
