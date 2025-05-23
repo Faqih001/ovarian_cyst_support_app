@@ -1,29 +1,9 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logger/logger.dart';
-import 'package:path_provider/path_provider.dart' as path_provider;
-import 'package:path/path.dart' as path;
 
 class DatabaseConfig {
   static final Logger _logger = Logger();
-
-  /// Get the path for the local SQLite database
-  /// This is used during migration from SQLite to Firestore
-  static Future<String> getDatabasePath(String dbName) async {
-    try {
-      if (kIsWeb) {
-        return dbName;
-      } else {
-        final Directory appDocDir =
-            await path_provider.getApplicationDocumentsDirectory();
-        return path.join(appDocDir.path, dbName);
-      }
-    } catch (e) {
-      _logger.e('Error getting database path: $e');
-      throw Exception('Failed to get database path: $e');
-    }
-  }
 
   /// Initialize Firebase Firestore with the appropriate settings
   static Future<void> initializeFirestore() async {

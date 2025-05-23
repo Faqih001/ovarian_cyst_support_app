@@ -21,8 +21,16 @@ class SyncService extends ChangeNotifier {
 
   /// Check if device has internet connectivity
   Future<bool> _checkConnectivity() async {
-    final result = await Connectivity().checkConnectivity();
-    return result != ConnectivityResult.none;
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      return connectivityResult == ConnectivityResult.wifi ||
+          connectivityResult == ConnectivityResult.mobile ||
+          connectivityResult == ConnectivityResult.ethernet ||
+          connectivityResult == ConnectivityResult.vpn;
+    } catch (e) {
+      _logger.e('Error checking connectivity: $e');
+      return false;
+    }
   }
 
   // Get user-specific collection

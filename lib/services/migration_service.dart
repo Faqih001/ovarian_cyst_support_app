@@ -42,25 +42,26 @@ class MigrationService {
   }
 
   /// Show the migration screen if needed
-  static Future<bool> checkAndShowMigrationScreen(BuildContext context) async {
-    // Check if migration is needed
+  static Future<void> checkAndShowMigrationScreen(BuildContext context) async {
+    final migrationNeeded = await _isMigrationNeeded();
+    if (migrationNeeded && context.mounted) {
+      await _showMigrationScreen(context);
+    }
+  }
+
+  /// Check if migration is needed
+  static Future<bool> _isMigrationNeeded() async {
     final migrationCompleted = await isMigrationCompleted();
     final useFirestore = await DatabaseServiceFactory.shouldUseFirestore();
+    return !migrationCompleted && !useFirestore;
+  }
 
-    if (!migrationCompleted && !useFirestore) {
-      _logger.i('Migration needed, showing migration screen');
-
-      // Show the migration screen
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => const DatabaseMigrationScreen(),
-        ),
-      );
-
-      // Check if migration was completed
-      return await isMigrationCompleted();
-    }
-
-    return true;
+  /// Show the migration screen
+  static Future<void> _showMigrationScreen(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const DatabaseMigrationScreen(),
+      ),
+    );
   }
 }

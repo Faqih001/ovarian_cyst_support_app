@@ -509,6 +509,106 @@ class _HomeContentState extends State<HomeContent>
     }
   }
 
+  Future<void> _logSymptom(String label, int severity, String userId) async {
+    // Capture scaffoldMessenger before async operations
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    try {
+      // Get current timestamp
+      final now = DateTime.now();
+
+      final newSymptom = {
+        'type': label,
+        'severity': severity,
+        'description': 'Feeling $label',
+        'timestamp': Timestamp.fromDate(now),
+        'date': now.toIso8601String(),
+        'userId': userId,
+        'status': 'active',
+      };
+
+      // Save to Firestore
+      final docRef = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('symptoms')
+          .add(newSymptom);
+
+      // Get the document with the ID
+      final symptomWithId = {
+        'id': docRef.id,
+        ...newSymptom,
+      };
+
+      if (!mounted) return;
+
+      // Navigate to tracking screen with the new symptom
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TrackingScreen(
+            initialSymptom: symptomWithId,
+          ),
+        ),
+      );
+
+      // Refresh the UI if still mounted
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      // Show error if still mounted
+      if (!mounted) return;
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Error recording symptom: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _editSymptom(
+      String docId,
+      String userId,
+      int severity,
+      String description) async {
+    // Capture scaffoldMessenger before async operation
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('symptoms')
+          .doc(docId)
+          .update({
+        'severity': severity,
+        'description': description,
+        'lastUpdated': Timestamp.now(),
+      });
+
+      if (!mounted) return;
+
+      // Show success message
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Symptom updated successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      // Show error message
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Error updating symptom: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Widget _buildEmojiButton(String emoji, String label) {
     return InkWell(
       onTap: () async {
@@ -526,55 +626,7 @@ class _HomeContentState extends State<HomeContent>
             return;
           }
 
-          // Get current timestamp
-          final now = DateTime.now();
-
-          final newSymptom = {
-            'type': label,
-            'severity': label == 'Good'
-                ? 1
-                : label == 'Okay'
-                    ? 2
-                    : label == 'Pain'
-                        ? 4
-                        : label == 'Tired'
-                            ? 3
-                            : label == 'Stressed'
-                                ? 3
-                                : 3,
-            'description': 'Feeling $label',
-            'timestamp': Timestamp.fromDate(now),
-            'date': now.toIso8601String(), // Consistent date field name
-            'userId': userId,
-            'status': 'active', // Add status for CRUD operations
-          };
-
-          // Save to Firestore
-          final docRef = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(userId)
-              .collection('symptoms')
-              .add(newSymptom);
-
-          // Get the document with the ID
-          final symptomWithId = {
-            'id': docRef.id,
-            ...newSymptom,
-          };
-
-          if (!mounted) return;
-
-          // Navigate to tracking screen with the new symptom
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => TrackingScreen(
-                initialSymptom: symptomWithId,
-              ),
-            ),
-          );
-
-          // Refresh the UI
-          setState(() {});
+          await _logSymptom(label, _getSeverityFromLabel(label), userId);
         } catch (e) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -615,6 +667,23 @@ class _HomeContentState extends State<HomeContent>
         ],
       ),
     );
+  }
+
+  int _getSeverityFromLabel(String label) {
+    switch (label) {
+      case 'Good':
+        return 1;
+      case 'Okay':
+        return 2;
+      case 'Pain':
+        return 4;
+      case 'Tired':
+        return 3;
+      case 'Stressed':
+        return 3;
+      default:
+        return 3;
+    }
   }
 
   Widget _buildQuickActionButton({
@@ -1285,43 +1354,6 @@ class _HomeContentState extends State<HomeContent>
         );
       },
     );
-  }
-
-  Future<void> _editSymptom(BuildContext parentContext, String docId,
-      String userId, int severity, String description) async {
-    // Capture ScaffoldMessenger before async operation
-    final scaffoldMessenger = ScaffoldMessenger.of(parentContext);
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('symptoms')
-          .doc(docId)
-          .update({
-        'severity': severity,
-        'description': description,
-        'lastUpdated': Timestamp.now(),
-      });
-
-      if (!mounted) return;
-
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          content: Text('Symptom updated successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text('Error updating symptom: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   void _showEditSymptomDialog(

@@ -29,67 +29,77 @@ class _DatabaseMigrationScreenState extends State<DatabaseMigrationScreen> {
   }
 
   Future<void> _startMigration() async {
-    if (_isMigrating) return;
+    if (!mounted) return;
 
     setState(() {
       _isMigrating = true;
       _errorMessage = null;
+      _completedTasks = 0;
     });
 
     try {
-      await _migrateData();
+      // Migrate symptom entries
+      setState(() {
+        _currentTask = 'Migrating symptom entries...';
+      });
+
+      await _migrationService.migrateSymptomEntries([]);
+      _incrementProgress();
+
+      // Check mounted after each significant async operation
+      if (!mounted) return;
+
+      // Migrate appointments
+      setState(() {
+        _currentTask = 'Migrating appointments...';
+      });
+
+      await _migrationService.migrateAppointments([]);
+      _incrementProgress();
+
+      if (!mounted) return;
+
+      // Migrate treatments
+      setState(() {
+        _currentTask = 'Migrating treatments...';
+      });
+
+      await _migrationService.migrateTreatmentItems([]);
+      _incrementProgress();
+
+      if (!mounted) return;
+
+      // Migrate medications
+      setState(() {
+        _currentTask = 'Migrating medications...';
+      });
+
+      await _migrationService.migrateMedications([]);
+      _incrementProgress();
+
+      if (!mounted) return;
+
+      // Migrate community posts
+      setState(() {
+        _currentTask = 'Migrating community posts...';
+      });
+
+      await _migrationService.migrateCommunityPosts([]);
+      _incrementProgress();
     } catch (e) {
       _logger.e('Error during migration: $e');
-      setState(() {
-        _errorMessage = 'Failed to complete migration: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to complete migration: $e';
+        });
+      }
     } finally {
-      setState(() {
-        _isMigrating = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isMigrating = false;
+        });
+      }
     }
-  }
-
-  Future<void> _migrateData() async {
-    // Migrate symptom entries
-    setState(() {
-      _currentTask = 'Migrating symptom entries...';
-    });
-
-    await _migrationService.migrateSymptomEntries([]);
-    _incrementProgress();
-
-    // Migrate appointments
-    setState(() {
-      _currentTask = 'Migrating appointments...';
-    });
-
-    await _migrationService.migrateAppointments([]);
-    _incrementProgress();
-
-    // Migrate treatments
-    setState(() {
-      _currentTask = 'Migrating treatments...';
-    });
-
-    await _migrationService.migrateTreatmentItems([]);
-    _incrementProgress();
-
-    // Migrate medications
-    setState(() {
-      _currentTask = 'Migrating medications...';
-    });
-
-    await _migrationService.migrateMedications([]);
-    _incrementProgress();
-
-    // Migrate community posts
-    setState(() {
-      _currentTask = 'Migrating community posts...';
-    });
-
-    await _migrationService.migrateCommunityPosts([]);
-    _incrementProgress();
   }
 
   void _incrementProgress() {

@@ -50,7 +50,8 @@ class PaymentService {
   ) async {
     try {
       // Check connectivity
-      if (!await _checkConnectivity()) {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
         throw Exception('No internet connection');
       }
 

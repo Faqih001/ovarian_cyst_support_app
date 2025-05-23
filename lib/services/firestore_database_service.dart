@@ -34,8 +34,11 @@ class FirestoreDatabaseService {
     if (!_initialized) {
       // Enable offline persistence if not already enabled
       try {
-        await FirebaseFirestore.instance.enablePersistence(
-          const PersistenceSettings(synchronizeTabs: true),
+        // Initialize settings with persistence
+        FirebaseFirestore.instance.settings = Settings(
+          persistenceEnabled: true,
+          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+          persistenceSettings: const PersistenceSettings(synchronizeTabs: true),
         );
       } catch (e) {
         _logger.w('Persistence already enabled or not available: $e');
