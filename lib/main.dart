@@ -66,7 +66,6 @@ Future<void> _initializeFirebaseWithRetry(Logger logger,
   while (attempts < maxAttempts) {
     try {
       await Firebase.initializeApp(
-        name: 'ovarian_cyst_support_app',
         options: DefaultFirebaseOptions.currentPlatform,
       );
       logger.i('Firebase initialized successfully');
@@ -83,7 +82,8 @@ Future<void> _initializeFirebaseWithRetry(Logger logger,
 Future<void> _initializeAppCheck(Logger logger) async {
   try {
     await FirebaseAppCheck.instance.activate(
-      webProvider: ReCaptchaV3Provider('your-recaptcha-site-key'),
+      // Use debug provider for web in development
+      webProvider: ReCaptchaV3Provider('6Lf16b8pAAAAAEkLzl-RQQ9cj7dLWm_32QDmEr_d'),
       androidProvider: AndroidProvider.debug,
       appleProvider: AppleProvider.appAttest,
     );

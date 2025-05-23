@@ -7,6 +7,9 @@ import 'package:ovarian_cyst_support_app/models/treatment_item.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_prediction.dart';
 import 'package:flutter/foundation.dart';
 
+// Import for web support
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
 class DatabaseService {
   static Database? _database;
   static final DatabaseService _instance = DatabaseService._internal();
@@ -27,9 +30,35 @@ class DatabaseService {
   }
 
   Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'ovarian_cyst_support.db');
+    // Initialize FFI for web and desktop platforms
+    if (kIsWeb) {
+      // For web platforms, we need to use a different approach
+      // since the regular sqflite doesn't work on web
+      try {
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+      } catch (e) {
+        debugPrint('Error initializing sqflite_ffi: $e');
+      }
+    }
 
-    return await openDatabase(path, version: 1, onCreate: _createDb);
+    try {
+      String path = join(await getDatabasesPath(), 'ovarian_cyst_support.db');
+      
+      return await openDatabase(path, version: 1, onCreate: _createDb);
+    } catch (e) {
+      // Fallback for web if the above fails
+      if (kIsWeb) {
+        debugPrint('Using in-memory database for web: $e');
+        // Use in-memory database as fallback for web
+        return await openDatabase(
+          inMemoryDatabasePath,
+          version: 1,
+          onCreate: _createDb,
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<void> _createDb(Database db, int version) async {

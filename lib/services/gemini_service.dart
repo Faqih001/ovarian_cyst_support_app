@@ -22,14 +22,20 @@ class GeminiService {
   GeminiService._internal() {
     // Initialize the model with the correct model name for Gemini
     _model = GenerativeModel(
-      model: 'gemini-1.5-pro',
+      model: 'gemini-2.0-flash',
       apiKey: apiKey,
     );
   }
 
   /// Starts a new chat session clearing previous history
   void startNewChat() {
-    _chatSession = _model.startChat();
+    // Add system instructions when starting a new chat
+    final systemInstructions = _getOvarianCystContext();
+    
+    // Create chat session with system instructions
+    _chatSession = _model.startChat(
+      history: [Content.text(systemInstructions)],
+    );
   }
 
   /// Gets a response from Gemini AI
@@ -41,12 +47,9 @@ class GeminiService {
         startNewChat();
       }
 
-      // Prepare prompt with context
-      final fullPrompt = prompt + _getOvarianCystContext();
-
       // Get response from the model
       final response = await _chatSession!.sendMessage(
-        Content.text(fullPrompt),
+        Content.text(prompt),
       );
 
       // Extract and return the text response
@@ -59,6 +62,12 @@ class GeminiService {
       return responseText;
     } catch (e) {
       debugPrint('Error in Gemini API: $e');
+      
+      // Check for model not found error
+      if (e.toString().contains('model') && e.toString().contains('not found')) {
+        debugPrint('Model not found error detected. This may be due to an outdated model name or API version.');
+      }
+      
       return _getFallbackResponse();
     }
   }
@@ -67,11 +76,12 @@ class GeminiService {
   /// Useful for one-time queries or when chat context isn't needed
   Future<String> getSingleResponse(String prompt) async {
     try {
-      // Prepare prompt with context
-      final fullPrompt = prompt + _getOvarianCystContext();
-      
+      // Use system instructions for context
       final response = await _model.generateContent(
-        [Content.text(fullPrompt)],
+        [
+          Content.text(_getOvarianCystContext()),
+          Content.text(prompt)
+        ],
       );
 
       final responseText = response.text;
@@ -83,20 +93,23 @@ class GeminiService {
       return responseText;
     } catch (e) {
       debugPrint('Error in Gemini API single response: $e');
+      
+      // Check for model not found error
+      if (e.toString().contains('model') && e.toString().contains('not found')) {
+        debugPrint('Model not found error detected. This may be due to an outdated model name or API version.');
+      }
+      
       return _getFallbackResponse();
     }
   }
 
   /// Provides domain context to help the model generate better responses
   String _getOvarianCystContext() {
-    return '''
-
-You are OvaCare, a specialized AI assistant for women with ovarian cysts. 
-Please respond with accurate and empathetic medical information related to ovarian cysts.
+    return """You are OvaCare, a specialized AI assistant for women with ovarian cysts. 
+You provide accurate and empathetic medical information related to ovarian cysts.
 Keep responses concise (under 3-4 sentences when possible) and easy to understand.
 Remember you are not a doctor, and should recommend seeking medical attention for concerning symptoms.
-When in doubt or for specific medical advice, remind users to consult healthcare professionals.
-''';
+When in doubt or for specific medical advice, remind users to consult healthcare professionals.""";
   }
 
   /// Fallback response for when the API fails
