@@ -23,7 +23,8 @@ class DatabaseConfig {
     if (kIsWeb) {
       return dbName;
     } else {
-      final Directory appDocDir = await path_provider.getApplicationDocumentsDirectory();
+      final Directory appDocDir =
+          await path_provider.getApplicationDocumentsDirectory();
       return path.join(appDocDir.path, dbName);
     }
   }

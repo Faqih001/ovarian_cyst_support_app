@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 /// Helper class for platform-specific operations
 class PlatformHelper {
   static final Logger _logger = Logger();
-  
+
   /// Get temporary directory path in a cross-platform way
   static Future<String> getTemporaryPath() async {
     try {
@@ -33,14 +33,14 @@ class PlatformHelper {
   static String getAudioFormat() {
     return kIsWeb ? 'audio/webm' : 'audio/m4a';
   }
-  
+
   /// Get records path for specific file in a cross-platform way
   static Future<String> getRecordingPath(String fileName) async {
     if (kIsWeb) {
       // Web doesn't use real file paths
       return fileName;
     }
-    
+
     final tempPath = await getTemporaryPath();
     return '$tempPath/$fileName';
   }

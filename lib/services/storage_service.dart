@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_storage/firebase_storage.dart';
@@ -233,7 +232,8 @@ class StorageService {
   }
 
   // Upload image from XFile (compatible with both web and mobile)
-  Future<String?> uploadImageFromXFile(XFile imageFile, String storagePath) async {
+  Future<String?> uploadImageFromXFile(
+      XFile imageFile, String storagePath) async {
     try {
       final ref = _storage.ref(storagePath);
 

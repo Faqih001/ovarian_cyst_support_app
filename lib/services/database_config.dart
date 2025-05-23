@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:logger/logger.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
@@ -9,11 +8,11 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 class DatabaseConfig {
   static final _logger = Logger();
   static bool _initialized = false;
-  
+
   /// Initialize the database factory based on the platform
   static Future<void> initializeDatabase() async {
     if (_initialized) return;
-    
+
     try {
       if (kIsWeb) {
         // Configure for web platform
@@ -31,7 +30,7 @@ class DatabaseConfig {
       _logger.e('Error initializing database factory: $e');
       // Fallback to in-memory database if initialization fails
       _logger.w('Using in-memory database as fallback');
-      
+
       // This is a simple fallback approach - adjust based on your needs
       try {
         if (kIsWeb) {

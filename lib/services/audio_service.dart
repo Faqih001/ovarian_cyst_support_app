@@ -68,11 +68,12 @@ class AudioService {
       }
 
       // For web, we use a different file format and don't need a real path
-      final String fileName = 'voice_message_${DateTime.now().millisecondsSinceEpoch}';
+      final String fileName =
+          'voice_message_${DateTime.now().millisecondsSinceEpoch}';
       String path;
-      
+
       if (kIsWeb) {
-        path = fileName + '.webm'; // Web uses webm format
+        path = '$fileName.webm'; // Web uses webm format
         _recordingPath = path;
       } else {
         // Use our platform helper to get temporary path
@@ -82,8 +83,9 @@ class AudioService {
       }
 
       // Choose proper encoder based on platform
-      final AudioEncoder encoder = kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc;
-      
+      final AudioEncoder encoder =
+          kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc;
+
       // Configure recorder and start recording
       await _recorder.start(
           RecordConfig(

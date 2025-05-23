@@ -23,11 +23,11 @@ void main() async {
     // Initialize database configuration first
     await DatabaseConfig.initializeDatabase();
     logger.i('Database configuration initialized');
-    
+
     // Initialize database service
     final databaseService = DatabaseService();
     await databaseService.initialize();
-    
+
     // Initialize Firebase with retry mechanism
     await _initializeFirebaseWithRetry(logger);
 
