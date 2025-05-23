@@ -1,11 +1,7 @@
-import 'package:flu      FirebaseFirestore.instance.settings = Settings(
-        persistenceEnabled: true,
-        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-        persistenceSettings: PersistenceSettings(synchronizeTabs: true),
-      );/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:logger/logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:path_provider/path_provider.dart' as path_provider;
 
 /// Database configuration helper to properly initialize Firestore
 /// based on the platform (web or mobile)
@@ -24,6 +20,7 @@ class DatabaseConfig {
       FirebaseFirestore.instance.settings = Settings(
         persistenceEnabled: true,
         cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        sslEnabled: true,
       );
 
       _initialized = true;
@@ -36,13 +33,13 @@ class DatabaseConfig {
 
   /// Get the path for any local files needed by the app
   static Future<String> getDatabasePath(String fileName) async {
-    // This is now only used for local file caching, not SQLite
     if (kIsWeb) {
       return 'cache/$fileName';
     }
-    // For mobile platforms, you might want to use path_provider
-    // to get the appropriate local storage path
-    return 'cache/$fileName';
+    
+    // For mobile platforms, use path_provider to get the app's documents directory
+    final appDir = await path_provider.getApplicationDocumentsDirectory();
+    return '${appDir.path}/$fileName';
   }
 
   /// Clear any cached data

@@ -19,7 +19,7 @@ class SymptomEntryRepository extends FirestoreRepository<SymptomEntry> {
     return await query(
       field: 'date',
       isGreaterThanOrEqualTo: startDate,
-      isLessThanOrEqualTo: endDate + 'Z', // Add Z to include the entire day
+      isLessThanOrEqualTo: '${endDate}Z', // Add Z to include the entire day
     );
   }
 
@@ -55,7 +55,7 @@ class SymptomEntryRepository extends FirestoreRepository<SymptomEntry> {
   /// Get real-time stream of entries for a specific month
   Stream<List<SymptomEntry>> getMonthlyEntriesStream(int year, int month) {
     final startDate = DateTime(year, month, 1).toIso8601String().split('T')[0];
-    final endDate = DateTime(year, month + 1, 0).toIso8601String().split('T')[0] + 'Z';
+    final endDate = '${DateTime(year, month + 1, 0).toIso8601String().split('T')[0]}Z';
     
     return queryStream(
       field: 'date',
