@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ovarian_cyst_support_app/models/treatment_item.dart';
 import 'package:ovarian_cyst_support_app/services/database_service.dart';
+import 'package:ovarian_cyst_support_app/services/firestore_database_service.dart';
 import 'package:ovarian_cyst_support_app/services/sync_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:intl/intl.dart';
@@ -24,7 +25,7 @@ class InventoryManagementScreen extends StatefulWidget {
 }
 
 class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
-  final DatabaseService _databaseService = DatabaseService();
+  final DatabaseService _databaseService = FirestoreDatabaseService();
   final SyncService _syncService = SyncService();
 
   List<TreatmentItem> _inventory = [];
@@ -44,6 +45,12 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
     switch (type) {
       case TreatmentItemType.medication:
         return 'Medication';
+      case TreatmentItemType.therapy:
+        return 'Therapy';
+      case TreatmentItemType.surgery:
+        return 'Surgery';
+      case TreatmentItemType.consultation:
+        return 'Consultation';
       case TreatmentItemType.procedure:
         return 'Procedure';
       case TreatmentItemType.equipment:
@@ -882,7 +889,7 @@ class TreatmentItemForm extends StatefulWidget {
 
 class _TreatmentItemFormState extends State<TreatmentItemForm> {
   final _formKey = GlobalKey<FormState>();
-  final DatabaseService _databaseService = DatabaseService();
+  final DatabaseService _databaseService = FirestoreDatabaseService();
 
   late String _name;
   late TreatmentType _type;
@@ -1235,6 +1242,12 @@ class _TreatmentItemFormState extends State<TreatmentItemForm> {
     switch (type) {
       case TreatmentType.medication:
         return 'Medication';
+      case TreatmentType.therapy:
+        return 'Therapy';
+      case TreatmentType.surgery:
+        return 'Surgery';
+      case TreatmentType.consultation:
+        return 'Consultation';
       case TreatmentType.procedure:
         return 'Procedure';
       case TreatmentType.equipment:

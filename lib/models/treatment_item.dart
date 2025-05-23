@@ -38,7 +38,7 @@ class TreatmentItem {
     this.manufacturer,
     this.dosageInfo,
     this.sideEffects,
-  }) : assert(
+  })  : assert(
           name.isNotEmpty,
           'Treatment name cannot be empty',
         ),

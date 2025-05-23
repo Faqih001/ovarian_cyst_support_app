@@ -60,8 +60,7 @@ class TreatmentItemRepository extends FirestoreRepository<TreatmentItem> {
   }
 
   /// Get treatments with a specific manufacturer
-  Future<List<TreatmentItem>> getTreatmentsByManufacturer(
-      String manufacturer) {
+  Future<List<TreatmentItem>> getTreatmentsByManufacturer(String manufacturer) {
     return query(
       field: 'manufacturer',
       isEqualTo: manufacturer,

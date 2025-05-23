@@ -40,16 +40,21 @@ class DatabaseServiceFactory {
   }
 
   /// Gets the appropriate database service based on the app's configuration.
-  static Future<dynamic> getDatabaseService() async {
-    final useFirestore = await shouldUseFirestore();
+  static Future<DatabaseService> getDatabaseService() async {
+    // We're always using Firestore after migration
+    await shouldUseFirestore(); // Just to update preferences if needed
 
-    if (useFirestore) {
-      _logger.i('Using Firebase Firestore database service');
-      return FirestoreDatabaseService();
-    } else {
-      _logger.i('Using SQLite database service');
-      return DatabaseService();
-    }
+    _logger.i('Using Firebase Firestore database service');
+    return FirestoreDatabaseService();
+    
+    // SQLite is no longer supported after migration
+    // if (useFirestore) {
+    //   _logger.i('Using Firebase Firestore database service');
+    //   return FirestoreDatabaseService();
+    // } else {
+    //   _logger.i('Using SQLite database service');
+    //   return SQLiteDatabaseService();
+    // }
   }
 
   /// Resets the cached database preference.
