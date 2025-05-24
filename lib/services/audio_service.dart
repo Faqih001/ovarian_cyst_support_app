@@ -3,11 +3,10 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:ovarian_cyst_support_app/services/gemini_service.dart';
-import 'package:mime/mime.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:ovarian_cyst_support_app/utils/platform_helper.dart';
 import 'package:logger/logger.dart';
+import 'package:ovarian_cyst_support_app/services/speech_to_text_service.dart';
 
 class AudioService {
   static final AudioService _instance = AudioService._internal();
@@ -15,7 +14,6 @@ class AudioService {
 
   final _recorder = AudioRecorder();
   final AudioPlayer _player = AudioPlayer();
-  final GeminiService _geminiService = GeminiService();
 
   bool _isRecording = false;
   bool _isPlaying = false;
@@ -172,7 +170,7 @@ class AudioService {
     }
   }
 
-  // Process the recorded audio with Gemini API
+  // Process the recorded audio with Speech-to-Text
   Future<String> processRecordedAudio() async {
     if (_recordingPath == null) {
       return 'No recording available to process';
@@ -184,21 +182,20 @@ class AudioService {
       if (!recordingFile.existsSync()) {
         return 'Recording file not found';
       }
-
-      // Get file as bytes
-      Uint8List audioBytes = await recordingFile.readAsBytes();
-
-      // Determine MIME type
-      String? mimeType = lookupMimeType(_recordingPath!) ?? 'audio/m4a';
-
-      // Process with Gemini
-      final result = await _geminiService.processAudioContent(
-        prompt: "Interpret this audio recording about ovarian cysts",
-        audioBytes: audioBytes,
-        mimeType: mimeType,
-      );
-
-      return result;
+      
+      // Log that we're processing the audio
+      _logger.i('Processing audio recording at: $_recordingPath');
+      
+      // Create an instance of SpeechToTextService
+      final speechToText = SpeechToTextService();
+      
+      // Transcribe the audio using the service
+      final transcription = await speechToText.transcribeAudio(_recordingPath!);
+      
+      // Log the result
+      _logger.i('Audio transcription result: $transcription');
+      
+      return transcription;
     } catch (e) {
       debugPrint('Error processing audio: $e');
       return 'Unable to process audio: ${e.toString()}';

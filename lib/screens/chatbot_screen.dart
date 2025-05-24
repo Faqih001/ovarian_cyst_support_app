@@ -454,9 +454,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
     try {
       // Process the voice message
-      final botResponse = await _aiService.getChatbotResponse(
-        "Processing voice message: $message",
-      );
+      // Pass the transcribed voice message directly to the chatbot
+      // The message parameter is already the transcribed text from speech-to-text
+      final botResponse = await _aiService.getChatbotResponse(message);
 
       if (mounted) {
         setState(() {
