@@ -80,28 +80,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _performAccountDeletion() async {
     if (!mounted) return;
 
-    try {
-      // Get auth service before async operation
-      final authService = Provider.of<AuthService>(context, listen: false);
+    // Capture all context-dependent objects before async operations
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final authService = Provider.of<AuthService>(context, listen: false);
 
+    try {
       // Delete user account
       await authService.deleteAccount();
 
-      // Check if widget is still mounted before using context
-      if (!mounted) return;
-
-      // Now safe to use context
-      Navigator.of(context).pushReplacementNamed('/login');
+      // Check if widget is still mounted before navigation
+      if (mounted) {
+        // Use captured navigator for navigation
+        navigator.pushReplacementNamed('/login');
+      }
     } catch (e) {
       _logger.e('Error deleting account: $e');
-      // Check if widget is still mounted before showing error
-      if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to delete account. Please try again.'),
-        ),
-      );
+      // Check if widget is still mounted before showing error
+      if (mounted) {
+        // Use captured scaffoldMessenger for showing error
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('Failed to delete account. Please try again.'),
+          ),
+        );
+      }
     }
   }
 
@@ -112,44 +116,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final navigator = Navigator.of(context);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
+    // Track dialog state
+    bool isLoading = true;
+
     try {
       // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return const Center(child: CircularProgressIndicator());
-        },
-      );
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) {
+            return PopScope(
+              canPop: false,
+              child: const Center(child: CircularProgressIndicator()),
+            );
+          },
+        );
+      }
 
       // Clear shared preferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
 
-      // Check if widget is still mounted after async operation
-      if (!mounted) return;
-
-      // Close loading dialog
-      navigator.pop();
+      // Dismiss loading dialog if still showing
+      if (isLoading && mounted) {
+        navigator.pop(); // Remove loading dialog
+        isLoading = false;
+      }
 
       // Reload preferences with default values
       await _loadPreferences();
 
-      // Show success message
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('Cache cleared')),
-      );
+      // Show success message if still mounted
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(content: Text('Cache cleared')),
+        );
+      }
     } catch (e) {
-      // Check if widget is still mounted after async operation
-      if (!mounted) return;
+      // Dismiss loading dialog if still showing
+      if (isLoading && mounted) {
+        navigator.pop(); // Remove loading dialog
+        isLoading = false;
+      }
 
-      // Close loading dialog
-      navigator.pop();
-
-      // Show error message
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text('Error clearing cache: $e')),
-      );
+      // Show error message if still mounted
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(content: Text('Error clearing cache: $e')),
+        );
+      }
     }
   }
 
@@ -265,21 +281,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // This method is kept for reference but not currently used
   // ignore: unused_element
   Future<void> _deleteAccount(BuildContext context) async {
-    // Show confirmation dialog
-    final bool confirm = await showDialog(
+    // Capture context-dependent objects before any async operations
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final authService = Provider.of<AuthService>(context, listen: false);
+
+    // Show confirmation dialog using captured navigator
+    final bool confirm = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             title: const Text('Delete Account'),
             content: const Text(
               'Are you sure you want to delete your account? This action cannot be undone.',
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => navigator.pop(false),
                 child: const Text('Cancel'),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => navigator.pop(true),
                 child: const Text('Delete'),
               ),
             ],
@@ -292,18 +313,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Check if mounted first
     if (!mounted) return;
 
-    // Capture all context-dependent objects before async operation
-    final navigator = Navigator.of(context);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final authService = Provider.of<AuthService>(context, listen: false);
-
-    // Show loading indicator
+    // Show loading indicator using captured context and store its navigator
+    bool isLoading = true;
     if (mounted) {
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) {
-          return const Center(child: CircularProgressIndicator());
+          return PopScope(
+            canPop: false,
+            child: const Center(child: CircularProgressIndicator()),
+          );
         },
       );
     }
@@ -312,16 +332,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Delete user account
       await authService.deleteAccount();
 
+      // Dismiss loading dialog if still showing
+      if (isLoading && mounted) {
+        navigator.pop(); // Remove loading dialog
+        isLoading = false;
+      }
+
       // Check if widget is still mounted before navigating
       if (mounted) {
-        // Navigate to login screen
+        // Navigate to login screen using captured navigator
         navigator.pushReplacementNamed('/login');
       }
     } catch (e) {
       _logger.e('Error deleting account: $e');
+
+      // Dismiss loading dialog if still showing
+      if (isLoading && mounted) {
+        navigator.pop(); // Remove loading dialog
+        isLoading = false;
+      }
+
       // Check if widget is still mounted before showing error
       if (mounted) {
-        // Show error message
+        // Show error message using captured scaffoldMessenger
         scaffoldMessenger.showSnackBar(
           const SnackBar(
             content: Text('Failed to delete account. Please try again.'),
