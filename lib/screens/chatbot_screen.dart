@@ -8,29 +8,24 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 
-enum ChatMode {
-  textChat,
-  imageAnalysis,
-}
-
 class ChatbotScreen extends StatefulWidget {
-  final ChatMode chatMode;
-
-  const ChatbotScreen({
-    super.key,
-    this.chatMode = ChatMode.textChat,
-  });
+  const ChatbotScreen({super.key});
 
   @override
   State<ChatbotScreen> createState() => _ChatbotScreenState();
 }
 
-class _ChatbotScreenState extends State<ChatbotScreen> {
+class _ChatbotScreenState extends State<ChatbotScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final AIService _aiService = AIService();
   final ChatStorageService _chatStorage = ChatStorageService();
   final ImagePicker _picker = ImagePicker();
+
+  // Page controller for mode switching
+  late final PageController _pageController;
+  late final TabController _tabController;
 
   // State for currently selected image
   Uint8List? _selectedImageData;
@@ -45,30 +40,33 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   // Track voice processing state
   bool _isProcessingVoice = false;
 
-  // Common questions for quick access
-  final List<String> _suggestedQuestions = [
-    "What are common symptoms of ovarian cysts?",
-    "When should I see a doctor?",
-    "What treatments are available?",
-    "Can diet affect ovarian cysts?",
-    "Is surgery always necessary?",
-    "Can cysts affect pregnancy?",
-  ];
-
-  // Image analysis specific questions
-  final List<String> _imageSuggestedQuestions = [
-    "What does this ultrasound show?",
-    "Is this a complex or simple cyst?",
-    "What size is the cyst in the image?",
-    "What are the key features to note?",
-    "What should I ask my doctor about this?",
-    "How is this type of cyst typically treated?",
-  ];
-
   @override
   void initState() {
     super.initState();
-    _isImageAnalysisMode = widget.chatMode == ChatMode.imageAnalysis;
+    _pageController = PageController();
+    _tabController = TabController(length: 2, vsync: this);
+
+    // Add listener to sync the TabController with PageController
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        _pageController.animateToPage(
+          _tabController.index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+
+    // Add listener to sync the PageController with TabController
+    _pageController.addListener(() {
+      final page = _pageController.page?.round() ?? 0;
+      _isImageAnalysisMode = page == 1;
+      if (_tabController.index != page) {
+        _tabController.animateTo(page);
+      }
+      setState(() {});
+    });
+
     _checkConnectivity();
     _loadChatHistory();
     _addWelcomeMessage();
@@ -122,7 +120,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 
   void _addWelcomeMessage() {
-    String welcomeText = widget.chatMode == ChatMode.textChat
+    String welcomeText = !_isImageAnalysisMode
         ? "Hello! I'm your OvaCare assistant, powered by Google's Gemini AI. I can provide more accurate answers about ovarian cysts, track symptoms, and offer personalized support. How can I help you today?"
         : "Welcome to Image Analysis mode! You can upload images of ultrasounds or other medical images related to ovarian cysts for educational insights. Remember, this is not a diagnostic tool and cannot replace professional medical advice.";
 
@@ -156,6 +154,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   @override
   void dispose() {
+    _pageController.dispose();
+    _tabController.dispose();
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -580,325 +580,231 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        titleSpacing: 0,
-        // Implement a simpler version of the title that won't overflow
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _isImageAnalysisMode
-                  ? Icons.image_search
-                  : Icons.smart_toy_rounded,
-              color: Colors.blue,
-              size: 22,
-            ),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                _isImageAnalysisMode ? 'Image Analysis' : 'OvaCare AI',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.black87,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          // Add Gemini indicator as an action instead
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.green.withAlpha(30),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Gemini',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(width: 2),
-                Icon(Icons.auto_awesome, size: 10, color: Colors.green),
-              ],
-            ),
-          ),
-          // Help button
-          IconButton(
-            icon: const Icon(Icons.help_outline, color: Colors.grey),
-            onPressed: _showHelpDialog,
-            tooltip: 'Help',
-          ),
-          // Clear chat history button
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.grey),
-            onPressed: _clearChatHistory,
-            tooltip: 'Clear Chat History',
-          ),
-          // Close button
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.grey),
-            onPressed: () => Navigator.pop(context),
-            tooltip: 'Close',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Offline indicator
-          if (_isOffline)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              color: Colors.orange.shade100,
-              child: Row(
-                children: [
-                  Icon(Icons.wifi_off, size: 20, color: Colors.orange.shade800),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'You\'re offline. Limited responses available.',
-                      style: TextStyle(color: Colors.orange.shade800),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Chat messages
-          Expanded(
-            child: GestureDetector(
-              onTap: () => FocusScope.of(context).unfocus(),
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(8.0),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  return _buildMessage(_messages[index]);
-                },
-              ),
-            ),
-          ),
-
-          // Suggested questions carousel
-          SizedBox(
-            height: 50,
+  Widget _buildChatArea() {
+    return Column(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
             child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _isImageAnalysisMode
-                  ? _imageSuggestedQuestions.length
-                  : _suggestedQuestions.length,
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              controller: _scrollController,
+              padding: const EdgeInsets.only(bottom: 16),
+              itemCount: _messages.length + (_isTyping ? 1 : 0),
               itemBuilder: (context, index) {
-                final questionText = _isImageAnalysisMode
-                    ? _imageSuggestedQuestions[index]
-                    : _suggestedQuestions[index];
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: InkWell(
-                    onTap: () {
-                      _handleSubmitted(questionText);
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withAlpha(25),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Theme.of(context).primaryColor.withAlpha(128),
-                        ),
-                      ),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.7),
-                        child: Text(
-                          questionText,
-                          style: TextStyle(
-                            color: Theme.of(context).primaryColor,
-                            fontSize: 12,
+                if (index == _messages.length && _isTyping) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          height: 36,
+                          width: 36,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor.withValues(alpha: 25),
+                            shape: BoxShape.circle,
                           ),
-                          overflow: TextOverflow.ellipsis,
+                          child: Icon(
+                            Icons.health_and_safety_outlined,
+                            color: Theme.of(context).primaryColor,
+                            size: 20,
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Typing...',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                );
+                  );
+                }
+                final message = _messages[index];
+                return _buildMessage(message);
               },
             ),
           ),
+        ),
+        _buildInputArea(),
+      ],
+    );
+  }
 
-          // "Bot is typing" indicator
-          if (_isTyping)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              alignment: Alignment.centerLeft,
-              child: Row(
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.95,
+      minChildSize: 0.6,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black
+                    .withValues(red: 0, green: 0, blue: 0, alpha: 26),
+                spreadRadius: 1,
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Drag handle and app bar
+              Column(
                 children: [
                   Container(
-                    height: 32,
-                    width: 32,
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withAlpha(25),
-                      shape: BoxShape.circle,
+                      color: Colors.grey.withValues(alpha: 77),
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    child: Icon(
-                      Icons.health_and_safety_outlined,
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.grey.withValues(alpha: 51),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _isImageAnalysisMode
+                              ? Icons.image_search
+                              : Icons.smart_toy_rounded,
+                          color: Theme.of(context).primaryColor,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'OvaCare Assistant',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.help_outline,
+                              color: Colors.grey),
+                          onPressed: _showHelpDialog,
+                          tooltip: 'Help',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              color: Colors.grey),
+                          onPressed: _clearChatHistory,
+                          tooltip: 'Clear Chat History',
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 30),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.green),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.auto_awesome,
+                                color: Colors.green,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'Gemini',
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_isOffline)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8.0),
+                            child: Icon(Icons.cloud_off,
+                                color: Colors.red, size: 20),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              // Chat mode toggle
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 26),
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25),
                       color: Theme.of(context).primaryColor,
-                      size: 18,
                     ),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.grey,
+                    tabs: const [
+                      Tab(text: 'Chat'),
+                      Tab(text: 'Image Analysis'),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Typing...',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-
-          // Text input or image upload
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              boxShadow: [
-                BoxShadow(
-                  offset: const Offset(0, -2),
-                  blurRadius: 4,
-                  color: Colors.black.withAlpha(25),
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8.0,
-                vertical: 8.0,
               ),
-              child: Row(
-                children: [
-                  // Show mic or image upload based on mode
-                  IconButton(
-                    icon: Icon(
-                      _isImageAnalysisMode
-                          ? Icons.photo_library
-                          : (_isProcessingVoice ? Icons.more_horiz : Icons.mic),
-                      color: (_isProcessingVoice || _isAnalyzingImage)
-                          ? Colors.grey
-                          : Theme.of(context).primaryColor,
-                    ),
-                    onPressed: (_isProcessingVoice || _isAnalyzingImage)
-                        ? null
-                        : (_isImageAnalysisMode
-                            ? _pickImage
-                            : () => _showVoiceRecordingModal()),
-                    tooltip: _isImageAnalysisMode
-                        ? 'Upload image for analysis'
-                        : (_isProcessingVoice
-                            ? 'Processing voice message...'
-                            : 'Send voice message'),
-                  ),
-
-                  // Add a camera button for image mode
-                  if (_isImageAnalysisMode)
-                    IconButton(
-                      icon: Icon(
-                        Icons.camera_alt,
-                        color: _isAnalyzingImage
-                            ? Colors.grey
-                            : Theme.of(context).primaryColor,
-                      ),
-                      onPressed: _isAnalyzingImage
-                          ? null
-                          : () async {
-                              final pickedFile = await _picker.pickImage(
-                                source: ImageSource.camera,
-                                maxWidth: 800,
-                                maxHeight: 800,
-                                imageQuality: 90,
-                              );
-
-                              if (pickedFile != null) {
-                                try {
-                                  final bytes = await pickedFile.readAsBytes();
-                                  setState(() {
-                                    _selectedImageData = bytes;
-                                    _analyzeImage();
-                                  });
-                                } catch (e) {
-                                  _addSystemMessage(
-                                      "Error processing image: ${e.toString()}");
-                                }
-                              }
-                            },
-                      tooltip: 'Take a photo',
-                    ),
-
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      onChanged: (text) {
-                        setState(() {
-                          _isComposing = text.isNotEmpty;
-                        });
-                      },
-                      onSubmitted: _isComposing ? _handleSubmitted : null,
-                      decoration: InputDecoration(
-                        hintText: _isImageAnalysisMode
-                            ? 'Ask about the uploaded image...'
-                            : 'Ask a question...',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25.0),
-                          borderSide: BorderSide.none,
+              // Chat content
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _isImageAnalysisMode = index == 1;
+                    });
+                  },
+                  children: [
+                    // Chat mode
+                    _buildChatArea(),
+                    // Image analysis mode
+                    Column(
+                      children: [
+                        Expanded(
+                          child: _selectedImageData == null
+                              ? _buildImageUploadPrompt()
+                              : _buildImageAnalysisView(),
                         ),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                      ),
+                        if (_selectedImageData != null) _buildInputArea(),
+                      ],
                     ),
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.send,
-                        color: _isComposing
-                            ? Theme.of(context).primaryColor
-                            : Colors.grey[400],
-                      ),
-                      onPressed: _isComposing
-                          ? () => _handleSubmitted(_textController.text)
-                          : null,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1062,6 +968,237 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildInputArea() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, -2),
+            blurRadius: 4,
+            color: Colors.black.withAlpha(25),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8.0,
+          vertical: 8.0,
+        ),
+        child: Row(
+          children: [
+            // Show mic or image upload based on mode
+            IconButton(
+              icon: Icon(
+                _isImageAnalysisMode
+                    ? Icons.photo_library
+                    : (_isProcessingVoice ? Icons.more_horiz : Icons.mic),
+                color: (_isProcessingVoice || _isAnalyzingImage)
+                    ? Colors.grey
+                    : Theme.of(context).primaryColor,
+              ),
+              onPressed: (_isProcessingVoice || _isAnalyzingImage)
+                  ? null
+                  : (_isImageAnalysisMode
+                      ? _pickImage
+                      : () => _showVoiceRecordingModal()),
+              tooltip: _isImageAnalysisMode
+                  ? 'Upload image for analysis'
+                  : (_isProcessingVoice
+                      ? 'Processing voice message...'
+                      : 'Send voice message'),
+            ),
+
+            // Add a camera button for image mode
+            if (_isImageAnalysisMode)
+              IconButton(
+                icon: Icon(
+                  Icons.camera_alt,
+                  color: _isAnalyzingImage
+                      ? Colors.grey
+                      : Theme.of(context).primaryColor,
+                ),
+                onPressed: _isAnalyzingImage
+                    ? null
+                    : () async {
+                        final pickedFile = await _picker.pickImage(
+                          source: ImageSource.camera,
+                          maxWidth: 800,
+                          maxHeight: 800,
+                          imageQuality: 90,
+                        );
+
+                        if (pickedFile != null) {
+                          try {
+                            final bytes = await pickedFile.readAsBytes();
+                            setState(() {
+                              _selectedImageData = bytes;
+                              _analyzeImage();
+                            });
+                          } catch (e) {
+                            _addSystemMessage(
+                                "Error processing image: ${e.toString()}");
+                          }
+                        }
+                      },
+                tooltip: 'Take a photo',
+              ),
+
+            Expanded(
+              child: TextField(
+                controller: _textController,
+                onChanged: (text) {
+                  setState(() {
+                    _isComposing = text.isNotEmpty;
+                  });
+                },
+                onSubmitted: _isComposing ? _handleSubmitted : null,
+                decoration: InputDecoration(
+                  hintText: _isImageAnalysisMode
+                      ? 'Ask about the uploaded image...'
+                      : 'Ask a question...',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(25.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              child: IconButton(
+                icon: Icon(
+                  Icons.send,
+                  color: _isComposing
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey[400],
+                ),
+                onPressed: _isComposing
+                    ? () => _handleSubmitted(_textController.text)
+                    : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageUploadPrompt() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.cloud_upload_outlined,
+            size: 64,
+            color: Theme.of(context).primaryColor.withValues(alpha: 128),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Upload an image for analysis',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Support for ultrasound images and\nmedical documentation',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final ImagePicker picker = ImagePicker();
+              final XFile? image =
+                  await picker.pickImage(source: ImageSource.gallery);
+
+              if (image != null) {
+                final bytes = await image.readAsBytes();
+                setState(() {
+                  _selectedImageData = bytes;
+                });
+              }
+            },
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            label: const Text('Choose Image'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageAnalysisView() {
+    return Column(
+      children: [
+        if (_selectedImageData != null)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    _selectedImageData!,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () {
+                      setState(() {
+                        _selectedImageData = null;
+                      });
+                    },
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black54,
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (_isAnalyzingImage)
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: _messages.length,
+            itemBuilder: (context, index) {
+              final message = _messages[index];
+              return _buildMessage(message);
+            },
+          ),
+        ),
+      ],
     );
   }
 }
