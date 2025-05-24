@@ -49,6 +49,23 @@ class FirestoreDatabaseService extends DatabaseService {
     }
   }
 
+  /// Check if Firestore connection is available by making a simple query
+  Future<bool> checkConnection() async {
+    try {
+      // Attempt a simple, lightweight operation
+      // Use a timeout to avoid waiting too long if Firebase is unavailable
+      await _firestore
+          .collection('_connection_test')
+          .limit(1)
+          .get()
+          .timeout(const Duration(seconds: 5));
+      return true;
+    } catch (e) {
+      _logger.w('Firestore connection check failed: $e');
+      return false;
+    }
+  }
+
   // Get the current user's ID or a default ID for testing
   String _getCurrentUserId() {
     final user = FirebaseAuth.instance.currentUser;

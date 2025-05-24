@@ -48,13 +48,21 @@ class DatabaseServiceFactory {
     return FirestoreDatabaseService();
     
     // SQLite is no longer supported after migration
-    // if (useFirestore) {
-    //   _logger.i('Using Firebase Firestore database service');
-    //   return FirestoreDatabaseService();
-    // } else {
-    //   _logger.i('Using SQLite database service');
-    //   return SQLiteDatabaseService();
-    // }
+  }
+
+  /// Check if Firebase/Firestore is available and responsive
+  static Future<bool> isFirestoreAvailable() async {
+    try {
+      // Get a reference to the database service
+      final dbService = FirestoreDatabaseService();
+      
+      // Try to perform a simple operation to check connectivity
+      await dbService.checkConnection();
+      return true;
+    } catch (e) {
+      _logger.e('Firebase/Firestore is not available: $e');
+      return false;
+    }
   }
 
   /// Resets the cached database preference.

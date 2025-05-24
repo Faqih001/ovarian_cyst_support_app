@@ -122,6 +122,11 @@ class _HomeScreenState extends State<HomeScreen>
       // Setting this to true makes the sheet cover full screen height
       // but we'll handle spacing with our padding
       showDragHandle: false,
+      // Set the animation curve for smoother opening
+      barrierColor: Colors.black.withAlpha(128), // 0.5 * 255 = 127.5 ~ 128
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
       builder: (context) => const ChatbotBottomSheet(),
     );
   }
@@ -1547,14 +1552,14 @@ class ChatbotBottomSheet extends StatelessWidget {
     final screenSize = MediaQuery.of(context).size;
     // Get the bottom padding to account for navigation bar
     final bottomPadding = MediaQuery.of(context).padding.bottom +
-        80; // Add extra space for the navbar
-    // Calculate horizontal padding - 5% of screen width on each side
-    final horizontalPadding = screenSize.width * 0.05;
+        60; // Reduced from 80 to make more space
+    // Calculate horizontal padding - 3% of screen width on each side (reduced from 5%)
+    final horizontalPadding = screenSize.width * 0.03;
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.8,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
+      initialChildSize: 0.88, // Further increased for better visibility
+      minChildSize: 0.65,     // Increased min size
+      maxChildSize: 0.98,     // Allow almost full screen
       builder: (_, controller) {
         return Padding(
           padding: EdgeInsets.only(

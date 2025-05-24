@@ -45,7 +45,8 @@ class MigrationService {
   static Future<void> checkAndShowMigrationScreen(BuildContext context) async {
     final migrationNeeded = await _isMigrationNeeded();
     if (migrationNeeded) {
-      await _performAutomaticMigration();
+      // Attempt automatic migration with retry mechanism
+      await _performAutomaticMigrationWithRetry();
     }
   }
 
@@ -56,9 +57,28 @@ class MigrationService {
     return !migrationCompleted && !useFirestore;
   }
 
+  /// Automatically perform the migration with retry mechanism
+  static Future<void> _performAutomaticMigrationWithRetry() async {
+    // Initial attempt
+    final success = await _performAutomaticMigration();
+    
+    // If failed due to network/Firebase issues, schedule a retry for later
+    if (!success) {
+      _logger.i('Will retry migration later when Firebase is available');
+      // We don't mark as completed so it will be retried on next app start
+    }
+  }
+
   /// Automatically perform the migration without user confirmation
-  static Future<void> _performAutomaticMigration() async {
+  /// Returns true if migration was successful, false otherwise
+  static Future<bool> _performAutomaticMigration() async {
     try {
+      // Check if Firebase is initialized and available
+      if (!await _isFirebaseAvailable()) {
+        _logger.w('Firebase is not available, will try again later');
+        return false;
+      }
+
       // Create an instance of the migration service
       final migrationService = DatabaseMigrationService();
 
@@ -73,10 +93,41 @@ class MigrationService {
       await markMigrationCompleted();
 
       _logger.i('Automatic migration completed successfully');
+      return true;
     } catch (e) {
       _logger.e('Error during automatic migration: $e');
-      // Despite any errors, we'll mark it as completed to avoid showing again
-      await markMigrationCompleted();
+      // Only mark as completed if not a connectivity issue
+      if (!_isConnectivityError(e)) {
+        await markMigrationCompleted();
+        return true;
+      }
+      return false;
+    }
+  }
+
+  /// Check if the error is related to connectivity
+  static bool _isConnectivityError(dynamic error) {
+    final errorStr = error.toString().toLowerCase();
+    return errorStr.contains('network') || 
+           errorStr.contains('connection') || 
+           errorStr.contains('socket') || 
+           errorStr.contains('timeout') ||
+           errorStr.contains('unavailable');
+  }
+
+  /// Check if Firebase is available and properly initialized
+  static Future<bool> _isFirebaseAvailable() async {
+    try {
+      // Try to perform a simple Firebase operation
+      // Check if Firebase is connected by checking if storage is accessible
+      final connected = await DatabaseServiceFactory.isFirestoreAvailable();
+      if (!connected) {
+        _logger.w('Firebase is not connected, will retry later');
+      }
+      return connected;
+    } catch (e) {
+      _logger.e('Error checking Firebase availability: $e');
+      return false;
     }
   }
 }

@@ -474,47 +474,56 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        // Implement a simpler version of the title that won't overflow
         title: Row(
-          children: [
-            const Icon(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(
               Icons.smart_toy_rounded,
               color: Colors.blue,
               size: 22,
             ),
-            const SizedBox(width: 8),
-            const Text('OvaCare AI Assistant',
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'OvaCare AI',
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.black87,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                )),
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.green.withAlpha(30),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Gemini',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(width: 2),
-                  Icon(Icons.auto_awesome, size: 10, color: Colors.green),
-                ],
+                ),
               ),
             ),
           ],
         ),
         actions: [
+          // Add Gemini indicator as an action instead
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.green.withAlpha(30),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Gemini',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(width: 2),
+                Icon(Icons.auto_awesome, size: 10, color: Colors.green),
+              ],
+            ),
+          ),
           // Help button
           IconButton(
             icon: const Icon(Icons.help_outline, color: Colors.grey),
