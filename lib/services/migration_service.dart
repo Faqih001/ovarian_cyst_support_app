@@ -55,23 +55,23 @@ class MigrationService {
     final useFirestore = await DatabaseServiceFactory.shouldUseFirestore();
     return !migrationCompleted && !useFirestore;
   }
-  
+
   /// Automatically perform the migration without user confirmation
   static Future<void> _performAutomaticMigration() async {
     try {
       // Create an instance of the migration service
       final migrationService = DatabaseMigrationService();
-      
+
       // Run all migration tasks sequentially
       await migrationService.migrateSymptomEntries([]);
       await migrationService.migrateAppointments([]);
       await migrationService.migrateTreatmentItems([]);
       await migrationService.migrateMedications([]);
       await migrationService.migrateCommunityPosts([]);
-      
+
       // Mark migration as complete when finished
       await markMigrationCompleted();
-      
+
       _logger.i('Automatic migration completed successfully');
     } catch (e) {
       _logger.e('Error during automatic migration: $e');
