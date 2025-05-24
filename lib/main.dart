@@ -84,7 +84,7 @@ Future<void> _initializeFirebaseWithRetry(Logger logger,
         logger.i('Firebase is already initialized, skipping initialization');
         return;
       }
-      
+
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
@@ -93,10 +93,11 @@ Future<void> _initializeFirebaseWithRetry(Logger logger,
     } catch (e) {
       // Handle the duplicate app error specifically
       if (e.toString().contains('duplicate-app')) {
-        logger.i('Firebase is already initialized (caught duplicate-app error)');
+        logger
+            .i('Firebase is already initialized (caught duplicate-app error)');
         return;
       }
-      
+
       attempts++;
       logger.w('Firebase initialization attempt $attempts failed: $e');
       if (attempts == maxAttempts) rethrow;
