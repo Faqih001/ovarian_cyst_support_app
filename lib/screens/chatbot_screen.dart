@@ -7,7 +7,6 @@ import 'package:ovarian_cyst_support_app/widgets/voice_recording_widget.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image_picker/image_picker.dart';
 
 enum ChatMode {
   textChat,
