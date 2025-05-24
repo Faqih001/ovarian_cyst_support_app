@@ -23,12 +23,10 @@ class SyncService extends ChangeNotifier {
   Future<bool> _checkConnectivity() async {
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
-      return [
-        ConnectivityResult.wifi,
-        ConnectivityResult.mobile,
-        ConnectivityResult.ethernet,
-        ConnectivityResult.vpn,
-      ].contains(connectivityResult);
+      return connectivityResult == ConnectivityResult.wifi ||
+          connectivityResult == ConnectivityResult.mobile ||
+          connectivityResult == ConnectivityResult.ethernet ||
+          connectivityResult == ConnectivityResult.vpn;
     } catch (e) {
       _logger.e('Error checking connectivity: $e');
       return false;

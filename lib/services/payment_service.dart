@@ -40,13 +40,10 @@ class PaymentService {
   Future<bool> _checkConnectivity() async {
     try {
       final result = await Connectivity().checkConnectivity();
-      // Use list.contains instead of direct comparison
-      return [
-        ConnectivityResult.wifi,
-        ConnectivityResult.mobile,
-        ConnectivityResult.ethernet,
-        ConnectivityResult.vpn
-      ].contains(result);
+      return result == ConnectivityResult.wifi ||
+          result == ConnectivityResult.mobile ||
+          result == ConnectivityResult.ethernet ||
+          result == ConnectivityResult.vpn;
     } catch (e) {
       debugPrint('Error checking connectivity: $e');
       return false;

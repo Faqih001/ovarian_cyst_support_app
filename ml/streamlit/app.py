@@ -243,12 +243,13 @@ async def predict_api(input_data: PredictionInput):
     except Exception as e:
         return {"error": str(e)}
 
-# Initialize the model
+# Initialize the model when module is loaded
 model = load_model()
 
-# Streamlit UI
-st.title('PCOS Risk Assessment')
-st.write('Enter your health information for PCOS risk assessment.')
+# Define a function to create the Streamlit UI
+def create_streamlit_ui():
+    st.title('PCOS Risk Assessment')
+    st.write('Enter your health information for PCOS risk assessment.')
 
 with st.form("prediction_form"):
     # Basic Information
@@ -694,6 +695,25 @@ with st.form("prediction_form"):
 st.markdown("---")
 st.markdown("*This is a part of the Ovarian Cyst Support App*")
 
-# To run the FastAPI app, uncomment the following lines:
-# if __name__ == "__main__":
-#     uvicorn.run(api, host="0.0.0.0", port=8000)
+st.markdown("*This is a part of the Ovarian Cyst Support App*")
+
+# Define the main function for the Streamlit app
+def main():
+    # Set page configuration
+    st.set_page_config(
+        page_title="PCOS Risk Assessment",
+        page_icon="🩺",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    
+    # Create the Streamlit UI
+    create_streamlit_ui()
+
+# Run FastAPI app when used as an API server
+def run_api():
+    uvicorn.run(api, host="0.0.0.0", port=8000)
+
+# Ensure app runs when executed directly
+if __name__ == "__main__":
+    main()

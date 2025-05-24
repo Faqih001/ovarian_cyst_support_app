@@ -80,10 +80,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _performAccountDeletion() async {
     if (!mounted) return;
 
-    // Capture navigator and scaffold messenger before async operations
-    final navigator = Navigator.of(context);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
     try {
       // Get auth service before async operation
       final authService = Provider.of<AuthService>(context, listen: false);
@@ -266,6 +262,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // This method is kept for reference but not currently used
+  // ignore: unused_element
   Future<void> _deleteAccount(BuildContext context) async {
     // Show confirmation dialog
     final bool confirm = await showDialog(
@@ -291,8 +289,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (!confirm) return;
 
-    // Show loading indicator
+    // Check if mounted first
     if (!mounted) return;
+    
+    // Capture navigator before async operation
+    final navigator = Navigator.of(context);
+    
+    // Show loading indicator
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -311,14 +314,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Check if widget is still mounted before using context
       if (!mounted) return;
 
-      // Now safe to use context
-      Navigator.of(context).pushReplacementNamed('/login');
+      // Use captured navigator to navigate
+      navigator.pushReplacementNamed('/login');
     } catch (e) {
       _logger.e('Error deleting account: $e');
       // Check if widget is still mounted before showing error
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
+      
+      // Capture scaffoldMessenger here, after checking mounted
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         const SnackBar(
           content: Text('Failed to delete account. Please try again.'),
         ),

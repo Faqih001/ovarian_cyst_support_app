@@ -31,6 +31,7 @@ class FirestoreDatabaseService extends DatabaseService {
 
   FirestoreDatabaseService._internal();
 
+  @override
   Future<void> initialize() async {
     if (!_initialized) {
       // Enable offline persistence if not already enabled
@@ -302,6 +303,7 @@ class FirestoreDatabaseService extends DatabaseService {
     }
   }
 
+  @override
   Future<List<Map<String, dynamic>>> getMedications() async {
     try {
       final QuerySnapshot snapshot =
@@ -343,6 +345,7 @@ class FirestoreDatabaseService extends DatabaseService {
     }
   }
 
+  @override
   Future<void> deleteMedication(String id) async {
     try {
       await _getUserCollection(_medicationsCollection).doc(id).delete();
