@@ -34,7 +34,8 @@ class AIService {
     final connectivityResults = await Connectivity().checkConnectivity();
 
     // Determine if there is an active connection
-    final hasConnection = connectivityResults != ConnectivityResult.none;
+    final hasConnection = connectivityResults.isNotEmpty && 
+        !connectivityResults.contains(ConnectivityResult.none);
 
     if (!hasConnection) {
       debugPrint('No internet connection. Using offline prediction logic.');
@@ -180,7 +181,8 @@ class AIService {
     final connectivityResults = await Connectivity().checkConnectivity();
 
     // Determine if there is an active connection
-    final hasConnection = connectivityResults != ConnectivityResult.none;
+    final hasConnection = connectivityResults.isNotEmpty && 
+        !connectivityResults.contains(ConnectivityResult.none);
 
     if (!hasConnection) {
       debugPrint('No internet connection. Using offline chatbot responses.');

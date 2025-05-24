@@ -49,7 +49,8 @@ class PaymentService {
       final connectivityResults = await Connectivity().checkConnectivity();
 
       // Determine if there is an active connection
-      final hasConnection = connectivityResults != ConnectivityResult.none;
+      final hasConnection = connectivityResults.isNotEmpty && 
+          !connectivityResults.contains(ConnectivityResult.none);
 
       if (!hasConnection) {
         throw Exception('No internet connection');
@@ -101,7 +102,8 @@ class PaymentService {
       final connectivityResults = await Connectivity().checkConnectivity();
 
       // Determine if there is an active connection
-      final hasConnection = connectivityResults != ConnectivityResult.none;
+      final hasConnection = connectivityResults.isNotEmpty && 
+          !connectivityResults.contains(ConnectivityResult.none);
 
       if (!hasConnection) {
         debugPrint('No internet connection, cannot check payment status now.');
@@ -145,7 +147,8 @@ class PaymentService {
       final connectivityResults = await Connectivity().checkConnectivity();
 
       // Determine if there is an active connection
-      final hasConnection = connectivityResults != ConnectivityResult.none;
+      final hasConnection = connectivityResults.isNotEmpty && 
+          !connectivityResults.contains(ConnectivityResult.none);
 
       if (!hasConnection) {
         return 'Cannot generate receipt while offline.';
