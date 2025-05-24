@@ -513,6 +513,3 @@ def main():
 # Ensure app runs when executed directly
 if __name__ == "__main__":
     main()
-else:
-    # This will help Streamlit Cloud find and run the app
-    main()
