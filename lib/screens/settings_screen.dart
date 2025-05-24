@@ -281,6 +281,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Method to handle barcode scanning
   Future<void> _scanBarcode(BuildContext context) async {
+    // Capture the ScaffoldMessenger context before the async gap
+    final scaffoldMessengerContext = ScaffoldMessenger.of(context);
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -291,9 +294,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // After the async gap, check if widget is still in the tree
     if (!mounted) return;
 
-    // Now it's safe to use context after the mounted check
+    // Now it's safe to use the captured scaffoldMessengerContext
     if (result != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerContext.showSnackBar(
         SnackBar(content: Text('Scanned code: $result')),
       );
     }
