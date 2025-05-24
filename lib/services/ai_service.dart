@@ -35,7 +35,7 @@ class AIService {
     final connectivityResults = await Connectivity().checkConnectivity();
 
     // Determine if there is an active connection
-    final hasConnection = connectivityResults.isNotEmpty && 
+    final hasConnection = connectivityResults.isNotEmpty &&
         !connectivityResults.contains(ConnectivityResult.none);
 
     if (!hasConnection) {
@@ -182,7 +182,7 @@ class AIService {
     final connectivityResults = await Connectivity().checkConnectivity();
 
     // Determine if there is an active connection
-    final hasConnection = connectivityResults.isNotEmpty && 
+    final hasConnection = connectivityResults.isNotEmpty &&
         !connectivityResults.contains(ConnectivityResult.none);
 
     if (!hasConnection) {
@@ -297,12 +297,13 @@ class AIService {
     try {
       // In a real implementation, you would send the image to your backend or directly to Gemini
       // For now, we'll just mock the response
-      await Future.delayed(const Duration(seconds: 2)); // Simulate processing time
-      
+      await Future.delayed(
+          const Duration(seconds: 2)); // Simulate processing time
+
       // Commented out for now until implementation is ready
       // final geminiService = GeminiService();
       // return await geminiService.analyzeImage(imageBytes);
-      
+
       // Mock response for now
       return "I've analyzed the image and it appears to show signs consistent with an ovarian cyst. "
           "The dark circular area suggests a fluid-filled sac. However, please note that this is "

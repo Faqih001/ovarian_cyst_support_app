@@ -521,7 +521,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   Future<void> _analyzeImage() async {
     if (_selectedImageData == null) return;
-    
+
     setState(() {
       _isAnalyzingImage = true;
     });
@@ -539,7 +539,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
     try {
       // In a real implementation, you would pass the image to the AI service
-      final botResponse = await _aiService.getImageAnalysisResponse(_selectedImageData!);
+      final botResponse =
+          await _aiService.getImageAnalysisResponse(_selectedImageData!);
 
       if (mounted) {
         setState(() {
@@ -565,7 +566,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           _isAnalyzingImage = false;
           _messages.add(
             ChatMessage(
-              text: "I'm sorry, I couldn't analyze this image. Please try with another image or check your internet connection.",
+              text:
+                  "I'm sorry, I couldn't analyze this image. Please try with another image or check your internet connection.",
               source: MessageSource.bot,
               isOffline: _isOffline,
               isUser: false,
@@ -591,7 +593,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              _isImageAnalysisMode ? Icons.image_search : Icons.smart_toy_rounded,
+              _isImageAnalysisMode
+                  ? Icons.image_search
+                  : Icons.smart_toy_rounded,
               color: Colors.blue,
               size: 22,
             ),
@@ -696,15 +700,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             height: 50,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: _isImageAnalysisMode 
-                  ? _imageSuggestedQuestions.length 
+              itemCount: _isImageAnalysisMode
+                  ? _imageSuggestedQuestions.length
                   : _suggestedQuestions.length,
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               itemBuilder: (context, index) {
                 final questionText = _isImageAnalysisMode
                     ? _imageSuggestedQuestions[index]
                     : _suggestedQuestions[index];
-                    
+
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
                   child: InkWell(
@@ -794,7 +798,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   // Show mic or image upload based on mode
                   IconButton(
                     icon: Icon(
-                      _isImageAnalysisMode 
+                      _isImageAnalysisMode
                           ? Icons.photo_library
                           : (_isProcessingVoice ? Icons.more_horiz : Icons.mic),
                       color: (_isProcessingVoice || _isAnalyzingImage)
@@ -803,14 +807,16 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     ),
                     onPressed: (_isProcessingVoice || _isAnalyzingImage)
                         ? null
-                        : (_isImageAnalysisMode ? _pickImage : () => _showVoiceRecordingModal()),
+                        : (_isImageAnalysisMode
+                            ? _pickImage
+                            : () => _showVoiceRecordingModal()),
                     tooltip: _isImageAnalysisMode
                         ? 'Upload image for analysis'
                         : (_isProcessingVoice
                             ? 'Processing voice message...'
                             : 'Send voice message'),
                   ),
-                  
+
                   // Add a camera button for image mode
                   if (_isImageAnalysisMode)
                     IconButton(
@@ -829,7 +835,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                                 maxHeight: 800,
                                 imageQuality: 90,
                               );
-                              
+
                               if (pickedFile != null) {
                                 try {
                                   final bytes = await pickedFile.readAsBytes();
@@ -838,13 +844,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                                     _analyzeImage();
                                   });
                                 } catch (e) {
-                                  _addSystemMessage("Error processing image: ${e.toString()}");
+                                  _addSystemMessage(
+                                      "Error processing image: ${e.toString()}");
                                 }
                               }
                             },
                       tooltip: 'Take a photo',
                     ),
-                  
+
                   Expanded(
                     child: TextField(
                       controller: _textController,
@@ -855,8 +862,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       },
                       onSubmitted: _isComposing ? _handleSubmitted : null,
                       decoration: InputDecoration(
-                        hintText: _isImageAnalysisMode 
-                            ? 'Ask about the uploaded image...' 
+                        hintText: _isImageAnalysisMode
+                            ? 'Ask about the uploaded image...'
                             : 'Ask a question...',
                         hintStyle: TextStyle(color: Colors.grey[400]),
                         border: OutlineInputBorder(
@@ -995,8 +1002,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                             width: MediaQuery.of(context).size.width * 0.6,
                           ),
                         ),
-                      if (message.imageBytes != null)
-                        const SizedBox(height: 8),
+                      if (message.imageBytes != null) const SizedBox(height: 8),
                       // Text content
                       Text(
                         message.text,

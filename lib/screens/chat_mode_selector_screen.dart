@@ -30,7 +30,8 @@ class ChatModeSelectorScreen extends StatelessWidget {
             _buildChatOption(
               context,
               title: 'Text Chat',
-              description: 'Ask questions and get information about ovarian cysts',
+              description:
+                  'Ask questions and get information about ovarian cysts',
               icon: Icons.chat_bubble_outline,
               onTap: () {
                 Navigator.push(
@@ -89,7 +90,9 @@ class ChatModeSelectorScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withAlpha(26), // 0.1 opacity = 26/255
+                  color: Theme.of(context)
+                      .primaryColor
+                      .withAlpha(26), // 0.1 opacity = 26/255
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(

@@ -182,19 +182,19 @@ class AudioService {
       if (!recordingFile.existsSync()) {
         return 'Recording file not found';
       }
-      
+
       // Log that we're processing the audio
       _logger.i('Processing audio recording at: $_recordingPath');
-      
+
       // Create an instance of SpeechToTextService
       final speechToText = SpeechToTextService();
-      
+
       // Transcribe the audio using the service
       final transcription = await speechToText.transcribeAudio(_recordingPath!);
-      
+
       // Log the result
       _logger.i('Audio transcription result: $transcription');
-      
+
       return transcription;
     } catch (e) {
       debugPrint('Error processing audio: $e');
