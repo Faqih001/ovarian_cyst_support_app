@@ -56,12 +56,7 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
 
     try {
       // Load recent symptom entries
-      final symptomsData = await _databaseService.getSymptomEntries();
-      
-      // Convert dynamic data to SymptomEntry objects
-      final symptoms = symptomsData.map((data) {
-        return SymptomEntry.fromMap(data as Map<String, dynamic>);
-      }).toList();
+      final symptoms = await _databaseService.getSymptomEntries();
 
       // Sort by date descending
       symptoms.sort((a, b) => b.date.compareTo(a.date));
@@ -72,12 +67,7 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
           symptoms.where((s) => s.date.isAfter(thirtyDaysAgo)).toList();
 
       // Load prediction history
-      final predictionsData = await _databaseService.getSymptomPredictions();
-      
-      // Convert dynamic data to SymptomPrediction objects
-      final predictions = predictionsData.map((data) {
-        return SymptomPrediction.fromMap(data as Map<String, dynamic>);
-      }).toList();
+      final predictions = await _databaseService.getSymptomPredictions();
 
       // Get the latest prediction
       SymptomPrediction? latestPrediction;

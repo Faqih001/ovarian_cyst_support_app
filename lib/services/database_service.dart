@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:ovarian_cyst_support_app/models/treatment_item.dart';
+import 'package:ovarian_cyst_support_app/models/symptom_entry.dart';
+import 'package:ovarian_cyst_support_app/models/symptom_prediction.dart';
 
 /// Base class for Firebase database operations
 abstract class DatabaseService {
@@ -102,10 +104,10 @@ abstract class DatabaseService {
   Future<List<Map<String, dynamic>>> getRecentSymptomEntries();
   
   /// Get symptom entries for AI prediction
-  Future<List<dynamic>> getSymptomEntries();
+  Future<List<SymptomEntry>> getSymptomEntries();
   
   /// Get symptom predictions history
-  Future<List<dynamic>> getSymptomPredictions();
+  Future<List<SymptomPrediction>> getSymptomPredictions();
   
   /// Save a symptom prediction
   Future<void> saveSymptomPrediction(Map<String, dynamic> prediction);
