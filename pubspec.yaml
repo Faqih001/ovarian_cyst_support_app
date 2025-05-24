@@ -29,7 +29,8 @@ dependencies:
   ml_dataframe: ^1.6.0
   ml_preprocessing: ^7.0.2
   google_generative_ai: ^0.4.7
-  google_ml_kit: ^0.16.3
+  # Replacing google_ml_kit with mobile_scanner for barcode scanning
+  mobile_scanner: ^7.0.0
   image_cropper: ^9.1.0
   image_cropper_platform_interface: ^7.1.0
   image_cropper_for_web: ^6.1.0
@@ -125,3 +126,8 @@ flutter:
     - assets/images/education/
     - assets/animations/
     - assets/healthcare_facilities.csv
+
+# Adding dependency overrides to fix build issues
+dependency_overrides:
+  # Exclude problematic package by using a different version of google_ml_kit
+  google_ml_kit: 0.15.0

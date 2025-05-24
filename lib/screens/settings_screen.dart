@@ -9,6 +9,7 @@ import 'package:ovarian_cyst_support_app/services/sync_service.dart';
 import 'package:ovarian_cyst_support_app/services/theme_service.dart';
 import 'package:ovarian_cyst_support_app/screens/privacy_policy_screen.dart';
 import 'package:ovarian_cyst_support_app/screens/terms_of_service_screen.dart';
+import 'package:ovarian_cyst_support_app/screens/barcode_scanner_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -446,6 +447,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.cleaning_services_outlined),
             onTap: () {
               _clearCache();
+            },
+          ),
+          ListTile(
+            title: const Text('Scan QR Code'),
+            subtitle: const Text('Scan QR codes for health information'),
+            trailing: const Icon(Icons.qr_code_scanner),
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BarcodeScannerScreen(),
+                ),
+              );
+
+              if (result != null && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Scanned code: $result')),
+                );
+              }
             },
           ),
 

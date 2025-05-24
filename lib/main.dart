@@ -10,6 +10,7 @@ import 'package:ovarian_cyst_support_app/services/auth_service.dart';
 import 'package:ovarian_cyst_support_app/services/payment_service.dart';
 import 'package:ovarian_cyst_support_app/services/firestore_service.dart';
 import 'package:ovarian_cyst_support_app/services/hospital_service.dart';
+import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:ovarian_cyst_support_app/firebase_options.dart';
 import 'package:ovarian_cyst_support_app/services/database_service_factory.dart';
@@ -53,6 +54,8 @@ void main() async {
           Provider<PaymentService>(create: (_) => PaymentService()),
           Provider<FirestoreService>(create: (_) => firestoreService),
           Provider<HospitalService>(create: (_) => hospitalService),
+          // Add the database service
+          Provider<DatabaseService>.value(value: databaseService),
         ],
         child: const MyApp(),
       ),
@@ -76,12 +79,24 @@ Future<void> _initializeFirebaseWithRetry(Logger logger,
   int attempts = 0;
   while (attempts < maxAttempts) {
     try {
+      // Check if Firebase is already initialized to prevent duplicate initialization
+      if (Firebase.apps.isNotEmpty) {
+        logger.i('Firebase is already initialized, skipping initialization');
+        return;
+      }
+      
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
       logger.i('Firebase initialized successfully');
       return;
     } catch (e) {
+      // Handle the duplicate app error specifically
+      if (e.toString().contains('duplicate-app')) {
+        logger.i('Firebase is already initialized (caught duplicate-app error)');
+        return;
+      }
+      
       attempts++;
       logger.w('Firebase initialization attempt $attempts failed: $e');
       if (attempts == maxAttempts) rethrow;

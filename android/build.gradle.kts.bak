@@ -13,18 +13,6 @@ allprojects {
         google()
         mavenCentral()
     }
-    
-    // Add configuration to resolve dependency conflicts
-    configurations.all {
-        resolutionStrategy {
-            // Force specific versions for conflicting dependencies
-            force("com.google.firebase:firebase-iid:21.1.0")
-            force("com.google.firebase:firebase-messaging:23.4.1")
-            
-            // Exclude conflicting classes
-            exclude(group = "com.google.firebase", module = "firebase-iid")
-        }
-    }
 }
 
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()

@@ -926,125 +926,117 @@ packages:
     source: hosted
     version: "0.5.12"
   google_ml_kit:
-    dependency: "direct main"
+    dependency: "direct overridden"
     description:
       name: google_ml_kit
-      sha256: "208c22edf0e6c6621f4e95881e8fd08f602728f5c60ef8d845a817a948555b3e"
+      sha256: c309d247d8bd1f128be041e0428af233e56a7ab0733325e0b644edfa53c80e3d
       url: "https://pub.dev"
     source: hosted
-    version: "0.16.3"
+    version: "0.15.0"
   google_mlkit_barcode_scanning:
     dependency: transitive
     description:
       name: google_mlkit_barcode_scanning
-      sha256: "965183a8cd5cef8477ceea5dbdf29c34a739cf0cfbf1bdad54cd3f9f1807afe5"
+      sha256: "60171e66d05a57f19d4a4e4422bbd8d448569db9ab59f3c5e13bbea2492598c7"
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.0"
+    version: "0.7.0"
   google_mlkit_commons:
     dependency: transitive
     description:
       name: google_mlkit_commons
-      sha256: "046586b381cdd139f7f6a05ad6998f7e339d061bd70158249907358394b5f496"
+      sha256: "42c31500be3aba08bcc2cf45d5af648affc40e46684f437b8383084657e982cf"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.1"
+    version: "0.4.0"
   google_mlkit_digital_ink_recognition:
     dependency: transitive
     description:
       name: google_mlkit_digital_ink_recognition
-      sha256: "7f8041be41546cadcfd0e200822dad4c3e1aa360cdc46b58746e9cfea9842cd5"
+      sha256: cca35fb771284fc8b5ac78af86b665ac55a78f39a4868637c17d759adfd32848
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.0"
+    version: "0.8.0"
   google_mlkit_entity_extraction:
     dependency: transitive
     description:
       name: google_mlkit_entity_extraction
-      sha256: "0df128a02b59736ea19b2d620c21a76083d238ad8661e154839b7692202f2ce7"
+      sha256: "4fcd25c87d97c30a9b379a14fc9f1c041da650f8ad5984f4f3045404a10d3041"
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.0"
+    version: "0.8.0"
   google_mlkit_face_detection:
     dependency: transitive
     description:
       name: google_mlkit_face_detection
-      sha256: a6ccff7d6ca8dfc2ab845ea7481645342e82aed31a81edd075169a3abbb25ed3
+      sha256: "61889535a9c63a8e6322e25969f75a4a950a56103bdd477f1a5817d6f06553b9"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.0"
-  google_mlkit_face_mesh_detection:
-    dependency: transitive
-    description:
-      name: google_mlkit_face_mesh_detection
-      sha256: b2406d8eca7e842d82b43dc020e55aef75cf073aeb9272d49fc0158fd5d705c7
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.2"
+    version: "0.7.0"
   google_mlkit_image_labeling:
     dependency: transitive
     description:
       name: google_mlkit_image_labeling
-      sha256: c5f54f31c82ab053186169ab88ab5c0731b4b920b95ffbd3de9b9cbfd93025bd
+      sha256: "72b93362d6c94c945436d0d435bf058ebc591128ffce871f7de4e460e43cf07b"
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.0"
+    version: "0.7.0"
   google_mlkit_language_id:
     dependency: transitive
     description:
       name: google_mlkit_language_id
-      sha256: "33d63fbc4e2776e70e70c093ee6d0cb57b5452b8959b165db4f9d06fcaf5feb4"
+      sha256: "356626b8a013e2a115ec477b291aa585da1b21d16d9199218e9ddfec1e1b25bc"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.0"
+    version: "0.7.0"
   google_mlkit_object_detection:
     dependency: transitive
     description:
       name: google_mlkit_object_detection
-      sha256: "4c4cfe87fd63d7c45c4086c538e150124662a1a38d71472cd0ccabfd3990706d"
+      sha256: "550c5ffb9a3ca5b460593d47fcc31648e49057becb5899bef4e0ff737524021e"
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.0"
+    version: "0.8.0"
   google_mlkit_pose_detection:
     dependency: transitive
     description:
       name: google_mlkit_pose_detection
-      sha256: "25027e81b40bd2197ad6f1d4f9a6c153a874cf5c66dbb5ac0a8a704573a79c70"
+      sha256: "8775e8b940ae4ff3fa10d3f52bfed534f9a0e36d462efbac27ef360c0081cc3d"
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.0"
+    version: "0.7.0"
   google_mlkit_selfie_segmentation:
     dependency: transitive
     description:
       name: google_mlkit_selfie_segmentation
-      sha256: ca30972a4fca5d46c12c6add4cb839385552a322ee0d4e500c888b0817b93003
+      sha256: ba956596e98559a07d53b0afdc460fa4f680e6577f6378ed97e9f9a52920449e
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.0"
+    version: "0.4.0"
   google_mlkit_smart_reply:
     dependency: transitive
     description:
       name: google_mlkit_smart_reply
-      sha256: fe05a977d8e5346a47f05cc40cddb6cfecac9a4921e912f2ac9458d2f1e74ab6
+      sha256: "38c9c76b07c9805b3ebbceec5802ef6c51fd52063167042788cdfdd0d42e9ade"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.0"
+    version: "0.7.0"
   google_mlkit_text_recognition:
     dependency: transitive
     description:
       name: google_mlkit_text_recognition
-      sha256: d484de2a10961a6f0ff8b54cc92b71bfbb0e65509be0903edca0e1f9256ca4c2
+      sha256: a3d30e8ba87c88fb9b7c3b7d81d524153ea32497ac37be490f4992f2902dbabb
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.0"
+    version: "0.7.0"
   google_mlkit_translation:
     dependency: transitive
     description:
       name: google_mlkit_translation
-      sha256: b8f9c3de545f54ed5285e4a57b205d84a912c26003705a9f1eec2a40fc8a5471
+      sha256: e3e76b21f04714cbc38d158f0d0b2aef48c50e1e012ada2367e0ffe0ebf16f91
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.0"
+    version: "0.7.0"
   graphs:
     dependency: transitive
     description:
@@ -1389,6 +1381,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.2"
+  mobile_scanner:
+    dependency: "direct main"
+    description:
+      name: mobile_scanner
+      sha256: "72f06a071aa8b14acea3ab43ea7949eefe4a2469731ae210e006ba330a033a8c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.0.0"
   mockito:
     dependency: "direct dev"
     description:
@@ -2292,4 +2292,4 @@ packages:
     version: "3.1.3"
 sdks:
   dart: ">=3.7.0 <4.0.0"
-  flutter: ">=3.27.0"
+  flutter: ">=3.29.0"
