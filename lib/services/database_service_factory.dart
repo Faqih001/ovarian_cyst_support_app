@@ -46,7 +46,7 @@ class DatabaseServiceFactory {
 
     _logger.i('Using Firebase Firestore database service');
     return FirestoreDatabaseService();
-    
+
     // SQLite is no longer supported after migration
   }
 
@@ -55,7 +55,7 @@ class DatabaseServiceFactory {
     try {
       // Get a reference to the database service
       final dbService = FirestoreDatabaseService();
-      
+
       // Try to perform a simple operation to check connectivity
       await dbService.checkConnection();
       return true;

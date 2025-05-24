@@ -61,7 +61,7 @@ class MigrationService {
   static Future<void> _performAutomaticMigrationWithRetry() async {
     // Initial attempt
     final success = await _performAutomaticMigration();
-    
+
     // If failed due to network/Firebase issues, schedule a retry for later
     if (!success) {
       _logger.i('Will retry migration later when Firebase is available');
@@ -108,11 +108,11 @@ class MigrationService {
   /// Check if the error is related to connectivity
   static bool _isConnectivityError(dynamic error) {
     final errorStr = error.toString().toLowerCase();
-    return errorStr.contains('network') || 
-           errorStr.contains('connection') || 
-           errorStr.contains('socket') || 
-           errorStr.contains('timeout') ||
-           errorStr.contains('unavailable');
+    return errorStr.contains('network') ||
+        errorStr.contains('connection') ||
+        errorStr.contains('socket') ||
+        errorStr.contains('timeout') ||
+        errorStr.contains('unavailable');
   }
 
   /// Check if Firebase is available and properly initialized

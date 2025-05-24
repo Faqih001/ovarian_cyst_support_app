@@ -1558,8 +1558,8 @@ class ChatbotBottomSheet extends StatelessWidget {
 
     return DraggableScrollableSheet(
       initialChildSize: 0.88, // Further increased for better visibility
-      minChildSize: 0.65,     // Increased min size
-      maxChildSize: 0.98,     // Allow almost full screen
+      minChildSize: 0.65, // Increased min size
+      maxChildSize: 0.98, // Allow almost full screen
       builder: (_, controller) {
         return Padding(
           padding: EdgeInsets.only(
