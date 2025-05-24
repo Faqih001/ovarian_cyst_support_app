@@ -279,96 +279,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // This method is kept for reference but not currently used
-  // ignore: unused_element
-  Future<void> _deleteAccount(BuildContext context) async {
-    // Capture context-dependent objects before any async operations
-    final navigator = Navigator.of(context);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final authService = Provider.of<AuthService>(context, listen: false);
+  // Method to handle barcode scanning
+  Future<void> _scanBarcode(BuildContext context) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BarcodeScannerScreen(),
+      ),
+    );
 
-    // Show confirmation dialog using captured navigator
-    final bool confirm = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Delete Account'),
-            content: const Text(
-              'Are you sure you want to delete your account? This action cannot be undone.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-
-    if (!confirm) return;
-
-    // Check if mounted first
+    // After the async gap, check if widget is still in the tree
     if (!mounted) return;
 
-    // Show loading indicator
-    bool isLoading = true;
-
-    // We need to use a local function to show the dialog after checking mounted
-    void showLoadingDialog() {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) {
-          return PopScope(
-            canPop: false,
-            child: const Center(child: CircularProgressIndicator()),
-          );
-        },
+    // Now it's safe to use context after the mounted check
+    if (result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Scanned code: $result')),
       );
-    }
-
-    // Show loading dialog
-    if (mounted) {
-      showLoadingDialog();
-    }
-
-    try {
-      // Delete user account
-      await authService.deleteAccount();
-
-      // Dismiss loading dialog if still showing
-      if (isLoading && mounted) {
-        navigator.pop(); // Remove loading dialog
-        isLoading = false;
-      }
-
-      // Check if widget is still mounted before navigating
-      if (mounted) {
-        // Navigate to login screen using captured navigator
-        navigator.pushReplacementNamed('/login');
-      }
-    } catch (e) {
-      _logger.e('Error deleting account: $e');
-
-      // Dismiss loading dialog if still showing
-      if (isLoading && mounted) {
-        navigator.pop(); // Remove loading dialog
-        isLoading = false;
-      }
-
-      // Check if widget is still mounted before showing error
-      if (mounted) {
-        // Show error message using captured scaffoldMessenger
-        scaffoldMessenger.showSnackBar(
-          const SnackBar(
-            content: Text('Failed to delete account. Please try again.'),
-          ),
-        );
-      }
     }
   }
 
@@ -453,19 +380,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Scan QR Code'),
             subtitle: const Text('Scan QR codes for health information'),
             trailing: const Icon(Icons.qr_code_scanner),
-            onTap: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const BarcodeScannerScreen(),
-                ),
-              );
-
-              if (result != null && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Scanned code: $result')),
-                );
-              }
+            onTap: () {
+              _scanBarcode(context);
             },
           ),
 

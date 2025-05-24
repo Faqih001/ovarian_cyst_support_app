@@ -95,7 +95,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           if (scanResult != null)
             Container(
               padding: const EdgeInsets.all(16),
-              color: AppColors.secondary.withOpacity(0.3),
+              color: AppColors.secondary.withAlpha(
+                  77), // Using withAlpha instead of deprecated withOpacity
               width: double.infinity,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
