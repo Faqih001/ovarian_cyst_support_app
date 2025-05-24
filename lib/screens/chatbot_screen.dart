@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 import 'package:ovarian_cyst_support_app/models/chat_message.dart';
 import 'package:ovarian_cyst_support_app/services/ai_service.dart';
 import 'package:ovarian_cyst_support_app/services/chat_storage_service.dart';
 import 'package:ovarian_cyst_support_app/widgets/voice_recording_widget.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:intl/intl.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart';
+
+enum ChatMode {
+  textChat,
+  imageAnalysis,
+}
 
 class ChatbotScreen extends StatefulWidget {
-  const ChatbotScreen({super.key});
+  final ChatMode chatMode;
+
+  const ChatbotScreen({
+    super.key,
+    this.chatMode = ChatMode.textChat,
+  });
 
   @override
   State<ChatbotScreen> createState() => _ChatbotScreenState();
@@ -19,6 +31,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   final ScrollController _scrollController = ScrollController();
   final AIService _aiService = AIService();
   final ChatStorageService _chatStorage = ChatStorageService();
+  final ImagePicker _picker = ImagePicker();
+
+  // State for currently selected image
+  Uint8List? _selectedImageData;
+  bool _isImageAnalysisMode = false;
+  bool _isAnalyzingImage = false;
 
   final List<ChatMessage> _messages = [];
   bool _isComposing = false;
@@ -38,9 +56,20 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     "Can cysts affect pregnancy?",
   ];
 
+  // Image analysis specific questions
+  final List<String> _imageSuggestedQuestions = [
+    "What does this ultrasound show?",
+    "Is this a complex or simple cyst?",
+    "What size is the cyst in the image?",
+    "What are the key features to note?",
+    "What should I ask my doctor about this?",
+    "How is this type of cyst typically treated?",
+  ];
+
   @override
   void initState() {
     super.initState();
+    _isImageAnalysisMode = widget.chatMode == ChatMode.imageAnalysis;
     _checkConnectivity();
     _loadChatHistory();
     _addWelcomeMessage();
@@ -94,9 +123,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 
   void _addWelcomeMessage() {
+    String welcomeText = widget.chatMode == ChatMode.textChat
+        ? "Hello! I'm your OvaCare assistant, powered by Google's Gemini AI. I can provide more accurate answers about ovarian cysts, track symptoms, and offer personalized support. How can I help you today?"
+        : "Welcome to Image Analysis mode! You can upload images of ultrasounds or other medical images related to ovarian cysts for educational insights. Remember, this is not a diagnostic tool and cannot replace professional medical advice.";
+
     final welcomeMessage = ChatMessage(
-      text:
-          "Hello! I'm your OvaCare assistant, powered by Google's Gemini AI. I can provide more accurate answers about ovarian cysts, track symptoms, and offer personalized support. How can I help you today?",
+      text: welcomeText,
       source: MessageSource.bot,
       isUser: false,
       timestamp: DateTime.now(),
@@ -467,6 +499,86 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 90,
+    );
+
+    if (pickedFile != null) {
+      try {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _selectedImageData = bytes;
+          _analyzeImage();
+        });
+      } catch (e) {
+        _addSystemMessage("Error processing image: ${e.toString()}");
+      }
+    }
+  }
+
+  Future<void> _analyzeImage() async {
+    if (_selectedImageData == null) return;
+    
+    setState(() {
+      _isAnalyzingImage = true;
+    });
+
+    // Add user image message
+    _messages.add(ChatMessage(
+      text: "Image upload for analysis",
+      source: MessageSource.user,
+      isUser: true,
+      timestamp: DateTime.now(),
+      imageBytes: _selectedImageData,
+    ));
+
+    _scrollToBottom();
+
+    try {
+      // In a real implementation, you would pass the image to the AI service
+      final botResponse = await _aiService.getImageAnalysisResponse(_selectedImageData!);
+
+      if (mounted) {
+        setState(() {
+          _isAnalyzingImage = false;
+          _messages.add(
+            ChatMessage(
+              text: botResponse,
+              source: MessageSource.bot,
+              isOffline: _isOffline,
+              isUser: false,
+              timestamp: DateTime.now(),
+            ),
+          );
+        });
+
+        // Save chat history
+        _saveChatHistory();
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isAnalyzingImage = false;
+          _messages.add(
+            ChatMessage(
+              text: "I'm sorry, I couldn't analyze this image. Please try with another image or check your internet connection.",
+              source: MessageSource.bot,
+              isOffline: _isOffline,
+              isUser: false,
+              timestamp: DateTime.now(),
+            ),
+          );
+        });
+        _scrollToBottom();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -478,16 +590,16 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         // Implement a simpler version of the title that won't overflow
         title: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Icon(
-              Icons.smart_toy_rounded,
+              _isImageAnalysisMode ? Icons.image_search : Icons.smart_toy_rounded,
               color: Colors.blue,
               size: 22,
             ),
             SizedBox(width: 8),
             Expanded(
               child: Text(
-                'OvaCare AI',
+                _isImageAnalysisMode ? 'Image Analysis' : 'OvaCare AI',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.black87,
@@ -585,14 +697,20 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             height: 50,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: _suggestedQuestions.length,
+              itemCount: _isImageAnalysisMode 
+                  ? _imageSuggestedQuestions.length 
+                  : _suggestedQuestions.length,
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               itemBuilder: (context, index) {
+                final questionText = _isImageAnalysisMode
+                    ? _imageSuggestedQuestions[index]
+                    : _suggestedQuestions[index];
+                    
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
                   child: InkWell(
                     onTap: () {
-                      _handleSubmitted(_suggestedQuestions[index]);
+                      _handleSubmitted(questionText);
                     },
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
@@ -611,7 +729,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                         constraints: BoxConstraints(
                             maxWidth: MediaQuery.of(context).size.width * 0.7),
                         child: Text(
-                          _suggestedQuestions[index],
+                          questionText,
                           style: TextStyle(
                             color: Theme.of(context).primaryColor,
                             fontSize: 12,
@@ -647,19 +765,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  DefaultTextStyle(
+                  Text(
+                    'Typing...',
                     style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    child: AnimatedTextKit(
-                      animatedTexts: [WavyAnimatedText('Typing...')],
-                      isRepeatingAnimation: true,
-                      repeatForever: true,
-                    ),
                   ),
                 ],
               ),
             ),
 
-          // Text input
+          // Text input or image upload
           Container(
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
@@ -678,20 +792,60 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               ),
               child: Row(
                 children: [
+                  // Show mic or image upload based on mode
                   IconButton(
                     icon: Icon(
-                      _isProcessingVoice ? Icons.more_horiz : Icons.mic,
-                      color: _isProcessingVoice
+                      _isImageAnalysisMode 
+                          ? Icons.photo_library
+                          : (_isProcessingVoice ? Icons.more_horiz : Icons.mic),
+                      color: (_isProcessingVoice || _isAnalyzingImage)
                           ? Colors.grey
                           : Theme.of(context).primaryColor,
                     ),
-                    onPressed: _isProcessingVoice
+                    onPressed: (_isProcessingVoice || _isAnalyzingImage)
                         ? null
-                        : () => _showVoiceRecordingModal(),
-                    tooltip: _isProcessingVoice
-                        ? 'Processing voice message...'
-                        : 'Send voice message',
+                        : (_isImageAnalysisMode ? _pickImage : () => _showVoiceRecordingModal()),
+                    tooltip: _isImageAnalysisMode
+                        ? 'Upload image for analysis'
+                        : (_isProcessingVoice
+                            ? 'Processing voice message...'
+                            : 'Send voice message'),
                   ),
+                  
+                  // Add a camera button for image mode
+                  if (_isImageAnalysisMode)
+                    IconButton(
+                      icon: Icon(
+                        Icons.camera_alt,
+                        color: _isAnalyzingImage
+                            ? Colors.grey
+                            : Theme.of(context).primaryColor,
+                      ),
+                      onPressed: _isAnalyzingImage
+                          ? null
+                          : () async {
+                              final pickedFile = await _picker.pickImage(
+                                source: ImageSource.camera,
+                                maxWidth: 800,
+                                maxHeight: 800,
+                                imageQuality: 90,
+                              );
+                              
+                              if (pickedFile != null) {
+                                try {
+                                  final bytes = await pickedFile.readAsBytes();
+                                  setState(() {
+                                    _selectedImageData = bytes;
+                                    _analyzeImage();
+                                  });
+                                } catch (e) {
+                                  _addSystemMessage("Error processing image: ${e.toString()}");
+                                }
+                              }
+                            },
+                      tooltip: 'Take a photo',
+                    ),
+                  
                   Expanded(
                     child: TextField(
                       controller: _textController,
@@ -702,7 +856,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       },
                       onSubmitted: _isComposing ? _handleSubmitted : null,
                       decoration: InputDecoration(
-                        hintText: 'Ask a question...',
+                        hintText: _isImageAnalysisMode 
+                            ? 'Ask about the uploaded image...' 
+                            : 'Ask a question...',
                         hintStyle: TextStyle(color: Colors.grey[400]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(25.0),
@@ -827,12 +983,30 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width * 0.7,
                   ),
-                  child: Text(
-                    message.text,
-                    style: TextStyle(
-                      color: isUserMessage ? Colors.white : Colors.black87,
-                    ),
-                    softWrap: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Show image if available
+                      if (message.imageBytes != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.memory(
+                            message.imageBytes!,
+                            fit: BoxFit.contain,
+                            width: MediaQuery.of(context).size.width * 0.6,
+                          ),
+                        ),
+                      if (message.imageBytes != null)
+                        const SizedBox(height: 8),
+                      // Text content
+                      Text(
+                        message.text,
+                        style: TextStyle(
+                          color: isUserMessage ? Colors.white : Colors.black87,
+                        ),
+                        softWrap: true,
+                      ),
+                    ],
                   ),
                 ),
                 Padding(

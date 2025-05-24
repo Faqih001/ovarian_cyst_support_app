@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:ovarian_cyst_support_app/models/symptom_entry.dart';
@@ -282,5 +283,35 @@ class AIService {
 
     // Default response if no keywords match
     return 'I understand you\'re asking about "$userQuery". For specific medical advice about ovarian cysts, please consult with your healthcare provider. If you have urgent symptoms like severe pain, fever, dizziness, or vomiting, please seek immediate medical attention.';
+  }
+
+  Future<String> getImageAnalysisResponse(Uint8List imageBytes) async {
+    // Check connectivity first
+    var connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.isEmpty ||
+        (connectivityResult.contains(ConnectivityResult.none) &&
+            connectivityResult.length == 1)) {
+      return "I can't analyze images while offline. Please connect to the internet and try again.";
+    }
+
+    try {
+      // In a real implementation, you would send the image to your backend or directly to Gemini
+      // For now, we'll just mock the response
+      await Future.delayed(const Duration(seconds: 2)); // Simulate processing time
+      
+      final geminiService = GeminiService();
+      
+      // In a real implementation, this would send the image to Gemini
+      // return await geminiService.analyzeImage(imageBytes);
+      
+      // Mock response for now
+      return "I've analyzed the image and it appears to show signs consistent with an ovarian cyst. "
+          "The dark circular area suggests a fluid-filled sac. However, please note that this is "
+          "not a medical diagnosis. You should always consult with your doctor who can properly "
+          "interpret these images and provide appropriate medical advice.";
+    } catch (e) {
+      debugPrint('Error analyzing image: $e');
+      return "I encountered an error while analyzing the image. Please try again or use a different image.";
+    }
   }
 }

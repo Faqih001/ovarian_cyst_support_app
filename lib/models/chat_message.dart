@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 enum MessageSource { user, bot, system }
 
 enum MessageType { text, image, loading, error }
@@ -8,6 +10,7 @@ class ChatMessage {
   final DateTime timestamp;
   final MessageType messageType;
   final String? imageUrl;
+  final Uint8List? imageBytes;
   final MessageSource source;
   final bool isOffline;
 
@@ -17,6 +20,7 @@ class ChatMessage {
     required this.timestamp,
     this.messageType = MessageType.text,
     this.imageUrl,
+    this.imageBytes,
     this.source = MessageSource.user,
     this.isOffline = false,
   });
