@@ -1,13 +1,18 @@
 [theme]
-primaryColor = "#F63366"
+primaryColor = "#6349b1"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F0F2F6"
 textColor = "#262730"
 font = "sans serif"
 
 [server]
-enableCORS = false
+headless = true
+enableCORS = true
 enableXsrfProtection = false
 
 [browser]
 gatherUsageStats = false
+
+[runner]
+magicEnabled = true
+fastReruns = true

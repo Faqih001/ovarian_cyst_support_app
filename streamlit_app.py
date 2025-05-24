@@ -1,44 +1,27 @@
 """
-PCOS Risk Assessment Streamlit App
-This is the entry point for Streamlit Cloud deployment
+Streamlit app entry point.
+This file serves as a pointer to the actual app implementation in ml/streamlit/app.py.
 """
-
 import os
 import sys
 import streamlit as st
 
-# Add the ml directory to the path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "ml")))
+# Set page configuration must be the first streamlit command
+st.set_page_config(
+    page_title="PCOS Risk Assessment",
+    page_icon="🩺",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-try:
-    # Try to import the main function from our app
-    from ml.streamlit.app import main
-    
-    # Execute the main function
-    if __name__ == "__main__":
-        main()
-except ImportError as e:
-    st.error(f"Error importing the Streamlit app: {e}")
-    st.write("#### Debugging Information:")
-    st.write(f"Current directory: {os.getcwd()}")
-    st.write(f"Python path: {sys.path}")
-    
-    # Check if the file exists
-    app_path = os.path.join(os.path.dirname(__file__), "ml", "streamlit", "app.py")
-    st.write(f"App file exists: {os.path.exists(app_path)}")
-    
-    # List directories to debug
-    st.write("#### Directory Structure:")
-    try:
-        st.write("Root directory:")
-        st.write(os.listdir(os.path.dirname(__file__)))
-        
-        if os.path.exists(os.path.join(os.path.dirname(__file__), "ml")):
-            st.write("ML directory:")
-            st.write(os.listdir(os.path.join(os.path.dirname(__file__), "ml")))
-            
-            if os.path.exists(os.path.join(os.path.dirname(__file__), "ml", "streamlit")):
-                st.write("Streamlit directory:")
-                st.write(os.listdir(os.path.join(os.path.dirname(__file__), "ml", "streamlit")))
-    except Exception as list_err:
-        st.error(f"Error listing directories: {list_err}")
+# Add the project root to the Python path
+project_root = os.path.dirname(os.path.abspath(__file__))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Import the create_streamlit_ui function from the app.py file
+from ml.streamlit.app import create_streamlit_ui
+
+# This will be executed by Streamlit when it loads this file
+if __name__ == "__main__":
+    create_streamlit_ui()
