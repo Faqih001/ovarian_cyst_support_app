@@ -38,22 +38,7 @@ class TreatmentItem {
     this.manufacturer,
     this.dosageInfo,
     this.sideEffects,
-  })  : assert(
-          name.isNotEmpty,
-          'Treatment name cannot be empty',
-        ),
-        assert(
-          description.isNotEmpty,
-          'Treatment description cannot be empty',
-        ),
-        assert(
-          cost == null || cost >= 0,
-          'Cost must be null or non-negative',
-        ),
-        assert(
-          stockLevel == null || stockLevel >= 0,
-          'Stock level must be null or non-negative',
-        );
+  });
 
   // Create a copy with updated values
   TreatmentItem copyWith({

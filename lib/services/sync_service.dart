@@ -22,11 +22,21 @@ class SyncService extends ChangeNotifier {
   /// Check if device has internet connectivity
   Future<bool> _checkConnectivity() async {
     try {
-      final connectivityResult = await Connectivity().checkConnectivity();
-      return connectivityResult == ConnectivityResult.wifi ||
-          connectivityResult == ConnectivityResult.mobile ||
-          connectivityResult == ConnectivityResult.ethernet ||
-          connectivityResult == ConnectivityResult.vpn;
+      final connectivityResults = await Connectivity().checkConnectivity();
+      // Check if connectivityResults is a list or a single value
+      if (connectivityResults is List<ConnectivityResult>) {
+        return connectivityResults.contains(ConnectivityResult.wifi) ||
+            connectivityResults.contains(ConnectivityResult.mobile) ||
+            connectivityResults.contains(ConnectivityResult.ethernet) ||
+            connectivityResults.contains(ConnectivityResult.vpn);
+      } else {
+        // Fallback for older API behavior
+        final singleResult = connectivityResults as ConnectivityResult;
+        return singleResult == ConnectivityResult.wifi ||
+            singleResult == ConnectivityResult.mobile ||
+            singleResult == ConnectivityResult.ethernet ||
+            singleResult == ConnectivityResult.vpn;
+      }
     } catch (e) {
       _logger.e('Error checking connectivity: $e');
       return false;

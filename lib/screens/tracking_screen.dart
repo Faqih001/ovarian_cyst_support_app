@@ -73,18 +73,35 @@ class _TrackingScreenState extends State<TrackingScreen>
 
       // Group symptoms by date
       for (var symptom in allSymptoms) {
-        final date = DateTime(
-          symptom.date.year,
-          symptom.date.month,
-          symptom.date.day,
+        if (symptom['date'] == null) continue;
+
+        // Parse the date
+        final DateTime date = symptom['date'] is DateTime
+            ? symptom['date']
+            : DateTime.parse(symptom['date'].toString());
+
+        final dateKey = DateTime(
+          date.year,
+          date.month,
+          date.day,
         );
-        if (!newEvents.containsKey(date)) {
-          newEvents[date] = [];
+
+        if (!newEvents.containsKey(dateKey)) {
+          newEvents[dateKey] = [];
         }
-        newEvents[date]!.add({
+
+        List<String> symptomsList = [];
+        if (symptom['symptoms'] is List) {
+          symptomsList =
+              (symptom['symptoms'] as List).map((e) => e.toString()).toList();
+        } else if (symptom['symptoms'] is String) {
+          symptomsList = [symptom['symptoms']];
+        }
+
+        newEvents[dateKey]!.add({
           'type': 'symptom',
-          'name': symptom.symptoms.join(', '),
-          'intensity': symptom.painLevel,
+          'name': symptomsList.join(', '),
+          'intensity': symptom['painLevel'] ?? 0,
         });
       }
 

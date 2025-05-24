@@ -78,6 +78,7 @@ class FirestoreDatabaseService extends DatabaseService {
     }
   }
 
+  @override
   Future<List<SymptomEntry>> getSymptomEntries() async {
     try {
       final QuerySnapshot snapshot =
@@ -565,6 +566,7 @@ class FirestoreDatabaseService extends DatabaseService {
     }
   }
 
+  @override
   Future<List<SymptomPrediction>> getSymptomPredictions() async {
     try {
       final QuerySnapshot snapshot =

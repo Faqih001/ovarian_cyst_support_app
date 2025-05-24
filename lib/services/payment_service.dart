@@ -36,19 +36,7 @@ class PaymentService {
     }
   }
 
-  /// Check if device has internet connectivity
-  Future<bool> _checkConnectivity() async {
-    try {
-      final result = await Connectivity().checkConnectivity();
-      return result == ConnectivityResult.wifi ||
-          result == ConnectivityResult.mobile ||
-          result == ConnectivityResult.ethernet ||
-          result == ConnectivityResult.vpn;
-    } catch (e) {
-      debugPrint('Error checking connectivity: $e');
-      return false;
-    }
-  }
+  // Removed unused method: _checkConnectivity
 
   /// Process a new payment
   Future<Map<String, dynamic>> processPayment(
@@ -58,8 +46,12 @@ class PaymentService {
   ) async {
     try {
       // Check connectivity
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
+      final connectivityResults = await Connectivity().checkConnectivity();
+
+      // Determine if there is an active connection
+      final hasConnection = connectivityResults != ConnectivityResult.none;
+
+      if (!hasConnection) {
         throw Exception('No internet connection');
       }
 
@@ -87,6 +79,7 @@ class PaymentService {
         'description': description,
         'status': PaymentStatus.pending.toString(),
         'paymentIntentId': responseData['id'],
+        'transactionId': responseData['id'], // Add consistent transaction ID
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -106,7 +99,11 @@ class PaymentService {
     try {
       // Check connectivity first
       final connectivityResults = await Connectivity().checkConnectivity();
-      if (connectivityResults.contains(ConnectivityResult.none)) {
+
+      // Determine if there is an active connection
+      final hasConnection = connectivityResults != ConnectivityResult.none;
+
+      if (!hasConnection) {
         debugPrint('No internet connection, cannot check payment status now.');
 
         // Return local status if available
@@ -145,8 +142,12 @@ class PaymentService {
   Future<String> getPaymentReceipt(String transactionId) async {
     try {
       // Check connectivity first
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult.contains(ConnectivityResult.none)) {
+      final connectivityResults = await Connectivity().checkConnectivity();
+
+      // Determine if there is an active connection
+      final hasConnection = connectivityResults != ConnectivityResult.none;
+
+      if (!hasConnection) {
         return 'Cannot generate receipt while offline.';
       }
 
@@ -208,10 +209,22 @@ class PaymentService {
     String status,
   ) async {
     try {
-      await _getPaymentsCollection().doc(transactionId).update({
-        'status': status,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      // Find the document with the matching transactionId
+      final querySnapshot = await _getPaymentsCollection()
+          .where('transactionId', isEqualTo: transactionId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final docId = querySnapshot.docs.first.id;
+        await _getPaymentsCollection().doc(docId).update({
+          'status': status,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        debugPrint(
+            'No payment document found with transactionId: $transactionId');
+      }
     } catch (e) {
       debugPrint('Error updating local payment status: $e');
       rethrow;

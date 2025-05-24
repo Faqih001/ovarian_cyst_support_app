@@ -267,67 +267,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _deleteAccount(BuildContext context) async {
     // Show confirmation dialog
     final bool confirm = await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: const Text(
-          'Are you sure you want to delete your account? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete Account'),
+            content: const Text(
+              'Are you sure you want to delete your account? This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Delete'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
 
     if (!confirm) return;
 
     // Check if mounted first
     if (!mounted) return;
-    
-    // Capture navigator before async operation
-    final navigator = Navigator.of(context);
-    
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return const Center(child: CircularProgressIndicator());
-      },
-    );
 
-    // Get auth service before async operation
+    // Capture all context-dependent objects before async operation
+    final navigator = Navigator.of(context);
     final authService = Provider.of<AuthService>(context, listen: false);
+
+    // Show loading indicator
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+    }
 
     try {
       // Delete user account
       await authService.deleteAccount();
 
-      // Check if widget is still mounted before using context
-      if (!mounted) return;
-
-      // Use captured navigator to navigate
-      navigator.pushReplacementNamed('/login');
+      // Check if widget is still mounted before navigating
+      if (mounted) {
+        // Navigate to login screen
+        navigator.pushReplacementNamed('/login');
+      }
     } catch (e) {
       _logger.e('Error deleting account: $e');
       // Check if widget is still mounted before showing error
-      if (!mounted) return;
-      
-      // Capture scaffoldMessenger here, after checking mounted
-      final scaffoldMessenger = ScaffoldMessenger.of(context);
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          content: Text('Failed to delete account. Please try again.'),
-        ),
-      );
+      if (mounted) {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to delete account. Please try again.'),
+          ),
+        );
+      }
     }
   }
 

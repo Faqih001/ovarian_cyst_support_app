@@ -49,7 +49,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   Future<void> _checkConnectivity() async {
     var connectivityResults = await Connectivity().checkConnectivity();
     setState(() {
-      _isOffline = connectivityResults.contains(ConnectivityResult.none);
+      // Handle either list or single result
+      _isOffline = connectivityResults is List<ConnectivityResult>
+          ? connectivityResults.contains(ConnectivityResult.none)
+          : connectivityResults == ConnectivityResult.none;
     });
 
     // Listen for connectivity changes

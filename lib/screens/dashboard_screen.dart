@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/symptom_entry.dart';
 import '../models/appointment.dart';
@@ -67,14 +68,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final dbService = Provider.of<DatabaseService>(context, listen: false);
       final aiService = Provider.of<AIService>(context, listen: false);
 
-      final symptoms = await dbService.getRecentSymptomEntries(limit: 5);
+      // Remove limit parameter as it may not be supported
+      final symptoms = await dbService.getRecentSymptomEntries();
       final appointments = await dbService.getUpcomingAppointments();
       final prediction = await aiService.getLatestPrediction();
 
+      // Convert Map<String, dynamic> to SymptomEntry objects
+      final convertedSymptoms = symptoms
+          .map((symptom) => SymptomEntry(
+                id: symptom['id'] ?? '',
+                date: symptom['date'] is DateTime
+                    ? symptom['date']
+                    : (symptom['date'] != null
+                        ? DateTime.parse(symptom['date'].toString())
+                        : DateTime.now()),
+                mood: symptom['mood'] ?? '',
+                painLevel: symptom['painLevel'] ?? 0,
+                bloatingLevel: symptom['bloatingLevel'] ?? 0,
+                symptoms: symptom['symptoms'] is List
+                    ? List<String>.from(symptom['symptoms'])
+                    : [],
+                description: symptom['description'] ?? '',
+                notes: symptom['notes'] ?? '',
+                timestamp: symptom['timestamp'] is Timestamp
+                    ? symptom['timestamp'].toDate()
+                    : DateTime.now(),
+                isUploaded: symptom['isUploaded'] ?? false,
+                updatedAt: symptom['updatedAt'] is Timestamp
+                    ? symptom['updatedAt'].toDate()
+                    : DateTime.now(),
+              ))
+          .toList();
+
+      // Convert dynamic to Appointment objects using the proper Appointment model fields
+      final convertedAppointments = appointments
+          .map((apt) => Appointment(
+                id: apt['id'] ?? '',
+                doctorName: apt['doctorName'] ?? '',
+                providerName: apt['providerName'] ?? '',
+                specialization: apt['specialization'] ?? '',
+                purpose: apt['purpose'] ?? '',
+                dateTime: apt['dateTime'] is DateTime
+                    ? apt['dateTime']
+                    : (apt['date'] != null
+                        ? DateTime.parse(apt['date'].toString())
+                        : DateTime.now()),
+                location: apt['location'] ?? '',
+                notes: apt['notes'],
+                reminderEnabled: apt['reminderEnabled'] ?? false,
+              ))
+          .toList();
+
       setState(() {
-        _recentSymptoms = symptoms;
-        _upcomingAppointments = appointments;
-        _latestPrediction = prediction; // This is already SymptomPrediction?
+        _recentSymptoms = convertedSymptoms;
+        _upcomingAppointments = convertedAppointments;
+        _latestPrediction = prediction;
         _unreadMessages = 3; // Placeholder, replace with actual unread count
         _isLoading = false;
       });
