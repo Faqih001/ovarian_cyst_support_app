@@ -50,8 +50,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     var connectivityResults = await Connectivity().checkConnectivity();
     setState(() {
       // Check if we're offline - when the list is empty or contains only ConnectivityResult.none
-      _isOffline = connectivityResults.isEmpty || 
-          (connectivityResults.contains(ConnectivityResult.none) && connectivityResults.length == 1);
+      _isOffline = connectivityResults.isEmpty ||
+          (connectivityResults.contains(ConnectivityResult.none) &&
+              connectivityResults.length == 1);
     });
 
     // Listen for connectivity changes
@@ -59,7 +60,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         .onConnectivityChanged
         .listen((List<ConnectivityResult> results) {
       setState(() {
-        _isOffline = results.isEmpty || 
+        _isOffline = results.isEmpty ||
             (results.contains(ConnectivityResult.none) && results.length == 1);
       });
 
