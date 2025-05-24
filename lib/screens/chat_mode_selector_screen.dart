@@ -89,7 +89,7 @@ class ChatModeSelectorScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  color: Theme.of(context).primaryColor.withAlpha(26), // 0.1 opacity = 26/255
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(

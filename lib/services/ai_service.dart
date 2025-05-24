@@ -299,9 +299,8 @@ class AIService {
       // For now, we'll just mock the response
       await Future.delayed(const Duration(seconds: 2)); // Simulate processing time
       
-      final geminiService = GeminiService();
-      
-      // In a real implementation, this would send the image to Gemini
+      // Commented out for now until implementation is ready
+      // final geminiService = GeminiService();
       // return await geminiService.analyzeImage(imageBytes);
       
       // Mock response for now
