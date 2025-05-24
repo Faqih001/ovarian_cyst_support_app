@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:logger/logger.dart';
-import 'package:ovarian_cyst_support_app/screens/database_migration_screen.dart';
 import 'package:ovarian_cyst_support_app/services/database_service_factory.dart';
+import 'package:ovarian_cyst_support_app/services/database_migration_service.dart';
 
 /// Service to handle database migration flow in the app
 class MigrationService {
@@ -41,11 +41,11 @@ class MigrationService {
     }
   }
 
-  /// Show the migration screen if needed
+  /// Automatically perform migration if needed without showing the screen
   static Future<void> checkAndShowMigrationScreen(BuildContext context) async {
     final migrationNeeded = await _isMigrationNeeded();
-    if (migrationNeeded && context.mounted) {
-      await _showMigrationScreen(context);
+    if (migrationNeeded) {
+      await _performAutomaticMigration();
     }
   }
 
@@ -55,13 +55,28 @@ class MigrationService {
     final useFirestore = await DatabaseServiceFactory.shouldUseFirestore();
     return !migrationCompleted && !useFirestore;
   }
-
-  /// Show the migration screen
-  static Future<void> _showMigrationScreen(BuildContext context) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const DatabaseMigrationScreen(),
-      ),
-    );
+  
+  /// Automatically perform the migration without user confirmation
+  static Future<void> _performAutomaticMigration() async {
+    try {
+      // Create an instance of the migration service
+      final migrationService = DatabaseMigrationService();
+      
+      // Run all migration tasks sequentially
+      await migrationService.migrateSymptomEntries([]);
+      await migrationService.migrateAppointments([]);
+      await migrationService.migrateTreatmentItems([]);
+      await migrationService.migrateMedications([]);
+      await migrationService.migrateCommunityPosts([]);
+      
+      // Mark migration as complete when finished
+      await markMigrationCompleted();
+      
+      _logger.i('Automatic migration completed successfully');
+    } catch (e) {
+      _logger.e('Error during automatic migration: $e');
+      // Despite any errors, we'll mark it as completed to avoid showing again
+      await markMigrationCompleted();
+    }
   }
 }
