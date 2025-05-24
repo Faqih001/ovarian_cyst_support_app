@@ -294,6 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Capture all context-dependent objects before async operation
     final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final authService = Provider.of<AuthService>(context, listen: false);
 
     // Show loading indicator
@@ -301,7 +302,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) {
+        builder: (dialogContext) {
           return const Center(child: CircularProgressIndicator());
         },
       );
@@ -321,7 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Check if widget is still mounted before showing error
       if (mounted) {
         // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           const SnackBar(
             content: Text('Failed to delete account. Please try again.'),
           ),
