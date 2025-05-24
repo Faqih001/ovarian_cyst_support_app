@@ -296,11 +296,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => navigator.pop(false),
+                onPressed: () => Navigator.of(dialogContext).pop(false),
                 child: const Text('Cancel'),
               ),
               TextButton(
-                onPressed: () => navigator.pop(true),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
                 child: const Text('Delete'),
               ),
             ],
@@ -313,9 +313,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Check if mounted first
     if (!mounted) return;
 
-    // Show loading indicator using captured context and store its navigator
+    // Show loading indicator
     bool isLoading = true;
-    if (mounted) {
+
+    // We need to use a local function to show the dialog after checking mounted
+    void showLoadingDialog() {
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -326,6 +328,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           );
         },
       );
+    }
+
+    // Show loading dialog
+    if (mounted) {
+      showLoadingDialog();
     }
 
     try {
