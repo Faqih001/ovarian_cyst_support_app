@@ -136,10 +136,11 @@ class FirestoreDatabaseService extends DatabaseService {
       final startOfDay = DateTime(now.year, now.month, now.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
 
-      final QuerySnapshot snapshot = await _getUserCollection(_symptomEntriesCollection)
-          .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-          .where('timestamp', isLessThan: endOfDay)
-          .get();
+      final QuerySnapshot snapshot =
+          await _getUserCollection(_symptomEntriesCollection)
+              .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+              .where('timestamp', isLessThan: endOfDay)
+              .get();
 
       return snapshot.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
@@ -153,15 +154,34 @@ class FirestoreDatabaseService extends DatabaseService {
   @override
   Future<List<Map<String, dynamic>>> getAllSymptomEntries() async {
     try {
-      final QuerySnapshot snapshot = await _getUserCollection(_symptomEntriesCollection)
-          .orderBy('timestamp', descending: true)
-          .get();
+      final QuerySnapshot snapshot =
+          await _getUserCollection(_symptomEntriesCollection)
+              .orderBy('timestamp', descending: true)
+              .get();
 
       return snapshot.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
           .toList();
     } catch (e) {
       _logger.e('Error getting all symptom entries: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getRecentSymptomEntries() async {
+    try {
+      final QuerySnapshot snapshot =
+          await _getUserCollection(_symptomEntriesCollection)
+              .orderBy('timestamp', descending: true)
+              .limit(7) // Get only the most recent 7 entries
+              .get();
+
+      return snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      _logger.e('Error getting recent symptom entries: $e');
       return [];
     }
   }
@@ -227,6 +247,45 @@ class FirestoreDatabaseService extends DatabaseService {
     } catch (e) {
       _logger.e('Error deleting appointment: $e');
       throw Exception('Failed to delete appointment: $e');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getUpcomingAppointments() async {
+    try {
+      final now = DateTime.now();
+      final QuerySnapshot snapshot =
+          await _getUserCollection(_appointmentsCollection)
+              .where('dateTime', isGreaterThanOrEqualTo: now)
+              .orderBy('dateTime')
+              .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return Appointment.fromMap({
+          'id': doc.id,
+          ...data,
+        });
+      }).toList();
+    } catch (e) {
+      _logger.e('Error getting upcoming appointments: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<void> updateAppointmentStatus(
+      String appointmentId, String status) async {
+    try {
+      await _getUserCollection(_appointmentsCollection)
+          .doc(appointmentId)
+          .update({
+        'status': status,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      _logger.e('Error updating appointment status: $e');
+      throw Exception('Failed to update appointment status: $e');
     }
   }
 
@@ -296,9 +355,10 @@ class FirestoreDatabaseService extends DatabaseService {
   @override
   Future<List<Map<String, dynamic>>> getAllMedications() async {
     try {
-      final QuerySnapshot snapshot = await _getUserCollection(_medicationsCollection)
-          .orderBy('name')
-          .get();
+      final QuerySnapshot snapshot =
+          await _getUserCollection(_medicationsCollection)
+              .orderBy('name')
+              .get();
 
       return snapshot.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
@@ -306,6 +366,24 @@ class FirestoreDatabaseService extends DatabaseService {
     } catch (e) {
       _logger.e('Error getting all medications: $e');
       return [];
+    }
+  }
+
+  @override
+  Future<void> saveMedication(Map<String, dynamic> medication) async {
+    try {
+      if (medication.containsKey('id') && medication['id'] != null) {
+        // Update existing medication
+        await _getUserCollection(_medicationsCollection)
+            .doc(medication['id'])
+            .update(medication);
+      } else {
+        // Add new medication
+        await _getUserCollection(_medicationsCollection).add(medication);
+      }
+    } catch (e) {
+      _logger.e('Error saving medication: $e');
+      throw Exception('Failed to save medication: $e');
     }
   }
 
@@ -472,6 +550,18 @@ class FirestoreDatabaseService extends DatabaseService {
     }
   }
 
+  @override
+  Future<void> saveSymptomPrediction(Map<String, dynamic> prediction) async {
+    try {
+      await _getUserCollection(_symptomPredictionsCollection)
+          .doc(prediction['id'])
+          .set(prediction);
+    } catch (e) {
+      _logger.e('Error saving symptom prediction: $e');
+      throw Exception('Failed to save symptom prediction: $e');
+    }
+  }
+
   Future<List<SymptomPrediction>> getSymptomPredictions() async {
     try {
       final QuerySnapshot snapshot =
@@ -521,12 +611,10 @@ class FirestoreDatabaseService extends DatabaseService {
   @override
   Future<void> logSymptom(Map<String, dynamic> symptom) async {
     try {
-      await _getUserCollection(_symptomEntriesCollection)
-          .doc()
-          .set({
-            ...symptom,
-            'timestamp': FieldValue.serverTimestamp(),
-          });
+      await _getUserCollection(_symptomEntriesCollection).doc().set({
+        ...symptom,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
     } catch (e) {
       _logger.e('Error logging symptom: $e');
       throw Exception('Failed to log symptom: $e');

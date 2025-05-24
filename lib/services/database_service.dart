@@ -102,13 +102,13 @@ abstract class DatabaseService {
 
   /// Get recent symptom entries
   Future<List<Map<String, dynamic>>> getRecentSymptomEntries();
-  
+
   /// Get symptom entries for AI prediction
   Future<List<SymptomEntry>> getSymptomEntries();
-  
+
   /// Get symptom predictions history
   Future<List<SymptomPrediction>> getSymptomPredictions();
-  
+
   /// Save a symptom prediction
   Future<void> saveSymptomPrediction(Map<String, dynamic> prediction);
 

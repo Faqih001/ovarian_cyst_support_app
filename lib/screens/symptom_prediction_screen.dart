@@ -32,7 +32,7 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
     super.initState();
     _initializeServices();
   }
-  
+
   Future<void> _initializeServices() async {
     setState(() {
       _isLoading = true;
@@ -140,48 +140,46 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('AI Symptom Prediction'), elevation: 0),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorMessage.isNotEmpty
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty
               ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 60,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _errorMessage,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _loadData,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              )
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 60,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadData,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
               : _buildContent(),
       floatingActionButton: FloatingActionButton(
         onPressed: _isGeneratingPrediction ? null : _generatePrediction,
         tooltip: 'Generate Prediction',
-        child:
-            _isGeneratingPrediction
-                ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-                : const Icon(Icons.auto_graph),
+        child: _isGeneratingPrediction
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Icon(Icons.auto_graph),
       ),
     );
   }
@@ -230,17 +228,16 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _isGeneratingPrediction ? null : _generatePrediction,
-                child:
-                    _isGeneratingPrediction
-                        ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                        : const Text('Generate Prediction'),
+                child: _isGeneratingPrediction
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('Generate Prediction'),
               ),
             ],
           ),
@@ -340,26 +337,25 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
             const SizedBox(height: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children:
-                  _currentPrediction!.potentialIssues
-                      .map(
-                        (issue) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.circle,
-                                size: 8,
-                                color: Colors.black54,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(issue)),
-                            ],
+              children: _currentPrediction!.potentialIssues
+                  .map(
+                    (issue) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.circle,
+                            size: 8,
+                            color: Colors.black54,
                           ),
-                        ),
-                      )
-                      .toList(),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(issue)),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
             const SizedBox(height: 16),
             const Divider(),
@@ -439,10 +435,9 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
     }
 
     // Limit to last 7 predictions and reverse to show chronological order
-    final displayHistory =
-        _predictionHistory.length > 7
-            ? _predictionHistory.sublist(0, 7).reversed.toList()
-            : _predictionHistory.reversed.toList();
+    final displayHistory = _predictionHistory.length > 7
+        ? _predictionHistory.sublist(0, 7).reversed.toList()
+        : _predictionHistory.reversed.toList();
 
     return Card(
       elevation: 4,
@@ -579,9 +574,8 @@ class _SymptomPredictionScreenState extends State<SymptomPredictionScreen> {
     }
 
     // Sort symptoms by frequency
-    final sortedSymptoms =
-        symptomCounts.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
+    final sortedSymptoms = symptomCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     // Take top 5 symptoms
     final topSymptoms = sortedSymptoms.take(5).toList();
