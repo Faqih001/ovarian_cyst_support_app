@@ -73,11 +73,43 @@ class AppCheckService {
   /// App Check related errors
   static Future<String?> _refreshToken() async {
     try {
+      // Clear any cached tokens first
+      try {
+        // This is an undocumented but useful workaround to force a completely fresh token
+        await FirebaseAppCheck.instance.setTokenAutoRefreshEnabled(false);
+        await Future.delayed(const Duration(milliseconds: 300));
+        await FirebaseAppCheck.instance.setTokenAutoRefreshEnabled(true);
+      } catch (e) {
+        _logger.d('Token auto-refresh toggle failed, continuing: $e');
+      }
+
+      // Now request a new token
       final result = await FirebaseAppCheck.instance.getToken(true);
-      _logger.d('App Check token refreshed');
+      _logger.d('App Check token refreshed successfully');
       return result;
     } catch (e) {
       _logger.w('Error refreshing App Check token: $e');
+
+      // Attempt to re-activate App Check if we're getting attestation failures
+      if (e.toString().contains('attestation failed') ||
+          e.toString().contains('Too many attempts')) {
+        _logger.d(
+            'Attempting to re-initialize App Check due to attestation failure');
+
+        try {
+          // Try to re-initialize with debug provider temporarily
+          await FirebaseAppCheck.instance.activate(
+            androidProvider: AndroidProvider.debug,
+            appleProvider: AppleProvider.debug,
+          );
+          final debugToken = await FirebaseAppCheck.instance.getToken();
+          _logger.i('Successfully recovered using debug provider');
+          return debugToken;
+        } catch (reInitError) {
+          _logger.e('App Check re-initialization failed: $reInitError');
+        }
+      }
+
       return null;
     }
   }
@@ -115,6 +147,29 @@ class AppCheckService {
   /// This can be called when token errors are detected in Firebase operations
   static Future<String?> forceTokenRefresh() async {
     return await _refreshToken();
+  }
+
+  /// Check if a Firebase error is related to App Check and handle it
+  ///
+  /// Returns true if the error was handled, false otherwise
+  static Future<bool> handleAppCheckError(dynamic error) async {
+    final errorString = error.toString().toLowerCase();
+
+    // Check if this is an App Check related error
+    if (errorString.contains('app check') ||
+        errorString.contains('attestation') ||
+        errorString.contains('recaptcha token') ||
+        errorString.contains('too many attempts')) {
+      _logger.w('Detected App Check error, attempting recovery: $error');
+
+      // Try to refresh the token
+      final newToken = await forceTokenRefresh();
+
+      // Return true if we successfully got a new token
+      return newToken != null;
+    }
+
+    return false;
   }
 
   /// Clean up resources

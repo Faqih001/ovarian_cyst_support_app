@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logger/logger.dart';
 import 'package:ovarian_cyst_support_app/models/user_agreement.dart';
 import 'package:ovarian_cyst_support_app/widgets/app_toast.dart' as toast;
+import 'package:ovarian_cyst_support_app/services/app_check_service.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated, disabled }
 
@@ -39,7 +40,7 @@ class AuthService with ChangeNotifier {
       return;
     }
 
-    // Otherwise initialize normally
+    // Initialize normally - App Check is now handled by the AppCheckService
     _init();
   }
 
@@ -95,60 +96,141 @@ class AuthService with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // Create user account
-      final UserCredential result = await _auth!.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      _user = result.user;
+      // Try to refresh App Check token before registration
+      try {
+        await AppCheckService.forceTokenRefresh();
+      } catch (e) {
+        _logger.w("Failed to refresh App Check token: $e");
+        // Continue with registration attempt
+      }
 
-      // Send email verification
-      await _user?.sendEmailVerification();
+      int retryCount = 0;
+      const maxRetries = 2;
 
-      // Create user profile in Firestore
-      if (_user != null) {
-        await _firestore!.collection('users').doc(_user!.uid).set({
-          'name': name,
-          'email': email,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-
-        // Store user agreement
-        await _firestore!.collection('user_agreements').doc(_user!.uid).set({
-          'agreedToTerms': true,
-          'agreedToPrivacyPolicy': true,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-
-        // Save credentials for auto-login after verification
-        await _storage.write(key: _emailKey, value: email);
-        await _storage.write(key: _passwordKey, value: password);
-
-        // Show success notification using AppToast if context is still valid
-        if (context.mounted) {
-          toast.AppToast.showSuccess(
-            context,
-            'Registration successful! Please check your email to verify your account.',
+      while (retryCount <= maxRetries) {
+        try {
+          // Create user account
+          final UserCredential result =
+              await _auth!.createUserWithEmailAndPassword(
+            email: email,
+            password: password,
           );
+          _user = result.user;
+
+          // Send email verification
+          await _user?.sendEmailVerification();
+
+          // Create user profile in Firestore
+          if (_user != null) {
+            await _firestore!.collection('users').doc(_user!.uid).set({
+              'name': name,
+              'email': email,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+            // Store user agreement
+            await _firestore!
+                .collection('user_agreements')
+                .doc(_user!.uid)
+                .set({
+              'agreedToTerms': true,
+              'agreedToPrivacyPolicy': true,
+              'timestamp': FieldValue.serverTimestamp(),
+            });
+
+            // Save credentials for auto-login after verification
+            await _storage.write(key: _emailKey, value: email);
+            await _storage.write(key: _passwordKey, value: password);
+
+            // Show success notification using AppToast if context is still valid
+            if (context.mounted) {
+              toast.AppToast.showSuccess(
+                context,
+                'Registration successful! Please check your email to verify your account.',
+              );
+            }
+          }
+
+          _isLoading = false;
+          notifyListeners();
+          return _user;
+        } on FirebaseAuthException catch (e) {
+          // First check if this is an App Check issue that can be directly handled
+          final handled = await AppCheckService.handleAppCheckError(e);
+
+          if (handled) {
+            // App Check issue was handled, retry immediately
+            _logger.i("App Check issue was handled, retrying immediately");
+            continue;
+          }
+
+          if (retryCount < maxRetries &&
+              (e.code == 'too-many-requests' ||
+                  e.message?.contains('App attestation failed') == true ||
+                  e.message?.contains('reCAPTCHA token') == true ||
+                  e.message?.contains('Firebase: Error') == true)) {
+            // Add exponential backoff delay before retrying
+            retryCount++;
+            final backoffSeconds = retryCount * 2;
+            _logger.w(
+                "Registration attempt failed, retrying in $backoffSeconds seconds ($retryCount/$maxRetries): ${e.message}");
+
+            await Future.delayed(Duration(seconds: backoffSeconds));
+          } else {
+            // We've reached max retries or it's a non-retriable error
+            _isLoading = false;
+            _errorMessage = _getReadableErrorMessage(e);
+            notifyListeners();
+
+            // Show error notification if context is still valid
+            if (context.mounted) {
+              toast.AppToast.showError(
+                context,
+                _errorMessage ?? 'Registration failed. Please try again.',
+              );
+            }
+            return null;
+          }
+        } catch (e) {
+          // Handle non-Firebase exceptions
+          _isLoading = false;
+          _errorMessage = e.toString();
+          notifyListeners();
+
+          if (context.mounted) {
+            toast.AppToast.showError(
+              context,
+              'Registration failed: ${e.toString()}',
+            );
+          }
+          return null;
         }
       }
 
+      // If we reach here, all retries failed
       _isLoading = false;
-      notifyListeners();
-      return _user;
-    } catch (e) {
-      _isLoading = false;
-      _errorMessage = _getReadableErrorMessage(e);
+      _errorMessage =
+          'Registration failed after multiple attempts. Please try again later.';
       notifyListeners();
 
-      // Show error notification if context is still valid
       if (context.mounted) {
         toast.AppToast.showError(
           context,
-          _errorMessage ?? 'Registration failed. Please try again.',
+          _errorMessage!,
         );
       }
+      return null;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
 
+      if (context.mounted) {
+        toast.AppToast.showError(
+          context,
+          'Registration failed: ${e.toString()}',
+        );
+      }
       return null;
     }
   }
@@ -162,39 +244,86 @@ class AuthService with ChangeNotifier {
     _clearError();
 
     try {
-      final UserCredential userCredential = await _auth!
-          .signInWithEmailAndPassword(email: email, password: password);
+      // Try to get a fresh App Check token before authentication
+      try {
+        // Use the AppCheckService for better token handling
+        await AppCheckService.forceTokenRefresh();
+        _logger.i("Successfully refreshed App Check token");
+      } catch (appCheckError) {
+        _logger.w("Failed to refresh App Check token: $appCheckError");
+        // Continue with auth attempt even if token refresh fails
+      }
 
-      if (userCredential.user != null) {
-        // Check if the user document exists
-        DocumentSnapshot docSnapshot = await _firestore!
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .get();
+      int retryCount = 0;
+      const maxRetries = 3;
 
-        if (docSnapshot.exists) {
-          // Update last login timestamp
-          await _firestore!
-              .collection('users')
-              .doc(userCredential.user!.uid)
-              .update({'lastLogin': FieldValue.serverTimestamp()});
-        } else {
-          // Create a new user document if it doesn't exist
-          await _firestore!
-              .collection('users')
-              .doc(userCredential.user!.uid)
-              .set({
-            'email': userCredential.user!.email,
-            'name': userCredential.user!.displayName ?? 'User',
-            'createdAt': FieldValue.serverTimestamp(),
-            'lastLogin': FieldValue.serverTimestamp(),
-          });
+      while (retryCount <= maxRetries) {
+        try {
+          final UserCredential userCredential = await _auth!
+              .signInWithEmailAndPassword(email: email, password: password);
+
+          if (userCredential.user != null) {
+            // Check if the user document exists
+            DocumentSnapshot docSnapshot = await _firestore!
+                .collection('users')
+                .doc(userCredential.user!.uid)
+                .get();
+
+            if (docSnapshot.exists) {
+              // Update last login timestamp
+              await _firestore!
+                  .collection('users')
+                  .doc(userCredential.user!.uid)
+                  .update({'lastLogin': FieldValue.serverTimestamp()});
+            } else {
+              // Create a new user document if it doesn't exist
+              await _firestore!
+                  .collection('users')
+                  .doc(userCredential.user!.uid)
+                  .set({
+                'email': userCredential.user!.email,
+                'name': userCredential.user!.displayName ?? 'User',
+                'createdAt': FieldValue.serverTimestamp(),
+                'lastLogin': FieldValue.serverTimestamp(),
+              });
+            }
+          }
+
+          // Successful login, clear any saved retry data
+          return userCredential.user;
+        } on FirebaseAuthException catch (e) {
+          // First check if this is an App Check issue that can be directly handled
+          final handled = await AppCheckService.handleAppCheckError(e);
+
+          if (handled) {
+            // App Check issue was handled, retry immediately
+            _logger.i("App Check issue was handled, retrying immediately");
+            continue;
+          }
+
+          if (retryCount < maxRetries &&
+              (e.code == 'too-many-requests' ||
+                  e.message?.contains('App attestation failed') == true ||
+                  e.message?.contains('reCAPTCHA token') == true ||
+                  e.message?.contains('Firebase: Error') == true)) {
+            // Add exponential backoff delay before retrying
+            retryCount++;
+            final backoffSeconds = retryCount * 2;
+            _logger.w(
+                "Auth attempt failed, retrying in $backoffSeconds seconds ($retryCount/$maxRetries): ${e.message}");
+
+            await Future.delayed(Duration(seconds: backoffSeconds));
+          } else {
+            // Handle the error if we've reached max retries or it's a different error
+            _handleAuthError(e);
+            return null;
+          }
         }
       }
 
-      return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      _handleAuthError(e);
+      // If we reach here, all retries failed
+      _setError(
+          'Login failed after multiple attempts. Please try again later.');
       return null;
     } catch (e) {
       _setError('An unexpected error occurred: ${e.toString()}');
@@ -484,10 +613,26 @@ class AuthService with ChangeNotifier {
         message = 'This operation is not allowed.';
         break;
       case 'too-many-requests':
-        message = 'Too many requests. Try again later.';
+        message =
+            'Too many login attempts. Please try again later or reset your password.';
+        break;
+      case 'network-request-failed':
+        message =
+            'Network connection error. Please check your internet connection.';
         break;
       default:
-        message = 'Authentication error: ${e.message}';
+        // Handle App Check and reCAPTCHA specific errors
+        if (e.message?.contains('App attestation failed') == true) {
+          message = 'Security verification failed. Please try again later.';
+          _logger.e("App attestation failed: ${e.message}");
+        } else if (e.message?.contains('reCAPTCHA token') == true) {
+          message =
+              'Security verification failed. Please restart the app and try again.';
+          _logger.e("reCAPTCHA token error: ${e.message}");
+        } else {
+          message = 'Authentication error: ${e.message}';
+          _logger.e("Auth error: ${e.code} - ${e.message}");
+        }
     }
 
     _setError(message);
@@ -527,8 +672,22 @@ class AuthService with ChangeNotifier {
           return 'An account already exists with this email.';
         case 'weak-password':
           return 'The password provided is too weak.';
+        case 'too-many-requests':
+          return 'Too many login attempts. Please try again after a few minutes.';
+        case 'network-request-failed':
+          return 'Network connection error. Please check your internet connection.';
         default:
-          return 'An unknown error occurred. Please try again.';
+          // Handle App Check specific errors
+          final String errorMsg = error.message ?? '';
+          if (errorMsg.contains('App attestation failed')) {
+            _logger.e('App attestation error: ${error.message}');
+            return 'Authentication security verification failed. Please try again later.';
+          } else if (errorMsg.contains('reCAPTCHA token')) {
+            _logger.e('reCAPTCHA token error: ${error.message}');
+            return 'Security verification failed. Please restart the app and try again.';
+          } else {
+            return 'Authentication error. Please try again.';
+          }
       }
     } else {
       return 'An error occurred. Please try again.';
