@@ -256,107 +256,62 @@ class AuthService with ChangeNotifier {
 
   // Sign in with email and password
   Future<User?> signInWithEmailAndPassword(
-    String email,
-    String password,
-  ) async {
+      String email, String password) async {
     _setLoading(true);
     _clearError();
 
     try {
       // Try to get a fresh App Check token before authentication
       try {
-        // Reset any previous backoff in AppCheckService to give this attempt best chance
         AppCheckService.resetBackoff();
         final token = await AppCheckService.forceTokenRefresh();
         if (token != null) {
           _logger.i("Successfully refreshed App Check token");
-        } else {
-          _logger.w(
-              "App Check token refresh returned null, continuing with auth attempt");
         }
       } catch (appCheckError) {
         _logger.w("Failed to refresh App Check token: $appCheckError");
-        // Continue with auth attempt even if token refresh fails
       }
 
-      int retryCount = 0;
-      const maxRetries = 3;
+      final UserCredential userCredential = await _auth!
+          .signInWithEmailAndPassword(email: email, password: password);
 
-      while (retryCount <= maxRetries) {
+      if (userCredential.user != null) {
         try {
-          final UserCredential userCredential = await _auth!
-              .signInWithEmailAndPassword(email: email, password: password);
+          // Get the user document
+          DocumentSnapshot docSnapshot = await _firestore!
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .get();
 
-          if (userCredential.user != null) {
-            // Check if the user document exists
-            DocumentSnapshot docSnapshot = await _firestore!
-                .collection('users')
-                .doc(userCredential.user!.uid)
-                .get();
+          // Create or update user data
+          await _firestore!
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .set({
+            'email': userCredential.user!.email,
+            'name': userCredential.user!.displayName ?? 'User',
+            'lastLogin': FieldValue.serverTimestamp(),
+            if (!docSnapshot.exists) 'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
-            if (docSnapshot.exists) {
-              // Update last login timestamp
-              await _firestore!
-                  .collection('users')
-                  .doc(userCredential.user!.uid)
-                  .update({'lastLogin': FieldValue.serverTimestamp()});
-            } else {
-              // Create a new user document if it doesn't exist
-              await _firestore!
-                  .collection('users')
-                  .doc(userCredential.user!.uid)
-                  .set({
-                'email': userCredential.user!.email,
-                'name': userCredential.user!.displayName ?? 'User',
-                'createdAt': FieldValue.serverTimestamp(),
-                'lastLogin': FieldValue.serverTimestamp(),
-              });
-            }
-          }
-
-          // Successful login, reset AppCheck backoff mechanism
+          // Reset App Check backoff on successful login
           AppCheckService.resetBackoff();
           return userCredential.user;
-        } on FirebaseAuthException catch (e) {
-          // First check if this is an App Check issue that can be directly handled
-          final handled = await AppCheckService.handleAppCheckError(e);
-
-          if (handled) {
-            // App Check issue was handled, retry after a short delay
-            // to allow the new token to propagate
-            _logger.i("App Check issue was handled, retrying shortly");
-            await Future.delayed(const Duration(milliseconds: 500));
-            continue;
-          }
-
-          if (retryCount < maxRetries &&
-              (e.code == 'too-many-requests' ||
-                  e.message?.contains('App attestation failed') == true ||
-                  e.message?.contains('reCAPTCHA token') == true ||
-                  e.message?.contains('Firebase: Error') == true)) {
-            // Add exponential backoff delay before retrying
-            retryCount++;
-
-            // Use exponential backoff with jitter to avoid thundering herd
-            final baseSeconds = math.pow(2, retryCount).toInt();
-            final jitter = math.Random().nextInt(1000);
-            final backoffMs = (baseSeconds * 1000) + jitter;
-
-            _logger.w(
-                "Auth attempt failed, retrying in ${backoffMs / 1000} seconds ($retryCount/$maxRetries): ${e.message}");
-
-            await Future.delayed(Duration(milliseconds: backoffMs));
-          } else {
-            // Handle the error if we've reached max retries or it's a different error
-            _handleAuthError(e);
-            return null;
-          }
+        } catch (e) {
+          _logger.e('Error updating user data: $e');
+          // Continue with login even if updating user data fails
+          return userCredential.user;
         }
       }
-
-      // If we reach here, all retries failed
-      _setError(
-          'Login failed after multiple attempts. Please try again later.');
+      return userCredential.user;
+    } on FirebaseAuthException catch (e) {
+      // First check if this is an App Check issue
+      final handled = await AppCheckService.handleAppCheckError(e);
+      if (handled) {
+        // Retry the sign in after App Check is handled
+        return signInWithEmailAndPassword(email, password);
+      }
+      _handleAuthError(e);
       return null;
     } catch (e) {
       _setError('An unexpected error occurred: ${e.toString()}');
@@ -436,8 +391,20 @@ class AuthService with ChangeNotifier {
     try {
       DocumentSnapshot doc =
           await _firestore!.collection('users').doc(_user!.uid).get();
-      return doc.data() as Map<String, dynamic>?;
+      if (!doc.exists) return null;
+
+      // Ensure we're returning a Map and not a List
+      final data = doc.data();
+      if (data == null) return null;
+
+      if (data is Map<String, dynamic>) {
+        return data;
+      } else {
+        _logger.e('User data is not in expected format: $data');
+        return null;
+      }
     } catch (e) {
+      _logger.e('Error getting user data: $e');
       _setError('Error getting user data: ${e.toString()}');
       return null;
     }
