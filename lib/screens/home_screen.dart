@@ -1543,186 +1543,194 @@ class _EditSymptomDialogState extends State<_EditSymptomDialog> {
   }
 }
 
-class ChatbotBottomSheet extends StatelessWidget {
+class ChatbotBottomSheet extends StatefulWidget {
   const ChatbotBottomSheet({super.key});
 
   @override
+  State<ChatbotBottomSheet> createState() => _ChatbotBottomSheetState();
+}
+
+class _ChatbotBottomSheetState extends State<ChatbotBottomSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  bool _isImageMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {
+        _isImageMode = _tabController.index == 1;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Get screen dimensions
-    final screenSize = MediaQuery.of(context).size;
-    // Get the bottom padding to account for navigation bar
-    final bottomPadding = MediaQuery.of(context).padding.bottom +
-        60; // Reduced from 80 to make more space
-    // Calculate horizontal padding - 3% of screen width on each side (reduced from 5%)
-    final horizontalPadding = screenSize.width * 0.03;
-
     return DraggableScrollableSheet(
-      initialChildSize: 0.88, // Further increased for better visibility
-      minChildSize: 0.65, // Increased min size
-      maxChildSize: 0.98, // Allow almost full screen
+      initialChildSize: 0.9,
+      minChildSize: 0.6,
+      maxChildSize: 0.98,
       builder: (_, controller) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: bottomPadding,
-            left: horizontalPadding,
-            right: horizontalPadding,
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 38), // 0.15 * 255 ≈ 38
+                blurRadius: 24,
+                spreadRadius: -8,
+              ),
+            ],
           ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(25.0),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(51), // 0.2 * 255 = 51
-                  blurRadius: 10,
-                  spreadRadius: 2,
+          child: Column(
+            children: [
+              // Drag Handle and Header
+              _buildHeader(),
+
+              // Tab Bar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Add a drag handle to make it clear it's draggable
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 5,
-                    margin: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2.5),
-                    ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicator: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ),
-
-                // Title and assistant options
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20.0, vertical: 10.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "OvaCare Assistant",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        "Choose how you'd like assistance:",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-
-                      // Option buttons
-                      Row(
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey[600],
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  tabs: const [
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Expanded(
-                            child: _buildAssistantOption(
-                              context,
-                              icon: Icons.chat,
-                              title: "Text Chat",
-                              description: "Ask questions about ovarian cysts",
-                              onTap: () {
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const ChatbotScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildAssistantOption(
-                              context,
-                              icon: Icons.image_search,
-                              title: "Image Analysis",
-                              description:
-                                  "Upload medical images for educational insights",
-                              onTap: () {
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const ImageAnalysisChatScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
+                          Icon(Icons.chat_bubble_outline),
+                          SizedBox(width: 8),
+                          Text('Chat'),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(25.0),
-                      bottomRight: Radius.circular(25.0),
                     ),
-                    child: const ChatbotScreen(),
-                  ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.image_search),
+                          SizedBox(width: 8),
+                          Text('Image Analysis'),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Content Area
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildChatTab(),
+                    _buildImageAnalysisTab(),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildAssistantOption(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String description,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        // Drag Handle
+        Container(
+          width: 36,
+          height: 4,
+          margin: const EdgeInsets.only(top: 8, bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(2),
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: AppColors.primary, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+
+        // Title
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color:
+                      AppColors.primary.withValues(alpha: 26), // 0.1 * 255 ≈ 26
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _isImageMode ? Icons.image_search : Icons.smart_toy_outlined,
+                  color: AppColors.primary,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isImageMode ? 'Image Analysis' : 'OvaCare Assistant',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    _isImageMode
+                        ? 'Upload images for analysis'
+                        : 'How can I help you today?',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildChatTab() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: const ChatbotScreen(),
+    );
+  }
+
+  Widget _buildImageAnalysisTab() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: const ImageAnalysisChatScreen(),
     );
   }
 }
