@@ -59,7 +59,7 @@ class ProviderService {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final List<Map<String, dynamic>> providers =
-            data.cast<Map<String, dynamic>>();
+            _safeMapListCast(data);
 
         // Cache data for offline use
         await _cacheProviders(providers);
@@ -171,7 +171,7 @@ class ProviderService {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final List<Map<String, dynamic>> services =
-            data.cast<Map<String, dynamic>>();
+            _safeMapListCast(data);
 
         // Cache data for offline use
         await _cacheProviderServices(providerId, services);
@@ -194,7 +194,7 @@ class ProviderService {
     final String? cachedData = prefs.getString('provider_services_$providerId');
     if (cachedData != null) {
       final List<dynamic> data = jsonDecode(cachedData);
-      return data.cast<Map<String, dynamic>>();
+      return _safeMapListCast(data);
     }
     return [];
   }
@@ -398,7 +398,7 @@ class ProviderService {
 
     try {
       final List<dynamic> decoded = jsonDecode(providersJson);
-      return decoded.cast<Map<String, dynamic>>();
+      return _safeMapListCast(decoded);
     } catch (e) {
       debugPrint('Error parsing cached providers: $e');
       return _getMockProviders();
@@ -584,6 +584,22 @@ class ProviderService {
     for (var appointment in appointments) {
       await DataPersistenceService.saveAppointment(appointment);
     }
+  }
+
+  // Helper method to safely convert dynamic list to List<Map<String, dynamic>>
+  List<Map<String, dynamic>> _safeMapListCast(List<dynamic> dataList) {
+    return dataList.map((item) {
+      if (item is Map<String, dynamic>) {
+        return item;
+      } else if (item is Map) {
+        // Convert other Map types to Map<String, dynamic>
+        return Map<String, dynamic>.from(item);
+      } else {
+        // Handle unexpected item types
+        debugPrint('Warning: Unexpected item type in list: ${item?.runtimeType}');
+        return <String, dynamic>{};
+      }
+    }).toList();
   }
 }
 

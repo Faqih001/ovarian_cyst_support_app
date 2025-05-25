@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -98,7 +99,14 @@ class AuthService with ChangeNotifier {
 
       // Try to refresh App Check token before registration
       try {
-        await AppCheckService.forceTokenRefresh();
+        // Reset any previous backoff in AppCheckService to give this attempt best chance
+        AppCheckService.resetBackoff();
+        final token = await AppCheckService.forceTokenRefresh();
+        if (token != null) {
+          _logger.i("Successfully refreshed App Check token for registration");
+        } else {
+          _logger.w("App Check token refresh returned null, continuing with registration attempt");
+        }
       } catch (e) {
         _logger.w("Failed to refresh App Check token: $e");
         // Continue with registration attempt
@@ -151,6 +159,9 @@ class AuthService with ChangeNotifier {
             }
           }
 
+          // Successful registration, reset AppCheck backoff mechanism
+          AppCheckService.resetBackoff();
+          
           _isLoading = false;
           notifyListeners();
           return _user;
@@ -159,8 +170,10 @@ class AuthService with ChangeNotifier {
           final handled = await AppCheckService.handleAppCheckError(e);
 
           if (handled) {
-            // App Check issue was handled, retry immediately
-            _logger.i("App Check issue was handled, retrying immediately");
+            // App Check issue was handled, retry after a short delay
+            // to allow the new token to propagate
+            _logger.i("App Check issue was handled, retrying shortly");
+            await Future.delayed(const Duration(milliseconds: 500));
             continue;
           }
 
@@ -171,11 +184,16 @@ class AuthService with ChangeNotifier {
                   e.message?.contains('Firebase: Error') == true)) {
             // Add exponential backoff delay before retrying
             retryCount++;
-            final backoffSeconds = retryCount * 2;
+            
+            // Use exponential backoff with jitter to avoid thundering herd
+            final baseSeconds = math.pow(2, retryCount).toInt();
+            final jitter = math.Random().nextInt(1000);
+            final backoffMs = (baseSeconds * 1000) + jitter;
+            
             _logger.w(
-                "Registration attempt failed, retrying in $backoffSeconds seconds ($retryCount/$maxRetries): ${e.message}");
+                "Registration attempt failed, retrying in ${backoffMs/1000} seconds ($retryCount/$maxRetries): ${e.message}");
 
-            await Future.delayed(Duration(seconds: backoffSeconds));
+            await Future.delayed(Duration(milliseconds: backoffMs));
           } else {
             // We've reached max retries or it's a non-retriable error
             _isLoading = false;
@@ -246,9 +264,14 @@ class AuthService with ChangeNotifier {
     try {
       // Try to get a fresh App Check token before authentication
       try {
-        // Use the AppCheckService for better token handling
-        await AppCheckService.forceTokenRefresh();
-        _logger.i("Successfully refreshed App Check token");
+        // Reset any previous backoff in AppCheckService to give this attempt best chance
+        AppCheckService.resetBackoff();
+        final token = await AppCheckService.forceTokenRefresh();
+        if (token != null) {
+          _logger.i("Successfully refreshed App Check token");
+        } else {
+          _logger.w("App Check token refresh returned null, continuing with auth attempt");
+        }
       } catch (appCheckError) {
         _logger.w("Failed to refresh App Check token: $appCheckError");
         // Continue with auth attempt even if token refresh fails
@@ -289,15 +312,18 @@ class AuthService with ChangeNotifier {
             }
           }
 
-          // Successful login, clear any saved retry data
+          // Successful login, reset AppCheck backoff mechanism
+          AppCheckService.resetBackoff();
           return userCredential.user;
         } on FirebaseAuthException catch (e) {
           // First check if this is an App Check issue that can be directly handled
           final handled = await AppCheckService.handleAppCheckError(e);
 
           if (handled) {
-            // App Check issue was handled, retry immediately
-            _logger.i("App Check issue was handled, retrying immediately");
+            // App Check issue was handled, retry after a short delay
+            // to allow the new token to propagate
+            _logger.i("App Check issue was handled, retrying shortly");
+            await Future.delayed(const Duration(milliseconds: 500));
             continue;
           }
 
@@ -308,11 +334,16 @@ class AuthService with ChangeNotifier {
                   e.message?.contains('Firebase: Error') == true)) {
             // Add exponential backoff delay before retrying
             retryCount++;
-            final backoffSeconds = retryCount * 2;
+            
+            // Use exponential backoff with jitter to avoid thundering herd
+            final baseSeconds = math.pow(2, retryCount).toInt();
+            final jitter = math.Random().nextInt(1000);
+            final backoffMs = (baseSeconds * 1000) + jitter;
+            
             _logger.w(
-                "Auth attempt failed, retrying in $backoffSeconds seconds ($retryCount/$maxRetries): ${e.message}");
+                "Auth attempt failed, retrying in ${backoffMs/1000} seconds ($retryCount/$maxRetries): ${e.message}");
 
-            await Future.delayed(Duration(seconds: backoffSeconds));
+            await Future.delayed(Duration(milliseconds: backoffMs));
           } else {
             // Handle the error if we've reached max retries or it's a different error
             _handleAuthError(e);
@@ -673,7 +704,7 @@ class AuthService with ChangeNotifier {
         case 'weak-password':
           return 'The password provided is too weak.';
         case 'too-many-requests':
-          return 'Too many login attempts. Please try again after a few minutes.';
+          return 'Too many login attempts. Please wait a few minutes before trying again.';
         case 'network-request-failed':
           return 'Network connection error. Please check your internet connection.';
         default:
@@ -681,10 +712,16 @@ class AuthService with ChangeNotifier {
           final String errorMsg = error.message ?? '';
           if (errorMsg.contains('App attestation failed')) {
             _logger.e('App attestation error: ${error.message}');
-            return 'Authentication security verification failed. Please try again later.';
+            return 'Security verification failed. This is often temporary - please try again after a minute.';
+          } else if (errorMsg.contains('Too many attempts')) {
+            _logger.e('Too many attempts error: ${error.message}');
+            return 'Too many security verification attempts. Please wait a few minutes before trying again.';
           } else if (errorMsg.contains('reCAPTCHA token')) {
             _logger.e('reCAPTCHA token error: ${error.message}');
             return 'Security verification failed. Please restart the app and try again.';
+          } else if (errorMsg.contains('Firebase: Error')) {
+            _logger.e('Generic Firebase error: ${error.message}');
+            return 'Authentication service temporarily unavailable. Please try again shortly.';
           } else {
             return 'Authentication error. Please try again.';
           }

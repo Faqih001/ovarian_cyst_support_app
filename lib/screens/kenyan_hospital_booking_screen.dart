@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ovarian_cyst_support_app/widgets/app_toast.dart' as toast;
+import 'dart:convert';
 
 class KenyanHospitalBookingScreen extends StatefulWidget {
   final FacilityType initialFacilityType;
@@ -88,7 +89,7 @@ class _KenyanHospitalBookingScreenState
         phone: widget.facility!['phone'],
         email: widget.facility!['email'],
         website: widget.facility!['website'],
-        services: widget.facility!['services']?.cast<String>() ?? [],
+        services: _convertToStringList(widget.facility!['services']),
         description: widget.facility!['description'],
       );
       _selectedFacility = facility;
@@ -104,6 +105,36 @@ class _KenyanHospitalBookingScreenState
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  // Helper method to safely convert list data to List<String>
+  List<String> _convertToStringList(dynamic services) {
+    if (services == null) {
+      return [];
+    }
+
+    // If it's already a List<String>
+    if (services is List<String>) {
+      return services;
+    }
+
+    // If it's a List<dynamic> or other list type
+    if (services is List) {
+      return services.map((item) => item?.toString() ?? '').toList();
+    }
+
+    // If it's a single string
+    if (services is String) {
+      return [services];
+    }
+
+    // If it's a map or other object, convert to JSON string
+    if (services is Map) {
+      return [jsonEncode(services)];
+    }
+
+    // Default case - return empty list
+    return [];
   }
 
   // Check initial connectivity
