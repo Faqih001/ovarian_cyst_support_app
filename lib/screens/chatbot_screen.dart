@@ -515,7 +515,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                   ),
                   filled: true,
                   fillColor: _isListening 
-                      ? Theme.of(context).primaryColor.withOpacity(0.05)
+                      ? Theme.of(context).primaryColor.withValues(alpha: 13)  // 0.05 * 255 ≈ 13
                       : Colors.grey[50],
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 20,
