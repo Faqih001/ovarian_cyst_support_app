@@ -105,7 +105,8 @@ class AuthService with ChangeNotifier {
         if (token != null) {
           _logger.i("Successfully refreshed App Check token for registration");
         } else {
-          _logger.w("App Check token refresh returned null, continuing with registration attempt");
+          _logger.w(
+              "App Check token refresh returned null, continuing with registration attempt");
         }
       } catch (e) {
         _logger.w("Failed to refresh App Check token: $e");
@@ -161,7 +162,7 @@ class AuthService with ChangeNotifier {
 
           // Successful registration, reset AppCheck backoff mechanism
           AppCheckService.resetBackoff();
-          
+
           _isLoading = false;
           notifyListeners();
           return _user;
@@ -184,14 +185,14 @@ class AuthService with ChangeNotifier {
                   e.message?.contains('Firebase: Error') == true)) {
             // Add exponential backoff delay before retrying
             retryCount++;
-            
+
             // Use exponential backoff with jitter to avoid thundering herd
             final baseSeconds = math.pow(2, retryCount).toInt();
             final jitter = math.Random().nextInt(1000);
             final backoffMs = (baseSeconds * 1000) + jitter;
-            
+
             _logger.w(
-                "Registration attempt failed, retrying in ${backoffMs/1000} seconds ($retryCount/$maxRetries): ${e.message}");
+                "Registration attempt failed, retrying in ${backoffMs / 1000} seconds ($retryCount/$maxRetries): ${e.message}");
 
             await Future.delayed(Duration(milliseconds: backoffMs));
           } else {
@@ -270,7 +271,8 @@ class AuthService with ChangeNotifier {
         if (token != null) {
           _logger.i("Successfully refreshed App Check token");
         } else {
-          _logger.w("App Check token refresh returned null, continuing with auth attempt");
+          _logger.w(
+              "App Check token refresh returned null, continuing with auth attempt");
         }
       } catch (appCheckError) {
         _logger.w("Failed to refresh App Check token: $appCheckError");
@@ -334,14 +336,14 @@ class AuthService with ChangeNotifier {
                   e.message?.contains('Firebase: Error') == true)) {
             // Add exponential backoff delay before retrying
             retryCount++;
-            
+
             // Use exponential backoff with jitter to avoid thundering herd
             final baseSeconds = math.pow(2, retryCount).toInt();
             final jitter = math.Random().nextInt(1000);
             final backoffMs = (baseSeconds * 1000) + jitter;
-            
+
             _logger.w(
-                "Auth attempt failed, retrying in ${backoffMs/1000} seconds ($retryCount/$maxRetries): ${e.message}");
+                "Auth attempt failed, retrying in ${backoffMs / 1000} seconds ($retryCount/$maxRetries): ${e.message}");
 
             await Future.delayed(Duration(milliseconds: backoffMs));
           } else {

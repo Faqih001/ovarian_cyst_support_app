@@ -635,7 +635,7 @@ class _ProviderSearchScreenState extends State<ProviderSearchScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Maximum Distance: ${50} km',
+                    'Maximum Distance: 50 km',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   Slider(

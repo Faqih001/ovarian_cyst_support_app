@@ -58,8 +58,7 @@ class ProviderService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        final List<Map<String, dynamic>> providers =
-            _safeMapListCast(data);
+        final List<Map<String, dynamic>> providers = _safeMapListCast(data);
 
         // Cache data for offline use
         await _cacheProviders(providers);
@@ -170,8 +169,7 @@ class ProviderService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        final List<Map<String, dynamic>> services =
-            _safeMapListCast(data);
+        final List<Map<String, dynamic>> services = _safeMapListCast(data);
 
         // Cache data for offline use
         await _cacheProviderServices(providerId, services);
@@ -596,7 +594,8 @@ class ProviderService {
         return Map<String, dynamic>.from(item);
       } else {
         // Handle unexpected item types
-        debugPrint('Warning: Unexpected item type in list: ${item?.runtimeType}');
+        debugPrint(
+            'Warning: Unexpected item type in list: ${item?.runtimeType}');
         return <String, dynamic>{};
       }
     }).toList();

@@ -140,7 +140,7 @@ class AppCheckService {
           e.toString().contains('Too many attempts')) {
         if (_consecutiveFailures > _maxConsecutiveFailures) {
           _logger.w(
-              'Too many consecutive failures (${_consecutiveFailures}), skipping recovery');
+              'Too many consecutive failures ($_consecutiveFailures), skipping recovery');
           return null;
         }
 
