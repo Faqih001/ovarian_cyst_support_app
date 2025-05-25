@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // For haptic feedback
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:ovarian_cyst_support_app/constants.dart';
@@ -1554,21 +1555,66 @@ class _ChatbotBottomSheetState extends State<ChatbotBottomSheet>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isImageMode = false;
+  late AnimationController _iconAnimationController;
+  late Animation<double> _iconScaleAnimation;
+  late Animation<double> _iconRotateAnimation;
 
   @override
   void initState() {
     super.initState();
+    // Setup tab controller
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      setState(() {
-        _isImageMode = _tabController.index == 1;
-      });
+      // Only respond to user interactions, not programmatic ones
+      if (_tabController.indexIsChanging) {
+        // Provide tactile feedback when switching tabs
+        HapticFeedback.lightImpact();
+
+        setState(() {
+          _isImageMode = _tabController.index == 1;
+        });
+
+        // Clear any active focus to hide keyboard when switching tabs
+        FocusScope.of(context).unfocus();
+
+        // Start animations when tab changes
+        if (_iconAnimationController.status == AnimationStatus.completed) {
+          _iconAnimationController.reset();
+        }
+        _iconAnimationController.forward();
+      }
     });
+
+    // Setup animations for smooth transitions
+    _iconAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _iconScaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _iconAnimationController,
+      curve: Curves.elasticOut,
+    ));
+
+    _iconRotateAnimation = Tween<double>(
+      begin: 0.0,
+      end: 2 * 3.14159, // Full rotation
+    ).animate(CurvedAnimation(
+      parent: _iconAnimationController,
+      curve: Curves.easeInOutBack,
+    ));
+
+    // Start initial animation
+    _iconAnimationController.forward();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _iconAnimationController.dispose();
     super.dispose();
   }
 
@@ -1597,59 +1643,182 @@ class _ChatbotBottomSheetState extends State<ChatbotBottomSheet>
               _buildHeader(),
 
               // Tab Bar
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
+              // Enhanced modern tab switcher with animation and haptic feedback
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                height: 60,
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  indicator: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withValues(alpha: 51),
+                      _isImageMode
+                          ? AppColors.accent.withValues(alpha: 51)
+                          : AppColors.primary
+                              .withBlue(200)
+                              .withValues(alpha: 51),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.grey[600],
-                  labelStyle: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                  tabs: const [
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.chat_bubble_outline),
-                          SizedBox(width: 8),
-                          Text('Chat'),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.image_search),
-                          SizedBox(width: 8),
-                          Text('Image Analysis'),
-                        ],
-                      ),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 20),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
                     ),
                   ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: TabBar(
+                    controller: _tabController,
+                    splashBorderRadius: BorderRadius.circular(25),
+                    splashFactory: InkRipple.splashFactory,
+                    overlayColor: WidgetStateProperty.resolveWith<Color?>(
+                      (Set<WidgetState> states) {
+                        if (states.contains(WidgetState.hovered)) {
+                          return Colors.white.withValues(alpha: 26); // 0.1 * 255 ≈ 26
+                        }
+                        if (states.contains(WidgetState.pressed)) {
+                          return Colors.white.withValues(alpha: 51); // 0.2 * 255 ≈ 51 
+                        }
+                        return null;
+                      },
+                    ),
+                    indicator: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary,
+                          _isImageMode
+                              ? AppColors.accent
+                              : AppColors.primary.withBlue(200),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 51),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                    dividerHeight: 0,
+                    tabs: [
+                      Tab(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: !_isImageMode
+                                      ? Colors.white.withValues(alpha: 51)  // 0.2 * 255 ≈ 51
+                                      : Colors.transparent,
+                                ),
+                                child: Icon(
+                                  Icons.chat_bubble_rounded,
+                                  color: !_isImageMode
+                                      ? Colors.white
+                                      : AppColors.textSecondary,
+                                  size: !_isImageMode ? 20 : 18,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Chat',
+                                style: TextStyle(
+                                  fontWeight: !_isImageMode
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Tab(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _isImageMode
+                                      ? Colors.white.withValues(alpha: 51)  // 0.2 * 255 ≈ 51
+                                      : Colors.transparent,
+                                ),
+                                child: Icon(
+                                  Icons.image_search_rounded,
+                                  color: _isImageMode
+                                      ? Colors.white
+                                      : AppColors.textSecondary,
+                                  size: _isImageMode ? 20 : 18,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Analysis',
+                                style: TextStyle(
+                                  fontWeight: _isImageMode
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              // Content Area
+              // Content Area with smooth page transitions
+              const SizedBox(height: 8),
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildChatTab(),
-                    _buildImageAnalysisTab(),
-                  ],
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 10),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TabBarView(
+                    controller: _tabController,
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      _buildChatTab(),
+                      _buildImageAnalysisTab(),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1662,55 +1831,161 @@ class _ChatbotBottomSheetState extends State<ChatbotBottomSheet>
   Widget _buildHeader() {
     return Column(
       children: [
-        // Drag Handle
+        // Close button at the top right corner
         Container(
-          width: 36,
-          height: 4,
-          margin: const EdgeInsets.only(top: 8, bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(2),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 16),
+          child: IconButton(
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              Navigator.of(context).pop();
+            },
+            icon: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.close,
+                size: 20,
+                color: _isImageMode ? AppColors.accent : AppColors.primary,
+              ),
+            ),
+            tooltip: 'Close',
+          ),
+        ),
+        // Enhanced Drag Handle with subtle animation
+        GestureDetector(
+          onTap: () {
+            // Provide feedback when tapped
+            HapticFeedback.mediumImpact();
+
+            // Dismiss the bottom sheet when handle is tapped
+            Navigator.of(context).pop();
+          },
+          child: Container(
+            width: 50,
+            height: 5,
+            margin: const EdgeInsets.only(top: 8, bottom: 16),
+            decoration: BoxDecoration(
+              color: _isImageMode
+                  ? AppColors.accent.withValues(alpha: 77)  // 0.3 * 255 ≈ 77
+                  : AppColors.primary.withValues(alpha: 77),
+              borderRadius: BorderRadius.circular(3),
+            ),
           ),
         ),
 
-        // Title
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color:
-                      AppColors.primary.withValues(alpha: 26), // 0.1 * 255 ≈ 26
-                  borderRadius: BorderRadius.circular(12),
+        // Centered Avatar/Icon with gradient background and animations
+        Center(
+          child: AnimatedBuilder(
+            animation: _iconAnimationController,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _iconScaleAnimation.value,
+                child: Transform.rotate(
+                  angle: _iconRotateAnimation.value,
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary,
+                          _isImageMode
+                              ? AppColors.accent
+                              : AppColors.primary.withBlue(200),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(40),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (_isImageMode
+                                  ? AppColors.accent
+                                  : AppColors.primary)
+                              .withValues(alpha: 51),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) {
+                        return ScaleTransition(scale: animation, child: child);
+                      },
+                      child: Icon(
+                        _isImageMode
+                            ? Icons.image_search_rounded
+                            : Icons.smart_toy_rounded,
+                        key: ValueKey<bool>(_isImageMode),
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+                  ),
                 ),
-                child: Icon(
-                  _isImageMode ? Icons.image_search : Icons.smart_toy_outlined,
-                  color: AppColors.primary,
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Title and Subtitle with animations
+        Center(
+          child: Column(
+            children: [
+              // Animated title
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.0, 0.2),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Text(
+                  _isImageMode ? 'Image Analysis' : 'OvaCare Assistant',
+                  key: ValueKey<bool>(_isImageMode),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _isImageMode ? 'Image Analysis' : 'OvaCare Assistant',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+              const SizedBox(height: 8),
+              // Animated subtitle
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  );
+                },
+                child: Text(
+                  _isImageMode
+                      ? 'Upload medical images for instant analysis'
+                      : 'Your personal health companion',
+                  key: ValueKey<bool>(_isImageMode),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    letterSpacing: 0.2,
                   ),
-                  Text(
-                    _isImageMode
-                        ? 'Upload images for analysis'
-                        : 'How can I help you today?',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
@@ -1721,16 +1996,56 @@ class _ChatbotBottomSheetState extends State<ChatbotBottomSheet>
   }
 
   Widget _buildChatTab() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: const ChatbotScreen(),
+    return AnimatedOpacity(
+      opacity: !_isImageMode ? 1.0 : 0.8,
+      duration: const Duration(milliseconds: 250),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: !_isImageMode
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 25),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  )
+                ]
+              : [],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: const ChatbotScreen(),
+        ),
+      ),
     );
   }
 
   Widget _buildImageAnalysisTab() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: const ImageAnalysisChatScreen(),
+    return AnimatedOpacity(
+      opacity: _isImageMode ? 1.0 : 0.8,
+      duration: const Duration(milliseconds: 250),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: _isImageMode
+              ? [
+                  BoxShadow(
+                    color: AppColors.accent.withValues(alpha: 25),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  )
+                ]
+              : [],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: const ImageAnalysisChatScreen(),
+        ),
+      ),
     );
   }
 }

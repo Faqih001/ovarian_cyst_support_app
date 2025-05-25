@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:provider/provider.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -14,6 +13,7 @@ import 'package:ovarian_cyst_support_app/services/database_service.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:ovarian_cyst_support_app/firebase_options.dart';
 import 'package:ovarian_cyst_support_app/services/database_service_factory.dart';
+import 'package:ovarian_cyst_support_app/services/app_check_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -108,17 +108,13 @@ Future<void> _initializeFirebaseWithRetry(Logger logger,
 
 Future<void> _initializeAppCheck(Logger logger) async {
   try {
-    await FirebaseAppCheck.instance.activate(
-      // Use debug provider for web in development
-      webProvider:
-          ReCaptchaV3Provider('6Lf16b8pAAAAAEkLzl-RQQ9cj7dLWm_32QDmEr_d'),
-      androidProvider: AndroidProvider.debug,
-      appleProvider: AppleProvider.appAttest,
-    );
-    logger.i('Firebase App Check initialized successfully');
+    // Use our improved AppCheckService instead of direct initialization
+    await AppCheckService.initialize();
+    logger.i('Firebase App Check initialized via AppCheckService');
   } catch (e) {
-    logger.w('Firebase App Check initialization failed: $e');
-    // Continue without App Check in development
+    logger.e('Firebase App Check initialization failed: $e');
+    // We continue app execution even if App Check fails
+    // The app may work with limited functionality
   }
 }
 

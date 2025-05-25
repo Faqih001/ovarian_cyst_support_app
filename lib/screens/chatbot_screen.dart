@@ -2,6 +2,7 @@ import 'dart:math' show pi, sin;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ovarian_cyst_support_app/models/chat_message.dart';
+import 'package:ovarian_cyst_support_app/services/voice_to_text_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -16,10 +17,12 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   final FocusNode _messageFocusNode = FocusNode();
   final List<ChatMessage> _messages = [];
   final ScrollController _scrollController = ScrollController();
+  final VoiceToTextService _voiceToTextService = VoiceToTextService();
 
   late AnimationController _sendButtonScaleController;
   late AnimationController _typingAnimationController;
   bool _isTyping = false;
+  bool _isListening = false;
 
   @override
   void initState() {
@@ -59,7 +62,45 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     _messageController.dispose();
     _messageFocusNode.dispose();
     _scrollController.dispose();
+    if (_isListening) {
+      _voiceToTextService.stopListening();
+    }
     super.dispose();
+  }
+  
+  Future<void> _toggleListening() async {
+    if (_isListening) {
+      _voiceToTextService.stopListening();
+      setState(() {
+        _isListening = false;
+      });
+    } else {
+      final available = await _voiceToTextService.initialize();
+      if (available) {
+        setState(() {
+          _isListening = true;
+        });
+        
+        await _voiceToTextService.startListening((text) {
+          if (text.isNotEmpty) {
+            setState(() {
+              _messageController.text = text;
+              _isListening = false;
+            });
+          }
+        });
+      } else {
+        // Show error if speech recognition is not available
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Speech recognition not available or microphone permission denied'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _handleSubmit() async {
@@ -445,8 +486,18 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                 textCapitalization: TextCapitalization.sentences,
                 style: const TextStyle(fontSize: 16),
                 decoration: InputDecoration(
-                  hintText: 'Type your message...',
-                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  hintText: _isListening ? 'Listening...' : 'Type your message...',
+                  hintStyle: TextStyle(
+                    color: _isListening ? Theme.of(context).primaryColor : Colors.grey[400],
+                  ),
+                  prefixIcon: IconButton(
+                    icon: Icon(
+                      _isListening ? Icons.mic : Icons.mic_none,
+                      color: _isListening ? Theme.of(context).primaryColor : Colors.grey[600],
+                    ),
+                    onPressed: _toggleListening,
+                    tooltip: _isListening ? 'Stop listening' : 'Voice input',
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide(color: Colors.grey[300]!),
@@ -463,7 +514,9 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                     ),
                   ),
                   filled: true,
-                  fillColor: Colors.grey[50],
+                  fillColor: _isListening 
+                      ? Theme.of(context).primaryColor.withOpacity(0.05)
+                      : Colors.grey[50],
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 12,

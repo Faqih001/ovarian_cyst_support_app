@@ -5,6 +5,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter_styled_toast/flutter_styled_toast.dart';
 import '../services/gemini_service.dart';
 import '../widgets/chat_message_widget.dart';
+import '../services/voice_to_text_service.dart';
 
 class ImageAnalysisChatScreen extends StatefulWidget {
   const ImageAnalysisChatScreen({super.key});
@@ -19,7 +20,9 @@ class _ImageAnalysisChatScreenState extends State<ImageAnalysisChatScreen> {
   final List<ChatMessage> _messages = [];
   final GeminiService _geminiService = GeminiService();
   final ImagePicker _picker = ImagePicker();
+  final VoiceToTextService _voiceToTextService = VoiceToTextService();
   bool _isProcessing = false;
+  bool _isListening = false;
 
   @override
   void initState() {
@@ -35,7 +38,46 @@ class _ImageAnalysisChatScreenState extends State<ImageAnalysisChatScreen> {
   @override
   void dispose() {
     _textController.dispose();
+    if (_isListening) {
+      _voiceToTextService.stopListening();
+    }
     super.dispose();
+  }
+
+  Future<void> _toggleListening() async {
+    if (_isListening) {
+      _voiceToTextService.stopListening();
+      setState(() {
+        _isListening = false;
+      });
+    } else {
+      final available = await _voiceToTextService.initialize();
+      if (available) {
+        setState(() {
+          _isListening = true;
+        });
+
+        await _voiceToTextService.startListening((text) {
+          if (text.isNotEmpty) {
+            setState(() {
+              _textController.text = text;
+              _isListening = false;
+            });
+          }
+        });
+      } else {
+        // Show error if speech recognition is not available
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Speech recognition not available or microphone permission denied'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _addUserMessage(String text, {Uint8List? imageData}) {
@@ -198,21 +240,35 @@ class _ImageAnalysisChatScreenState extends State<ImageAnalysisChatScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.photo),
-            onPressed: _isProcessing ? null : _pickAndAnalyzeImage,
+            onPressed:
+                (_isProcessing || _isListening) ? null : _pickAndAnalyzeImage,
             tooltip: 'Upload an image for analysis',
           ),
           Expanded(
             child: TextField(
               controller: _textController,
-              onSubmitted: _isProcessing ? null : _handleSubmitted,
+              onSubmitted:
+                  (_isProcessing || _isListening) ? null : _handleSubmitted,
               decoration: InputDecoration(
-                hintText: 'Ask a question...',
+                hintText: _isListening ? 'Listening...' : 'Ask a question...',
+                prefixIcon: IconButton(
+                  icon: Icon(
+                    _isListening ? Icons.mic : Icons.mic_none,
+                    color: _isListening
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey[600],
+                  ),
+                  onPressed: _isProcessing ? null : _toggleListening,
+                  tooltip: _isListening ? 'Stop listening' : 'Voice input',
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(25.0),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
+                fillColor: _isListening
+                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 13)  // 0.05 * 255 ≈ 13
+                    : Theme.of(context).colorScheme.surface,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               ),
@@ -228,7 +284,9 @@ class _ImageAnalysisChatScreenState extends State<ImageAnalysisChatScreen> {
                     Icons.send,
                     color: Theme.of(context).colorScheme.primary,
                   ),
-            onPressed: _isProcessing
+            onPressed: (_isProcessing ||
+                    _isListening ||
+                    _textController.text.trim().isEmpty)
                 ? null
                 : () => _handleSubmitted(_textController.text),
           ),
