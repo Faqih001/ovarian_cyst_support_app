@@ -1704,12 +1704,7 @@ class _KenyanHospitalBookingScreenState
                     color: Colors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(
-                          red: 0,
-                          green: 0,
-                          blue: 0,
-                          alpha: 0.05,
-                        ),
+                        color: const Color.fromRGBO(0, 0, 0, 0.05),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -1728,11 +1723,11 @@ class _KenyanHospitalBookingScreenState
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(
-                                  red: AppColors.primary.red / 255,
-                                  green: AppColors.primary.green / 255,
-                                  blue: AppColors.primary.blue / 255,
-                                  alpha: 0.1,
+                                color: Color.fromRGBO(
+                                  (AppColors.primary.r * 255.0).round() & 0xff,
+                                  (AppColors.primary.g * 255.0).round() & 0xff,
+                                  (AppColors.primary.b * 255.0).round() & 0xff,
+                                  0.1,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
