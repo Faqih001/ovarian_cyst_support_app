@@ -1229,7 +1229,8 @@ class _KenyanHospitalBookingScreenState
                     scheme: 'mailto',
                     path: facility.email!,
                     queryParameters: {
-                      'subject': 'Inquiry about appointment at ${facility.name}',
+                      'subject':
+                          'Inquiry about appointment at ${facility.name}',
                     },
                   );
                   if (await canLaunchUrl(emailUri)) {
@@ -1255,10 +1256,11 @@ class _KenyanHospitalBookingScreenState
                 onTap: () async {
                   // Ensure URL has proper scheme
                   String url = facility.website!;
-                  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                  if (!url.startsWith('http://') &&
+                      !url.startsWith('https://')) {
                     url = 'https://$url'; // Default to https
                   }
-                  
+
                   final websiteUri = Uri.parse(url);
                   if (await canLaunchUrl(websiteUri)) {
                     await launchUrl(
@@ -1690,45 +1692,85 @@ class _KenyanHospitalBookingScreenState
             ),
             const SizedBox(height: 16),
             // Date selector
-            InkWell(
-              onTap: _showDatePicker,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today, color: AppColors.primary),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Appointment Date',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _selectedDate == null
-                                ? 'Select a date'
-                                : DateFormat(
-                                    'EEEE, MMMM d, yyyy',
-                                  ).format(_selectedDate!),
-                            style: TextStyle(
-                              color: _selectedDate == null
-                                  ? Colors.grey[600]
-                                  : Colors.black,
-                            ),
-                          ),
-                        ],
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _showDatePicker,
+                borderRadius: BorderRadius.circular(12),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
                       ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 16,
                     ),
-                    const Icon(Icons.arrow_forward_ios, size: 16),
-                  ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.calendar_today,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Appointment Date',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _selectedDate == null
+                                        ? 'Select a date'
+                                        : DateFormat(
+                                            'EEEE, MMMM d, yyyy',
+                                          ).format(_selectedDate!),
+                                    style: TextStyle(
+                                      color: _selectedDate == null
+                                          ? Colors.grey[600]
+                                          : Colors.black,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
