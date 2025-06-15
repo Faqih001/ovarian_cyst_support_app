@@ -658,7 +658,7 @@ Important: Include a clear disclaimer that this is for educational purposes only
         "Detect all prominent objects in this medical image. Identify any structures that could be cysts, organs, or abnormalities. Return bounding boxes in the format [ymin, xmin, ymax, xmax] normalized to 0-1000.",
   }) async {
     try {
-      debugPrint('Starting object detection with new API key');
+      debugPrint('Starting object detection');
 
       // Check if the image is too large
       if (imageBytes.length > 20 * 1024 * 1024) {
@@ -667,34 +667,59 @@ Important: Include a clear disclaimer that this is for educational purposes only
         return [];
       }
 
-      // Simplified approach - just use inline data directly
+      // Create a more structured prompt for better object detection results
+      final enhancedPrompt = '''
+Please analyze this medical image and detect key anatomical structures and any abnormal findings.
+
+For each important structure or finding, provide:
+1. A concise label (e.g., "ovarian cyst", "ovary", "uterus", "follicle") 
+2. A bounding box in the format [ymin, xmin, ymax, xmax] with values normalized from 0-1000
+
+Example format:
+ovary: [120, 340, 180, 420]
+cyst: [140, 350, 170, 390]
+
+Focus only on the most relevant structures. If you cannot reliably identify objects, return an empty list.
+''';
+      
       // Create the model content with image data and specific object detection prompt
       List<Content> promptContent = [
-        Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
+        Content.multi([TextPart(enhancedPrompt), DataPart('image/jpeg', imageBytes)]),
       ];
 
-      // Set configuration for better object detection
+      // Set configuration for better object detection - more conservative settings
       final generationConfig = GenerationConfig(
-        temperature: 0.2, // Lower temperature for more precise detection
-        maxOutputTokens: 1024,
-        topK: 40,
-        topP: 0.95,
+        temperature: 0.1, // Very low temperature for more deterministic output
+        maxOutputTokens: 800, // Reduced to avoid timeouts
+        topK: 20,
+        topP: 0.9,
       );
 
-      // Generate content using the vision model
-      final response = await _visionModel.generateContent(
-        promptContent,
-        generationConfig: generationConfig,
-      );
+      // Generate content using the vision model with timeout handling
+      final response = await _visionModel
+          .generateContent(
+            promptContent,
+            generationConfig: generationConfig,
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              debugPrint('Object detection timed out');
+              throw TimeoutException('Object detection timed out');
+            },
+          );
 
       final responseText = response.text;
 
       if (responseText == null || responseText.isEmpty) {
+        debugPrint('Empty response from object detection');
         return [];
       }
 
       // Parse the response to extract detected objects and their bounding boxes
-      return _parseDetectedObjects(responseText);
+      final detectedObjects = _parseDetectedObjects(responseText);
+      debugPrint('Detected ${detectedObjects.length} objects');
+      return detectedObjects;
     } catch (e) {
       debugPrint('Error in Gemini API object detection: $e');
       return [];
