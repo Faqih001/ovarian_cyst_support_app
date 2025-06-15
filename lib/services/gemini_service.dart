@@ -468,7 +468,7 @@ $enhancedPrompt
           final tempDir = await getTemporaryDirectory();
           final tempFile = File('${tempDir.path}/temp_thinking_image.jpg');
           await tempFile.writeAsBytes(imageBytes);
-          
+
           // Re-read at lower quality using native APIs
           // This would be implemented in a real app - simulating here
           debugPrint('Image optimization would be performed here');
@@ -486,19 +486,17 @@ $enhancedPrompt
         // Create a very minimal thinking prompt to reduce chances of error
         final simplifiedThinkingContent = [
           Content.multi([
-            TextPart(
-              "Analyze this medical image step by step:",
-            ),
+            TextPart("Analyze this medical image step by step:"),
             DataPart('image/jpeg', processedImageBytes),
           ]),
         ];
 
         // Set strict generation config to avoid timeout errors
         final thinkingGenerationConfig = GenerationConfig(
-          temperature: 0.2,     // Lower temperature for more deterministic output
+          temperature: 0.2, // Lower temperature for more deterministic output
           maxOutputTokens: 600, // Further reduced to avoid timeouts
-          topP: 0.9,            // More focused output
-          topK: 20,             // More restrictive token selection
+          topP: 0.9, // More focused output
+          topK: 20, // More restrictive token selection
         );
 
         // Add timeout with recovery
@@ -508,7 +506,7 @@ $enhancedPrompt
               generationConfig: thinkingGenerationConfig,
             )
             .timeout(
-              const Duration(seconds: 15), 
+              const Duration(seconds: 15),
               onTimeout: () {
                 debugPrint('Thinking generation timed out, using fallback');
                 throw TimeoutException('Thinking generation timed out');
@@ -557,8 +555,8 @@ Important: Include a clear disclaimer that this is for educational purposes only
 
         // Use more reliable generation settings
         final analysisGenerationConfig = GenerationConfig(
-          temperature: 0.2,     // Lower temperature for more reliable results
-          maxOutputTokens: 800, // Reduced token output 
+          temperature: 0.2, // Lower temperature for more reliable results
+          maxOutputTokens: 800, // Reduced token output
           topK: 40,
           topP: 0.95,
         );
@@ -594,8 +592,8 @@ Important: Include a clear disclaimer that this is for educational purposes only
       List<DetectedObject> detectedObjects = [];
       try {
         // Allow shorter timeout for object detection
-        detectedObjects = await detectObjectsInImage(imageBytes: processedImageBytes)
-            .timeout(
+        detectedObjects =
+            await detectObjectsInImage(imageBytes: processedImageBytes).timeout(
               const Duration(seconds: 15),
               onTimeout: () {
                 debugPrint('Object detection timed out');
@@ -617,15 +615,17 @@ Important: Include a clear disclaimer that this is for educational purposes only
       if (attemptSegmentation) {
         try {
           // Allow shorter timeout for segmentation
-          segmentations = await segmentObjectsInImage(imageBytes: processedImageBytes)
-              .timeout(
+          segmentations =
+              await segmentObjectsInImage(
+                imageBytes: processedImageBytes,
+              ).timeout(
                 const Duration(seconds: 10),
                 onTimeout: () {
                   debugPrint('Image segmentation timed out');
                   return <ImageSegmentation>[];
                 },
               );
-          
+
           debugPrint(
             'Image segmentation completed: ${segmentations.length} segments found',
           );
@@ -682,10 +682,13 @@ cyst: [140, 350, 170, 390]
 
 Focus only on the most relevant structures. If you cannot reliably identify objects, return an empty list.
 ''';
-      
+
       // Create the model content with image data and specific object detection prompt
       List<Content> promptContent = [
-        Content.multi([TextPart(enhancedPrompt), DataPart('image/jpeg', imageBytes)]),
+        Content.multi([
+          TextPart(enhancedPrompt),
+          DataPart('image/jpeg', imageBytes),
+        ]),
       ];
 
       // Set configuration for better object detection - more conservative settings
@@ -698,10 +701,7 @@ Focus only on the most relevant structures. If you cannot reliably identify obje
 
       // Generate content using the vision model with timeout handling
       final response = await _visionModel
-          .generateContent(
-            promptContent,
-            generationConfig: generationConfig,
-          )
+          .generateContent(promptContent, generationConfig: generationConfig)
           .timeout(
             const Duration(seconds: 15),
             onTimeout: () {
@@ -821,7 +821,7 @@ the text label in the key "label". Use descriptive medical labels.
           if (isValid) {
             detectedObjects.add(
               DetectedObject(
-                label: label, 
+                label: label,
                 boundingBox: boundingBox,
                 confidence: confidence,
               ),
@@ -840,22 +840,21 @@ the text label in the key "label". Use descriptive medical labels.
         // Look for JSON-like pattern first
         final jsonRegex = RegExp(r'\[\s*\{.*?\}\s*\]', dotAll: true);
         final jsonMatch = jsonRegex.firstMatch(responseText);
-        
+
         if (jsonMatch != null) {
           String jsonString = jsonMatch.group(0) ?? '';
           jsonString = jsonString.replaceAll(RegExp(r'```json|```'), '').trim();
-          
+
           try {
             final List<dynamic> jsonData = json.decode(jsonString);
-            
+
             for (final item in jsonData) {
-              if (item is Map<String, dynamic> && 
-                  item.containsKey('label') && 
+              if (item is Map<String, dynamic> &&
+                  item.containsKey('label') &&
                   item.containsKey('box')) {
-                
                 final label = item['label'] as String? ?? 'Unknown';
                 final box = item['box'] as List<dynamic>? ?? [];
-                
+
                 if (box.length == 4) {
                   final boundingBox = [
                     double.parse(box[0].toString()),
@@ -863,13 +862,14 @@ the text label in the key "label". Use descriptive medical labels.
                     double.parse(box[2].toString()),
                     double.parse(box[3].toString()),
                   ];
-                  
+
                   detectedObjects.add(
                     DetectedObject(
                       label: label,
                       boundingBox: boundingBox,
-                      confidence: item['confidence'] != null ? 
-                          double.parse(item['confidence'].toString()) : 0.0,
+                      confidence: item['confidence'] != null
+                          ? double.parse(item['confidence'].toString())
+                          : 0.0,
                     ),
                   );
                 }
@@ -891,8 +891,12 @@ the text label in the key "label". Use descriptive medical labels.
       for (final uniqueObj in uniqueObjects) {
         if (obj.label == uniqueObj.label) {
           // Check if bounding boxes are very similar
-          final similarity = _boundingBoxSimilarity(obj.boundingBox, uniqueObj.boundingBox);
-          if (similarity > 0.8) { // 80% similar bounding boxes
+          final similarity = _boundingBoxSimilarity(
+            obj.boundingBox,
+            uniqueObj.boundingBox,
+          );
+          if (similarity > 0.8) {
+            // 80% similar bounding boxes
             isDuplicate = true;
             break;
           }
@@ -915,31 +919,31 @@ the text label in the key "label". Use descriptive medical labels.
       final x1_1 = box1[1];
       final y2_1 = box1[2];
       final x2_1 = box1[3];
-      
+
       final y1_2 = box2[0];
       final x1_2 = box2[1];
       final y2_2 = box2[2];
       final x2_2 = box2[3];
-      
+
       // Calculate intersection
       final xLeft = math.max(x1_1, x1_2);
       final yTop = math.max(y1_1, y1_2);
       final xRight = math.min(x2_1, x2_2);
       final yBottom = math.min(y2_1, y2_2);
-      
+
       if (xRight < xLeft || yBottom < yTop) {
         return 0.0; // No overlap
       }
-      
+
       final intersectionArea = (xRight - xLeft) * (yBottom - yTop);
       final box1Area = (x2_1 - x1_1) * (y2_1 - y1_1);
       final box2Area = (x2_2 - x1_2) * (y2_2 - y1_2);
       final unionArea = box1Area + box2Area - intersectionArea;
-      
+
       if (unionArea <= 0) {
         return 0.0;
       }
-      
+
       iou = intersectionArea / unionArea;
     } catch (e) {
       debugPrint('Error calculating bounding box similarity: $e');
