@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ovarian_cyst_support_app/widgets/app_toast.dart' as toast;
 import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
 
 class KenyanHospitalBookingScreen extends StatefulWidget {
   final FacilityType initialFacilityType;
@@ -1201,8 +1202,19 @@ class _KenyanHospitalBookingScreenState
                 subtitle: Text(facility.phone!),
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                onTap: () {
-                  // Implement phone call action
+                onTap: () async {
+                  final phoneUri = Uri(scheme: 'tel', path: facility.phone!);
+                  if (await canLaunchUrl(phoneUri)) {
+                    await launchUrl(phoneUri);
+                  } else {
+                    if (mounted) {
+                      toast.showToast(
+                        context: context,
+                        message: 'Could not launch phone call',
+                        type: ToastType.error,
+                      );
+                    }
+                  }
                 },
               ),
             ],
@@ -1213,8 +1225,25 @@ class _KenyanHospitalBookingScreenState
                 subtitle: Text(facility.email!),
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                onTap: () {
-                  // Implement email action
+                onTap: () async {
+                  final emailUri = Uri(
+                    scheme: 'mailto',
+                    path: facility.email!,
+                    queryParameters: {
+                      'subject': 'Inquiry about appointment at ${facility.name}',
+                    },
+                  );
+                  if (await canLaunchUrl(emailUri)) {
+                    await launchUrl(emailUri);
+                  } else {
+                    if (mounted) {
+                      toast.showToast(
+                        context: context,
+                        message: 'Could not launch email app',
+                        type: ToastType.error,
+                      );
+                    }
+                  }
                 },
               ),
             ],
