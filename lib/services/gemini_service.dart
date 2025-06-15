@@ -459,25 +459,7 @@ $enhancedPrompt
         );
       }
 
-      // First, generate the thinking process separately
-      final thinkingPrompt = '''
-Think step by step about how to analyze this medical image:
-1. What type of medical image might this be (ultrasound, MRI, etc.)?
-2. What anatomical structures are visible?
-3. Are there any abnormalities that could indicate ovarian cysts?
-4. What features would help distinguish different types of cysts?
-5. What important disclaimers should be included in the analysis?
-
-Respond with your thinking process.
-''';
-
-      // Create content for thinking analysis
-      List<Content> thinkingContentList = [
-        Content.multi([
-          TextPart(thinkingPrompt),
-          DataPart('image/jpeg', imageBytes),
-        ]),
-      ];
+      // First, prepare for thinking process generation
 
       // Generate thinking content
       String thoughts = '';
