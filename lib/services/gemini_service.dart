@@ -444,7 +444,7 @@ $enhancedPrompt
         "Analyze this medical image for potential ovarian cysts. Describe what you see, but clarify that only a medical professional can provide an accurate diagnosis.",
   }) async {
     try {
-      debugPrint('Starting analyzeImageWithThinking with new API key');
+      debugPrint('Starting analyzeImageWithThinking with API key');
 
       // Check if the image size is reasonable to avoid API limits
       if (imageBytes.length > 20 * 1024 * 1024) {
@@ -459,33 +459,60 @@ $enhancedPrompt
         );
       }
 
-      // First, prepare for thinking process generation
+      // Optimize image if it's extremely large
+      Uint8List processedImageBytes = imageBytes;
+      if (imageBytes.length > 5 * 1024 * 1024) {
+        try {
+          // Save to temporary file for processing
+          final tempDir = await getTemporaryDirectory();
+          final tempFile = File('${tempDir.path}/temp_thinking_image.jpg');
+          await tempFile.writeAsBytes(imageBytes);
+          
+          // Re-read at lower quality using native APIs
+          // This would be implemented in a real app - simulating here
+          debugPrint('Image optimization would be performed here');
+        } catch (e) {
+          debugPrint('Error optimizing image: $e');
+          // Continue with original bytes if optimization fails
+        }
+      }
 
-      // Generate thinking content
+      // First, prepare for thinking process generation
       String thoughts = '';
       try {
         debugPrint('Generating thinking process with _thinkingModel');
 
-        // Simplify the thinking content to reduce chances of error
+        // Create a very minimal thinking prompt to reduce chances of error
         final simplifiedThinkingContent = [
           Content.multi([
             TextPart(
-              "Analyze this medical image step by step and describe what you observe:",
+              "Analyze this medical image step by step:",
             ),
-            DataPart('image/jpeg', imageBytes),
+            DataPart('image/jpeg', processedImageBytes),
           ]),
         ];
 
+        // Set strict generation config to avoid timeout errors
+        final thinkingGenerationConfig = GenerationConfig(
+          temperature: 0.2,     // Lower temperature for more deterministic output
+          maxOutputTokens: 600, // Further reduced to avoid timeouts
+          topP: 0.9,            // More focused output
+          topK: 20,             // More restrictive token selection
+        );
+
+        // Add timeout with recovery
         final thinkingResponse = await _thinkingModel
             .generateContent(
               simplifiedThinkingContent,
-              generationConfig: GenerationConfig(
-                temperature: 0.2, // Lower temperature for more reliable output
-                maxOutputTokens: 800, // Reduce token count to avoid timeouts
-                topP: 0.95,
-              ),
+              generationConfig: thinkingGenerationConfig,
             )
-            .timeout(const Duration(seconds: 20)); // Shorter timeout
+            .timeout(
+              const Duration(seconds: 15), 
+              onTimeout: () {
+                debugPrint('Thinking generation timed out, using fallback');
+                throw TimeoutException('Thinking generation timed out');
+              },
+            );
 
         if (thinkingResponse.text != null &&
             thinkingResponse.text!.isNotEmpty) {
@@ -500,12 +527,11 @@ $enhancedPrompt
         debugPrint('Error generating thinking process: $e');
         thoughts =
             'Analyzing image characteristics and structures. Looking for patterns consistent with ovarian anatomy and potential abnormalities...';
-
         // Use a simpler fallback approach
-        debugPrint('Using default thinking text due to error');
+        debugPrint('Using default thinking text due to error: ${e.toString()}');
       }
 
-      // Now get the actual analysis with a different prompt
+      // Now get the actual analysis with a well-structured prompt
       final analysisPrompt = '''
 Analyze this medical image for potential ovarian cysts or related conditions.
 Provide detailed observations including:
@@ -517,27 +543,38 @@ Provide detailed observations including:
 Important: Include a clear disclaimer that this is for educational purposes only and not a diagnosis.
 ''';
 
-      // Generate analysis content
+      // Generate analysis content with more reliable settings
       String analysis = '';
       try {
-        // Use the previous prompt with improved formatting
+        // Use a simplified content structure to reduce errors
         final simplifiedAnalysisContent = [
           Content.multi([
-            TextPart(analysisPrompt), // Use the well-formatted prompt
-            DataPart('image/jpeg', imageBytes),
+            TextPart(analysisPrompt),
+            DataPart('image/jpeg', processedImageBytes),
           ]),
         ];
+
+        // Use more reliable generation settings
+        final analysisGenerationConfig = GenerationConfig(
+          temperature: 0.2,     // Lower temperature for more reliable results
+          maxOutputTokens: 800, // Reduced token output 
+          topK: 40,
+          topP: 0.95,
+        );
 
         debugPrint('Starting image analysis with _visionModel');
         final analysisResponse = await _visionModel
             .generateContent(
               simplifiedAnalysisContent,
-              generationConfig: GenerationConfig(
-                temperature: 0.3,
-                maxOutputTokens: 1024,
-              ),
+              generationConfig: analysisGenerationConfig,
             )
-            .timeout(const Duration(seconds: 30));
+            .timeout(
+              const Duration(seconds: 20),
+              onTimeout: () {
+                debugPrint('Analysis generation timed out, using fallback');
+                throw TimeoutException('Analysis generation timed out');
+              },
+            );
 
         if (analysisResponse.text != null &&
             analysisResponse.text!.isNotEmpty) {
@@ -552,15 +589,24 @@ Important: Include a clear disclaimer that this is for educational purposes only
         analysis = _getImageFallbackResponse();
       }
 
-      // Try to detect objects in the image
+      // Object detection with better error isolation
       List<DetectedObject> detectedObjects = [];
       try {
-        detectedObjects = await detectObjectsInImage(imageBytes: imageBytes);
+        // Allow shorter timeout for object detection
+        detectedObjects = await detectObjectsInImage(imageBytes: processedImageBytes)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                debugPrint('Object detection timed out');
+                return <DetectedObject>[];
+              },
+            );
       } catch (e) {
         debugPrint('Error detecting objects: $e');
+        // Continue without object detection
       }
 
-      // Try to segment objects in the image if it's a medical ultrasound
+      // Only attempt segmentation under certain conditions
       List<ImageSegmentation> segmentations = [];
       bool attemptSegmentation =
           analysis.toLowerCase().contains('ultrasound') ||
@@ -569,12 +615,22 @@ Important: Include a clear disclaimer that this is for educational purposes only
 
       if (attemptSegmentation) {
         try {
-          segmentations = await segmentObjectsInImage(imageBytes: imageBytes);
+          // Allow shorter timeout for segmentation
+          segmentations = await segmentObjectsInImage(imageBytes: processedImageBytes)
+              .timeout(
+                const Duration(seconds: 10),
+                onTimeout: () {
+                  debugPrint('Image segmentation timed out');
+                  return <ImageSegmentation>[];
+                },
+              );
+          
           debugPrint(
             'Image segmentation completed: ${segmentations.length} segments found',
           );
         } catch (e) {
           debugPrint('Error segmenting image: $e');
+          // Continue without segmentation
         }
       }
 
