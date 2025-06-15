@@ -1792,7 +1792,6 @@ class _KenyanHospitalBookingScreenState
                 ),
               ),
             ),
-            ),
             const SizedBox(height: 16),
             // Time selector
             InkWell(
