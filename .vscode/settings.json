@@ -1,0 +1,6 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "yaml.schemas": {
+        "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pubspec.json": "pubspec.yaml"
+    }
+}

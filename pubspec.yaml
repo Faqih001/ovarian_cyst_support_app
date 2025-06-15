@@ -1,0 +1,143 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pubspec.json
+name: ovarian_cyst_support_app
+description: "A comprehensive support and management app for ovarian cyst patients."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+
+  # Firebase Services - Already at latest versions
+  firebase_core: ^3.14.0
+  firebase_auth: ^5.6.0
+  firebase_auth_web: ^5.15.0
+  cloud_firestore: ^5.6.9
+  firebase_analytics: ^11.5.0
+  firebase_messaging: ^15.2.7
+  firebase_storage: ^12.4.7
+  firebase_app_check: ^0.3.2+7
+
+  # Machine Learning and Image Processing
+  tflite_flutter: ^0.11.0
+  image: ^4.1.7
+  image_picker: ^1.0.7
+  path_provider: ^2.1.2
+  ml_algo: ^16.17.8
+  ml_dataframe: ^1.6.0
+  ml_preprocessing: ^7.0.2
+  google_generative_ai: ^0.4.7
+  # Replacing google_ml_kit with mobile_scanner for barcode scanning
+  mobile_scanner: ^7.0.1
+  image_cropper: ^9.1.0
+  image_cropper_platform_interface: ^7.1.0
+  image_cropper_for_web: ^6.1.0
+
+  # Core Dependencies
+  provider: ^6.1.1
+  shared_preferences: ^2.2.2
+  google_fonts: ^6.1.0
+  logger: ^2.0.2+1
+  timeago: ^3.6.0
+  collection: ^1.17.0
+  package_info_plus: ^8.3.0
+
+  # Security and Storage
+  flutter_secure_storage: ^9.0.0
+  encrypt: ^5.0.3
+
+  # Audio and Voice
+  record: ^6.0.0
+  record_android: ^1.3.3
+  record_web: ^1.1.8
+  just_audio: ^0.10.4
+  just_audio_web: ^0.4.16
+  permission_handler: ^12.0.0+1
+
+  # Animation
+  animated_text_kit: ^4.2.3
+  lottie: ^3.0.0
+  smooth_page_indicator: ^1.1.0
+  flutter_spinkit: ^5.2.0
+  shimmer: ^3.0.0
+  flutter_staggered_animations: ^1.1.1
+
+  # UI Components
+  flutter_svg: ^2.1.0
+  # Removing flutter_markdown as it's discontinued
+  flutter_screenutil: ^5.8.4
+  timeline_tile: ^2.0.0
+
+  # WebView and Platform Integration
+  webview_flutter: ^4.13.0
+  webview_flutter_android: ^4.7.0
+  webview_flutter_wkwebview: ^3.9.4
+
+  # State Management
+  flutter_riverpod: ^2.4.10
+
+  # Database and Storage
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Networking and Connectivity
+  http: ^1.2.2  # Updated to support mime ^2.0.0
+  dio: ^5.4.0
+  connectivity_plus: ^6.1.4
+
+  # Location Services
+  google_maps_flutter: ^2.5.0
+  google_maps_flutter_web: ^0.5.4
+  geolocator: ^14.0.1
+  geocoding: ^4.0.0
+
+  # Data Visualization
+  fl_chart: ^1.0.0
+  syncfusion_flutter_charts: ^29.2.10
+
+  # Utilities and Tools
+  intl: ^0.20.2  # Updated to match flutter_localizations requirement
+  url_launcher: ^6.2.5
+  cached_network_image: ^3.3.1
+  flutter_rating_bar: ^4.0.1
+  timezone: ^0.10.1
+  path: ^1.8.3
+  table_calendar: ^3.1.3  # Keep at version compatible with intl 0.19.0
+  csv: ^5.1.1  # Keep at version 5.x for compatibility with ml_dataframe
+  flutter_styled_toast: ^2.2.1
+  logging: ^1.3.0
+  flutter_local_notifications: ^19.2.1
+  mime: ^2.0.0  # Updated to latest version
+  speech_to_text: ^7.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0  # Updated to the latest version (requires Dart SDK 3.8.0)
+  test: ^1.25.0  # Using a version compatible with flutter_test
+  mockito: ^5.4.4
+  build_runner: ^2.4.7
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/images/onboarding/
+    - assets/images/education/
+    - assets/animations/
+    - assets/healthcare_facilities.csv
+
+# Adding dependency overrides to fix build issues
+dependency_overrides:
+  # Removed js override as we're now using dart:js_interop instead
+  # Updating flutter_secure_storage related packages
+  flutter_secure_storage_linux: ^2.0.1
+  flutter_secure_storage_macos: ^4.0.0
+  flutter_secure_storage_platform_interface: ^2.0.1
+  flutter_secure_storage_web: ^2.0.0
+  flutter_secure_storage_windows: ^4.0.0

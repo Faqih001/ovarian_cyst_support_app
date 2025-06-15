@@ -1,0 +1,16 @@
+android/
+ios/
+build/
+catboost_info/
+.git/
+.dart_tool/
+.github/
+.vscode/
+.idea/
+linux/
+macos/
+web/
+windows/
+Training and Testing
+docs/
+assets/

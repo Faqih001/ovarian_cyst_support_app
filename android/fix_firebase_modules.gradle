@@ -1,0 +1,23 @@
+// Apply this script to all Firebase-related modules
+subprojects { project ->
+    if (project.name == 'cloud_firestore' || 
+        project.name == 'firebase_auth' || 
+        project.name == 'firebase_core' ||
+        project.name == 'firebase_storage' ||
+        project.name == 'firebase_messaging' ||
+        project.name == 'firebase_analytics' ||
+        project.name == 'firebase_app_check' ||
+        project.name.contains('firebase') ||
+        project.name.contains('google_ml_kit')) {
+        
+        project.afterEvaluate {
+            if (project.hasProperty('android')) {
+                project.android {
+                    buildFeatures {
+                        buildConfig = true
+                    }
+                }
+            }
+        }
+    }
+}

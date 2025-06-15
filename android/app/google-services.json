@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "327593050838",
+    "project_id": "ovarian-cyst-app",
+    "storage_bucket": "ovarian-cyst-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:327593050838:android:db41de09eec621bbf6ff77",
+        "android_client_info": {
+          "package_name": "com.example.ovarian_cyst_support_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCD0svG4YkCsVpvwB1BdXhY4Kb1jyWyo-k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

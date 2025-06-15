@@ -1,0 +1,84 @@
+// Firestore security rules for Ovarian Cyst Support App
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Function to check if user is accessing their own data
+    function isUserOwned() {
+      return request.auth.uid == resource.data.userId || 
+             request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Function to check if document belongs to current user
+    function belongsToUser(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Global data accessible by anyone
+    match /treatment_items/{itemId} {
+      allow read: if true; // Anyone can read
+      allow write: if isAuthenticated() && request.auth.token.admin == true; // Only admins can write
+    }
+    
+    // User-specific data
+    match /users/{userId} {
+      // Base profile is readable by anyone, but only writeable by the owner
+      allow read: if true;
+      allow write: if belongsToUser(userId);
+      
+      // Collections under user profiles
+      match /symptom_entries/{entryId} {
+        allow read, write: if belongsToUser(userId);
+      }
+      
+      match /appointments/{appointmentId} {
+        allow read, write: if belongsToUser(userId);
+      }
+      
+      match /medications/{medicationId} {
+        allow read, write: if belongsToUser(userId);
+      }
+      
+      match /payment_attempts/{paymentId} {
+        allow read, write: if belongsToUser(userId);
+      }
+      
+      match /symptom_predictions/{predictionId} {
+        allow read, write: if belongsToUser(userId);
+      }
+    }
+    
+    // Community posts
+    match /community_posts/{postId} {
+      // Anyone can read posts
+      allow read: if true;
+      // Only authenticated users can create posts
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Only post owners can update/delete their posts
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Comments on posts
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      }
+    }
+    
+    // Healthcare facilities
+    match /healthcare_facilities/{facilityId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.token.admin == true;
+    }
+    
+    // Analytics - only accessible by admins
+    match /analytics/{docId} {
+      allow read, write: if isAuthenticated() && request.auth.token.admin == true;
+    }
+  }
+}
