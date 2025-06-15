@@ -1208,10 +1208,9 @@ class _KenyanHospitalBookingScreenState
                     await launchUrl(phoneUri);
                   } else {
                     if (mounted) {
-                      toast.showToast(
-                        context: context,
-                        message: 'Could not launch phone call',
-                        type: ToastType.error,
+                      toast.AppToast.showError(
+                        context,
+                        'Could not launch phone call',
                       );
                     }
                   }
@@ -1237,10 +1236,9 @@ class _KenyanHospitalBookingScreenState
                     await launchUrl(emailUri);
                   } else {
                     if (mounted) {
-                      toast.showToast(
-                        context: context,
-                        message: 'Could not launch email app',
-                        type: ToastType.error,
+                      toast.AppToast.showError(
+                        context,
+                        'Could not launch email app',
                       );
                     }
                   }
@@ -1254,8 +1252,27 @@ class _KenyanHospitalBookingScreenState
                 subtitle: Text(facility.website!),
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                onTap: () {
-                  // Implement website action
+                onTap: () async {
+                  // Ensure URL has proper scheme
+                  String url = facility.website!;
+                  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    url = 'https://$url'; // Default to https
+                  }
+                  
+                  final websiteUri = Uri.parse(url);
+                  if (await canLaunchUrl(websiteUri)) {
+                    await launchUrl(
+                      websiteUri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } else {
+                    if (mounted) {
+                      toast.AppToast.showError(
+                        context,
+                        'Could not open website',
+                      );
+                    }
+                  }
                 },
               ),
             ],
