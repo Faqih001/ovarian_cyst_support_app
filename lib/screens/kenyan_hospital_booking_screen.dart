@@ -1203,14 +1203,25 @@ class _KenyanHospitalBookingScreenState
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 onTap: () async {
+                  debugPrint("Phone tapped: ${facility.phone}");
                   final phoneUri = Uri(scheme: 'tel', path: facility.phone!);
-                  if (await canLaunchUrl(phoneUri)) {
-                    await launchUrl(phoneUri);
-                  } else {
+                  try {
+                    if (await canLaunchUrl(phoneUri)) {
+                      await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
+                    } else {
+                      if (mounted) {
+                        toast.AppToast.showError(
+                          context,
+                          'Could not launch phone call',
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint("Error launching phone: $e");
                     if (mounted) {
                       toast.AppToast.showError(
                         context,
-                        'Could not launch phone call',
+                        'Error launching phone: $e',
                       );
                     }
                   }
@@ -1225,6 +1236,7 @@ class _KenyanHospitalBookingScreenState
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 onTap: () async {
+                  debugPrint("Email tapped: ${facility.email}");
                   final emailUri = Uri(
                     scheme: 'mailto',
                     path: facility.email!,
@@ -1233,13 +1245,23 @@ class _KenyanHospitalBookingScreenState
                           'Inquiry about appointment at ${facility.name}',
                     },
                   );
-                  if (await canLaunchUrl(emailUri)) {
-                    await launchUrl(emailUri);
-                  } else {
+                  try {
+                    if (await canLaunchUrl(emailUri)) {
+                      await launchUrl(emailUri, mode: LaunchMode.externalApplication);
+                    } else {
+                      if (mounted) {
+                        toast.AppToast.showError(
+                          context,
+                          'Could not launch email app',
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint("Error launching email: $e");
                     if (mounted) {
                       toast.AppToast.showError(
                         context,
-                        'Could not launch email app',
+                        'Error launching email: $e',
                       );
                     }
                   }
@@ -1692,25 +1714,25 @@ class _KenyanHospitalBookingScreenState
             ),
             const SizedBox(height: 16),
             // Date selector
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _showDatePicker,
-                borderRadius: BorderRadius.circular(12),
-                child: Ink(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color.fromRGBO(0, 0, 0, 0.05),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
+            GestureDetector(
+              onTap: () async {
+                debugPrint("Date selector tapped");
+                await _showDatePicker();
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color.fromRGBO(0, 0, 0, 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Padding(
                     padding: const EdgeInsets.symmetric(
                       vertical: 16,
                       horizontal: 16,
