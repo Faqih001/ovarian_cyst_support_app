@@ -315,16 +315,13 @@ To get started, simply tap the photo button below and upload an image. Remember,
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('OvaCare AI Analysis'),
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Image.asset(
-            'assets/images/logo.svg',
-            width: 24,
-            height: 24,
-            errorBuilder: (context, error, stackTrace) =>
-                const Icon(Icons.image_search_rounded, color: Colors.white),
-          ),
+        title: const Text(
+          'OvaCare AI Analysis',
+          style: TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
@@ -333,6 +330,17 @@ To get started, simply tap the photo button below and upload an image. Remember,
           context,
         ).shadowColor.withAlpha((0.4 * 255).round()),
         actions: [
+          // App logo
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Image.asset(
+              'assets/images/logo.svg',
+              width: 24,
+              height: 24,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.image_search_rounded, color: Colors.white),
+            ),
+          ),
           // Dropdown menu for additional options
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -345,15 +353,15 @@ To get started, simply tap the photo button below and upload an image. Remember,
                     _addBotMessage(
                       """Welcome to the OvaCare Image Analysis powered by Google Gemini! 
 
-This tool can analyze medical images with advanced AI capabilities:
+                        This tool can analyze medical images with advanced AI capabilities:
 
-• Upload ultrasounds or other medical images 
-• Get educational insights on visible structures
-• Visual object detection highlights important areas
-• View the AI's thinking process behind each analysis
+                        • Upload ultrasounds or other medical images 
+                        • Get educational insights on visible structures
+                        • Visual object detection highlights important areas
+                        • View the AI's thinking process behind each analysis
 
-To get started, simply tap the photo button below and upload an image. Remember, this is for educational purposes only and cannot replace professional medical advice.
-""",
+                        To get started, simply tap the photo button below and upload an image. Remember, this is for educational purposes only and cannot replace professional medical advice.
+                      """,
                     );
                   });
                   break;

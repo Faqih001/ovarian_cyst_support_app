@@ -97,17 +97,17 @@ class ImageSegmentation {
 
 class GeminiService {
   // API key provided for Gemini
-  static const String apiKey = 'AIzaSyDEFsF9visXbuZfNEvtPvC8wI_deQBH-ro';
+  static const String apiKey = 'AIzaSyDKx6S2wsCDtwKbrT9E0x3hEvPpITcMd_0';
 
   // Singleton instance
   static final GeminiService _instance = GeminiService._internal();
 
-  // Model instance
+  // Model instances
   late final GenerativeModel _model;
   late final GenerativeModel _visionModel;
   late final GenerativeModel _audioModel;
   late final GenerativeModel
-  _thinkingModel; // New model instance for thinking capability
+  _thinkingModel; // Model instance for thinking capability
 
   // Chat session for maintaining conversation history
   ChatSession? _chatSession;
@@ -128,25 +128,32 @@ class GeminiService {
       ),
     );
 
-    // Initialize a separate model for vision capabilities
+    // Initialize a separate model for vision capabilities using a more reliable model
     _visionModel = GenerativeModel(
-      model: 'gemini-1.5-pro-vision', // Using a vision-capable model
+      model:
+          'gemini-1.5-pro', // Using pro model which has reliable vision capabilities
       apiKey: apiKey,
+      generationConfig: GenerationConfig(
+        temperature: 0.4,
+        maxOutputTokens: 1024,
+      ),
     );
 
     // Initialize a model specifically optimized for audio processing
     _audioModel = GenerativeModel(
-      model: 'gemini-1.5-pro', // Using the model that supports audio
+      model: 'gemini-1.5-pro', // Using pro model for audio understanding
       apiKey: apiKey,
     );
 
     // Initialize a model specifically for thinking capabilities
-    // Note: The current Flutter package doesn't support thinkingConfig directly
-    // We'll need to handle this specially in the methods that use thinking
     _thinkingModel = GenerativeModel(
       model:
-          'gemini-1.5-pro-vision', // Fall back to a vision model that's available
+          'gemini-1.5-pro', // Using the standard pro model which is more stable
       apiKey: apiKey,
+      generationConfig: GenerationConfig(
+        temperature: 0.3,
+        maxOutputTokens: 1024,
+      ),
     );
   }
 
@@ -161,14 +168,18 @@ class GeminiService {
     );
   }
 
+  /// Initialize chat session if needed
+  void _initChatSessionIfNeeded() {
+    if (_chatSession == null) {
+      startNewChat();
+    }
+  }
+
   /// Gets a response from Gemini AI
   /// Keeps conversation context if in a chat session
   Future<String> getResponse(String prompt) async {
     try {
-      // Create a chat session if one doesn't exist
-      if (_chatSession == null) {
-        startNewChat();
-      }
+      _initChatSessionIfNeeded();
 
       // Get response from the model
       final response = await _chatSession!.sendMessage(Content.text(prompt));
@@ -397,17 +408,28 @@ $enhancedPrompt
         ];
       }
 
-      // Generate content using the vision model
-      final response = await _visionModel.generateContent(
-        promptContent,
-        generationConfig: GenerationConfig(
-          temperature: 0.4,
-          maxOutputTokens: 1024,
-        ),
-      );
+      // Generate content using the vision model with improved error handling
+      try {
+        final response = await _visionModel
+            .generateContent(
+              promptContent,
+              generationConfig: GenerationConfig(
+                temperature: 0.4,
+                maxOutputTokens: 1024,
+              ),
+            )
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () =>
+                  throw TimeoutException('Image analysis request timed out'),
+            );
 
-      // Return the response text or a fallback
-      return response.text ?? _getImageFallbackResponse();
+        // Return the response text or a fallback
+        return response.text ?? _getImageFallbackResponse();
+      } catch (e) {
+        debugPrint('Error in Gemini API vision model content generation: $e');
+        return 'I encountered a problem analyzing this image. This might be due to API limits or connection issues. Please try again later.';
+      }
     } catch (e) {
       debugPrint('Error in Gemini API image analysis with file: $e');
       return _getImageFallbackResponse();
@@ -422,47 +444,22 @@ $enhancedPrompt
         "Analyze this medical image for potential ovarian cysts. Describe what you see, but clarify that only a medical professional can provide an accurate diagnosis.",
   }) async {
     try {
-      // First, check if the image size is large enough to warrant using the Files API
-      bool useLargeImageHandling =
-          imageBytes.lengthInBytes > 10 * 1024 * 1024; // 10MB threshold
-      String? imageFileUri;
+      debugPrint('Starting analyzeImageWithThinking with new API key');
 
-      // For large images, upload via the Files API
-      if (useLargeImageHandling) {
+      // Check if the image size is reasonable to avoid API limits
+      if (imageBytes.length > 20 * 1024 * 1024) {
+        // 20MB limit
         debugPrint(
-          'Large image detected (${(imageBytes.lengthInBytes / 1024 / 1024).toStringAsFixed(2)}MB), using Files API',
+          'Image too large: ${(imageBytes.length / (1024 * 1024)).toStringAsFixed(2)}MB',
         );
-
-        // Create a temporary file from the image bytes
-        final tempDir = await getTemporaryDirectory();
-        final tempFile = File(
-          '${tempDir.path}/temp_image_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        return ImageAnalysisResult(
+          response:
+              'The image is too large to process. Please use a smaller image (under 20MB).',
+          thinking: 'Image size exceeds processing limits.',
         );
-        await tempFile.writeAsBytes(imageBytes);
-
-        // Upload the file to Gemini API
-        imageFileUri = await _uploadFileToGenerativeAI(
-          tempFile.path,
-          'image/jpeg',
-        );
-
-        // Clean up the temporary file
-        if (await tempFile.exists()) {
-          await tempFile.delete();
-        }
-
-        if (imageFileUri ==
-            'generative-ai://simulated-file-uri-for-demonstration') {
-          // For demonstration, continue with the simulated URI
-          // In a production app, you would check if the upload was successful
-          debugPrint('Using simulated file URI for demonstration');
-        }
       }
 
       // First, generate the thinking process separately
-      // Note: We're using _thinkingModel which is currently set to gemini-1.5-pro-vision
-      // The gemini-2.5-pro-preview-06-05 model requires a paid account and doesn't have a free tier
-      // Error: "Gemini 2.5 Pro Preview doesn't have a free quota tier"
       final thinkingPrompt = '''
 Think step by step about how to analyze this medical image:
 1. What type of medical image might this be (ultrasound, MRI, etc.)?
@@ -474,60 +471,56 @@ Think step by step about how to analyze this medical image:
 Respond with your thinking process.
 ''';
 
-      // Create the model content with image data for thinking
-      List<Content> thinkingContent;
-
-      if (useLargeImageHandling &&
-          imageFileUri !=
-              'generative-ai://simulated-file-uri-for-demonstration') {
-        // Use the file URI reference for large images
-        // Note: With the current package, we would use a FilePart if it were available
-        // For now, we'll simulate it using the inline data approach
-        // When the package supports Files API properly, this should be updated
-        thinkingContent = [
-          Content.multi([
-            TextPart(thinkingPrompt),
-            TextPart(
-              "Using file reference: $imageFileUri",
-            ), // This is just a placeholder
-            DataPart('image/jpeg', imageBytes), // Still using inline for now
-          ]),
-        ];
-      } else {
-        // Use inline data for smaller images
-        thinkingContent = [
-          Content.multi([
-            TextPart(thinkingPrompt),
-            DataPart('image/jpeg', imageBytes),
-          ]),
-        ];
-      }
+      // Create content for thinking analysis
+      List<Content> thinkingContentList = [
+        Content.multi([
+          TextPart(thinkingPrompt),
+          DataPart('image/jpeg', imageBytes),
+        ]),
+      ];
 
       // Generate thinking content
       String thoughts = '';
       try {
+        debugPrint('Generating thinking process with _thinkingModel');
+
+        // Simplify the thinking content to reduce chances of error
+        final simplifiedThinkingContent = [
+          Content.multi([
+            TextPart(
+              "Analyze this medical image step by step and describe what you observe:",
+            ),
+            DataPart('image/jpeg', imageBytes),
+          ]),
+        ];
+
         final thinkingResponse = await _thinkingModel
             .generateContent(
-              thinkingContent,
+              simplifiedThinkingContent,
               generationConfig: GenerationConfig(
-                temperature: 0.3, // Lower temperature for more logical thinking
-                maxOutputTokens: 1024, // Allow for longer thinking output
+                temperature: 0.2, // Lower temperature for more reliable output
+                maxOutputTokens: 800, // Reduce token count to avoid timeouts
                 topP: 0.95,
               ),
             )
-            .timeout(const Duration(seconds: 30));
-        thoughts = thinkingResponse.text ?? 'Analyzing the medical image...';
+            .timeout(const Duration(seconds: 20)); // Shorter timeout
+
+        if (thinkingResponse.text != null &&
+            thinkingResponse.text!.isNotEmpty) {
+          thoughts = thinkingResponse.text!;
+          debugPrint('Successfully generated thinking process');
+        } else {
+          thoughts =
+              'Analyzing the medical image structure, patterns, and characteristics...';
+          debugPrint('Empty thinking response, using default thinking message');
+        }
       } catch (e) {
         debugPrint('Error generating thinking process: $e');
-        thoughts = 'Analyzing image characteristics and structures...';
+        thoughts =
+            'Analyzing image characteristics and structures. Looking for patterns consistent with ovarian anatomy and potential abnormalities...';
 
-        // Check specifically for the Gemini 2.5 Pro Preview quota error
-        if (e.toString().contains("doesn't have a free quota tier")) {
-          debugPrint(
-            'Detected Gemini 2.5 Pro Preview quota limitation. Using fallback model.',
-          );
-          // Continue with the analysis using the standard model
-        }
+        // Use a simpler fallback approach
+        debugPrint('Using default thinking text due to error');
       }
 
       // Now get the actual analysis with a different prompt
@@ -542,42 +535,36 @@ Provide detailed observations including:
 Important: Include a clear disclaimer that this is for educational purposes only and not a diagnosis.
 ''';
 
-      // Create separate content for the analysis
-      List<Content> analysisContent;
-
-      if (useLargeImageHandling &&
-          imageFileUri !=
-              'generative-ai://simulated-file-uri-for-demonstration') {
-        // Use the file URI reference for large images
-        // Note: With the current package, we would use a FilePart if it were available
-        // For now, we'll simulate it using the inline data approach
-        // When the package supports Files API properly, this should be updated
-        analysisContent = [
-          Content.multi([
-            TextPart(analysisPrompt),
-            TextPart(
-              "Using file reference: $imageFileUri",
-            ), // This is just a placeholder
-            DataPart('image/jpeg', imageBytes), // Still using inline for now
-          ]),
-        ];
-      } else {
-        // Use inline data for smaller images
-        analysisContent = [
-          Content.multi([
-            TextPart(analysisPrompt),
-            DataPart('image/jpeg', imageBytes),
-          ]),
-        ];
-      }
-
       // Generate analysis content
       String analysis = '';
       try {
+        // Use the previous prompt with improved formatting
+        final simplifiedAnalysisContent = [
+          Content.multi([
+            TextPart(analysisPrompt), // Use the well-formatted prompt
+            DataPart('image/jpeg', imageBytes),
+          ]),
+        ];
+
+        debugPrint('Starting image analysis with _visionModel');
         final analysisResponse = await _visionModel
-            .generateContent(analysisContent)
+            .generateContent(
+              simplifiedAnalysisContent,
+              generationConfig: GenerationConfig(
+                temperature: 0.3,
+                maxOutputTokens: 1024,
+              ),
+            )
             .timeout(const Duration(seconds: 30));
-        analysis = analysisResponse.text ?? _getImageFallbackResponse();
+
+        if (analysisResponse.text != null &&
+            analysisResponse.text!.isNotEmpty) {
+          analysis = analysisResponse.text!;
+          debugPrint('Successfully generated analysis');
+        } else {
+          analysis = _getImageFallbackResponse();
+          debugPrint('Empty analysis response, using fallback');
+        }
       } catch (e) {
         debugPrint('Error generating analysis: $e');
         analysis = _getImageFallbackResponse();
@@ -633,61 +620,20 @@ Important: Include a clear disclaimer that this is for educational purposes only
         "Detect all prominent objects in this medical image. Identify any structures that could be cysts, organs, or abnormalities. Return bounding boxes in the format [ymin, xmin, ymax, xmax] normalized to 0-1000.",
   }) async {
     try {
-      // Check if the image size is large enough to warrant using the Files API
-      bool useLargeImageHandling =
-          imageBytes.lengthInBytes > 10 * 1024 * 1024; // 10MB threshold
-      String? imageFileUri;
+      debugPrint('Starting object detection with new API key');
 
-      // For large images, upload via the Files API
-      if (useLargeImageHandling) {
-        debugPrint(
-          'Large image detected (${(imageBytes.lengthInBytes / 1024 / 1024).toStringAsFixed(2)}MB), using Files API for object detection',
-        );
-
-        // Create a temporary file from the image bytes
-        final tempDir = await getTemporaryDirectory();
-        final tempFile = File(
-          '${tempDir.path}/temp_object_detect_${DateTime.now().millisecondsSinceEpoch}.jpg',
-        );
-        await tempFile.writeAsBytes(imageBytes);
-
-        // Upload the file to Gemini API
-        imageFileUri = await _uploadFileToGenerativeAI(
-          tempFile.path,
-          'image/jpeg',
-        );
-
-        // Clean up the temporary file
-        if (await tempFile.exists()) {
-          await tempFile.delete();
-        }
-
-        if (imageFileUri ==
-            'generative-ai://simulated-file-uri-for-demonstration') {
-          // For demonstration, continue with the simulated URI
-          // In a production app, you would check if the upload was successful
-          debugPrint('Using simulated file URI for object detection');
-        }
+      // Check if the image is too large
+      if (imageBytes.length > 20 * 1024 * 1024) {
+        // 20MB limit
+        debugPrint('Image too large for object detection');
+        return [];
       }
 
+      // Simplified approach - just use inline data directly
       // Create the model content with image data and specific object detection prompt
-      List<Content> promptContent;
-
-      if (useLargeImageHandling && imageFileUri != null) {
-        // Use the file URI reference for large images (simulated for now)
-        promptContent = [
-          Content.multi([
-            TextPart(prompt),
-            TextPart("Using file reference: $imageFileUri"), // Placeholder
-            DataPart('image/jpeg', imageBytes), // Still using inline for now
-          ]),
-        ];
-      } else {
-        // Use inline data for smaller images
-        promptContent = [
-          Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
-        ];
-      }
+      List<Content> promptContent = [
+        Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
+      ];
 
       // Set configuration for better object detection
       final generationConfig = GenerationConfig(
@@ -1015,9 +961,7 @@ Always maintain a compassionate, educational tone.
   Future<Map<String, dynamic>> getResponseWithThinking(String prompt) async {
     try {
       // Start a new chat session if not already started
-      if (_chatSession == null) {
-        startNewChat();
-      }
+      _initChatSessionIfNeeded();
 
       // First, generate the thinking process separately
       final thinkingPrompt =
@@ -1067,9 +1011,7 @@ Respond with your detailed thinking process.
   ) async* {
     try {
       // Start a new chat session if not already started
-      if (_chatSession == null) {
-        startNewChat();
-      }
+      _initChatSessionIfNeeded();
 
       // First yield the thinking process
       yield {
@@ -1099,4 +1041,78 @@ Respond with your detailed thinking process.
       yield {'type': 'response', 'content': _getFallbackResponse()};
     }
   }
+
+  // Helper method to analyze image from filesystem
+  // UNUSED: These methods are kept for reference but commented out as they're not currently used
+
+  /*
+  Future<ImageAnalysisResult> _analyzeImageFromFile({
+    required String imageFileUri,
+    required Uint8List imageBytes,
+    required String prompt,
+  }) async {
+    // Create separate content for analysis
+    List<Content> analysisContent = [
+      Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
+    ];
+
+    // Generate analysis content
+    String analysis = '';
+    try {
+      final analysisResponse = await _visionModel
+          .generateContent(analysisContent)
+          .timeout(const Duration(seconds: 30));
+      analysis = analysisResponse.text ?? _getImageFallbackResponse();
+    } catch (e) {
+      debugPrint('Error generating analysis: $e');
+      analysis = _getImageFallbackResponse();
+    }
+
+    return ImageAnalysisResult(
+      response: analysis,
+      thinking: 'Analysis of image file: $imageFileUri',
+    );
+  }
+
+  // Helper method to analyze image objects
+  Future<List<DetectedObject>> _analyzeImageObjects({
+    required Uint8List imageBytes,
+    required String prompt,
+  }) async {
+    try {
+      // Get vision model response
+      final response = await _visionModel.generateContent([
+        Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
+      ]);
+
+      final responseText = response.text;
+      if (responseText == null || responseText.isEmpty) {
+        return [];
+      }
+
+      // Parse objects from response
+      return _parseDetectedObjects(responseText);
+    } catch (e) {
+      debugPrint('Error detecting objects: $e');
+      return [];
+    }
+  }
+
+  // Helper method for generating thinking analysis
+  Future<String> _generateThinkingAnalysis({
+    required Uint8List imageBytes,
+    required String prompt,
+  }) async {
+    try {
+      final response = await _thinkingModel.generateContent([
+        Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
+      ]);
+
+      return response.text ?? 'Analyzing the medical image...';
+    } catch (e) {
+      debugPrint('Error generating thinking: $e');
+      return 'Analysis of medical structures and features...';
+    }
+  }
+  */
 }
