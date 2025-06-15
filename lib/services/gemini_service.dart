@@ -922,25 +922,25 @@ the text label in the key "label". Use descriptive medical labels.
       final x2_2 = box2[3];
       
       // Calculate intersection
-      final x_left = math.max(x1_1, x1_2);
-      final y_top = math.max(y1_1, y1_2);
-      final x_right = math.min(x2_1, x2_2);
-      final y_bottom = math.min(y2_1, y2_2);
+      final xLeft = math.max(x1_1, x1_2);
+      final yTop = math.max(y1_1, y1_2);
+      final xRight = math.min(x2_1, x2_2);
+      final yBottom = math.min(y2_1, y2_2);
       
-      if (x_right < x_left || y_bottom < y_top) {
+      if (xRight < xLeft || yBottom < yTop) {
         return 0.0; // No overlap
       }
       
-      final intersection_area = (x_right - x_left) * (y_bottom - y_top);
-      final box1_area = (x2_1 - x1_1) * (y2_1 - y1_1);
-      final box2_area = (x2_2 - x1_2) * (y2_2 - y1_2);
-      final union_area = box1_area + box2_area - intersection_area;
+      final intersectionArea = (xRight - xLeft) * (yBottom - yTop);
+      final box1Area = (x2_1 - x1_1) * (y2_1 - y1_1);
+      final box2Area = (x2_2 - x1_2) * (y2_2 - y1_2);
+      final unionArea = box1Area + box2Area - intersectionArea;
       
-      if (union_area <= 0) {
+      if (unionArea <= 0) {
         return 0.0;
       }
       
-      iou = intersection_area / union_area;
+      iou = intersectionArea / unionArea;
     } catch (e) {
       debugPrint('Error calculating bounding box similarity: $e');
     }
