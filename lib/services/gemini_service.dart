@@ -106,6 +106,8 @@ class GeminiService {
   late final GenerativeModel _model;
   late final GenerativeModel _visionModel;
   late final GenerativeModel _audioModel;
+  late final GenerativeModel
+  _thinkingModel; // New model instance for thinking capability
 
   // Chat session for maintaining conversation history
   ChatSession? _chatSession;
@@ -117,7 +119,7 @@ class GeminiService {
   GeminiService._internal() {
     // Initialize the model with the correct model name for Gemini
     _model = GenerativeModel(
-      model: 'gemini-2.5-pro-preview-06-05', // Using the preview model
+      model: 'gemini-1.5-pro', // Using a more accessible model
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         temperature: 0.7,
@@ -128,13 +130,22 @@ class GeminiService {
 
     // Initialize a separate model for vision capabilities
     _visionModel = GenerativeModel(
-      model: 'gemini-2.0-flash', // Using the vision-capable model
+      model: 'gemini-1.5-pro-vision', // Using a vision-capable model
       apiKey: apiKey,
     );
 
     // Initialize a model specifically optimized for audio processing
     _audioModel = GenerativeModel(
-      model: 'gemini-2.0-flash', // Using the model that supports audio
+      model: 'gemini-1.5-pro', // Using the model that supports audio
+      apiKey: apiKey,
+    );
+
+    // Initialize a model specifically for thinking capabilities
+    // Note: The current Flutter package doesn't support thinkingConfig directly
+    // We'll need to handle this specially in the methods that use thinking
+    _thinkingModel = GenerativeModel(
+      model:
+          'gemini-1.5-pro-vision', // Fall back to a vision model that's available
       apiKey: apiKey,
     );
   }
@@ -449,6 +460,9 @@ $enhancedPrompt
       }
 
       // First, generate the thinking process separately
+      // Note: We're using _thinkingModel which is currently set to gemini-1.5-pro-vision
+      // The gemini-2.5-pro-preview-06-05 model requires a paid account and doesn't have a free tier
+      // Error: "Gemini 2.5 Pro Preview doesn't have a free quota tier"
       final thinkingPrompt = '''
 Think step by step about how to analyze this medical image:
 1. What type of medical image might this be (ultrasound, MRI, etc.)?
@@ -492,13 +506,28 @@ Respond with your thinking process.
       // Generate thinking content
       String thoughts = '';
       try {
-        final thinkingResponse = await _visionModel
-            .generateContent(thinkingContent)
+        final thinkingResponse = await _thinkingModel
+            .generateContent(
+              thinkingContent,
+              generationConfig: GenerationConfig(
+                temperature: 0.3, // Lower temperature for more logical thinking
+                maxOutputTokens: 1024, // Allow for longer thinking output
+                topP: 0.95,
+              ),
+            )
             .timeout(const Duration(seconds: 30));
         thoughts = thinkingResponse.text ?? 'Analyzing the medical image...';
       } catch (e) {
         debugPrint('Error generating thinking process: $e');
         thoughts = 'Analyzing image characteristics and structures...';
+
+        // Check specifically for the Gemini 2.5 Pro Preview quota error
+        if (e.toString().contains("doesn't have a free quota tier")) {
+          debugPrint(
+            'Detected Gemini 2.5 Pro Preview quota limitation. Using fallback model.',
+          );
+          // Continue with the analysis using the standard model
+        }
       }
 
       // Now get the actual analysis with a different prompt
