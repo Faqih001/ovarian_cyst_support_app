@@ -1704,7 +1704,12 @@ class _KenyanHospitalBookingScreenState
                     color: Colors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.05),
+                        color: Colors.black.withValues(
+                          red: 0,
+                          green: 0,
+                          blue: 0,
+                          alpha: 0.05,
+                        ),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
