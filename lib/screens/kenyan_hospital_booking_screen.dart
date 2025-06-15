@@ -1204,24 +1204,15 @@ class _KenyanHospitalBookingScreenState
                 contentPadding: EdgeInsets.zero,
                 onTap: () async {
                   debugPrint("Phone tapped: ${facility.phone}");
-                  final phoneUri = Uri(scheme: 'tel', path: facility.phone!);
+                  final Uri phoneUri = Uri(scheme: 'tel', path: facility.phone!);
                   try {
-                    if (await canLaunchUrl(phoneUri)) {
-                      await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
-                    } else {
-                      if (mounted) {
-                        toast.AppToast.showError(
-                          context,
-                          'Could not launch phone call',
-                        );
-                      }
-                    }
+                    await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
                   } catch (e) {
                     debugPrint("Error launching phone: $e");
                     if (mounted) {
                       toast.AppToast.showError(
                         context,
-                        'Error launching phone: $e',
+                        'Could not launch phone app',
                       );
                     }
                   }
@@ -1237,7 +1228,7 @@ class _KenyanHospitalBookingScreenState
                 contentPadding: EdgeInsets.zero,
                 onTap: () async {
                   debugPrint("Email tapped: ${facility.email}");
-                  final emailUri = Uri(
+                  final Uri emailUri = Uri(
                     scheme: 'mailto',
                     path: facility.email!,
                     queryParameters: {
@@ -1246,22 +1237,13 @@ class _KenyanHospitalBookingScreenState
                     },
                   );
                   try {
-                    if (await canLaunchUrl(emailUri)) {
-                      await launchUrl(emailUri, mode: LaunchMode.externalApplication);
-                    } else {
-                      if (mounted) {
-                        toast.AppToast.showError(
-                          context,
-                          'Could not launch email app',
-                        );
-                      }
-                    }
+                    await launchUrl(emailUri, mode: LaunchMode.externalApplication);
                   } catch (e) {
                     debugPrint("Error launching email: $e");
                     if (mounted) {
                       toast.AppToast.showError(
                         context,
-                        'Error launching email: $e',
+                        'Could not launch email app',
                       );
                     }
                   }
@@ -1714,11 +1696,17 @@ class _KenyanHospitalBookingScreenState
             ),
             const SizedBox(height: 16),
             // Date selector
-            GestureDetector(
-              onTap: () async {
+            TextButton(
+              onPressed: () {
                 debugPrint("Date selector tapped");
-                await _showDatePicker();
+                _showDatePicker();
               },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey[300]!),
@@ -1732,74 +1720,67 @@ class _KenyanHospitalBookingScreenState
                     ),
                   ],
                 ),
-                child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                      horizontal: 16,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Color.fromRGBO(
-                                  (AppColors.primary.r * 255.0).round() & 0xff,
-                                  (AppColors.primary.g * 255.0).round() & 0xff,
-                                  (AppColors.primary.b * 255.0).round() & 0xff,
-                                  0.1,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.calendar_today,
-                                color: AppColors.primary,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Appointment Date',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _selectedDate == null
-                                        ? 'Select a date'
-                                        : DateFormat(
-                                            'EEEE, MMMM d, yyyy',
-                                          ).format(_selectedDate!),
-                                    style: TextStyle(
-                                      color: _selectedDate == null
-                                          ? Colors.grey[600]
-                                          : Colors.black,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ],
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 16,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Color.fromRGBO(
+                          (AppColors.primary.r * 255.0).round() & 0xff,
+                          (AppColors.primary.g * 255.0).round() & 0xff,
+                          (AppColors.primary.b * 255.0).round() & 0xff,
+                          0.1,
                         ),
-                      ],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.calendar_today,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Appointment Date',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _selectedDate == null
+                                ? 'Select a date'
+                                : DateFormat(
+                                    'EEEE, MMMM d, yyyy',
+                                  ).format(_selectedDate!),
+                            style: TextStyle(
+                              color: _selectedDate == null
+                                  ? Colors.grey[600]
+                                  : Colors.black,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ],
                 ),
               ),
+            ),
             ),
             const SizedBox(height: 16),
             // Time selector
