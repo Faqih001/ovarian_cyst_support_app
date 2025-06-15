@@ -372,39 +372,50 @@ class _KenyanHospitalBookingScreenState
     // Allow booking up to 90 days in advance
     final lastDate = now.add(const Duration(days: 90));
 
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? now.add(const Duration(days: 1)),
-      firstDate: firstDate,
-      lastDate: lastDate,
-      selectableDayPredicate: (DateTime day) {
-        // Make weekends not selectable if the doctor is not available
-        if (_selectedDoctor != null) {
-          // Convert day of week to string (1=Monday, 7=Sunday)
-          final dayName = DateFormat('EEEE').format(day);
-          return _selectedDoctor!.availableDays.contains(dayName);
-        }
-        // By default, allow all days
-        return true;
-      },
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: AppColors.textPrimary,
+    try {
+      final pickedDate = await showDatePicker(
+        context: context,
+        initialDate: _selectedDate ?? now.add(const Duration(days: 1)),
+        firstDate: firstDate,
+        lastDate: lastDate,
+        selectableDayPredicate: (DateTime day) {
+          // Make weekends not selectable if the doctor is not available
+          if (_selectedDoctor != null) {
+            // Convert day of week to string (1=Monday, 7=Sunday)
+            final dayName = DateFormat('EEEE').format(day);
+            return _selectedDoctor!.availableDays.contains(dayName);
+          }
+          // By default, allow all days
+          return true;
+        },
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: AppColors.primary,
+                onPrimary: Colors.white,
+                onSurface: AppColors.textPrimary,
+              ),
             ),
-          ),
-          child: child!,
-        );
-      },
-    );
+            child: child!,
+          );
+        },
+      );
 
-    if (pickedDate != null) {
-      setState(() {
-        _selectedDate = pickedDate;
-      });
+      if (pickedDate != null) {
+        setState(() {
+          _selectedDate = pickedDate;
+          debugPrint("Date selected: $_selectedDate");
+        });
+      }
+    } catch (e) {
+      debugPrint("Error showing date picker: $e");
+      if (mounted) {
+        toast.AppToast.showError(
+          context,
+          'Error showing date picker',
+        );
+      }
     }
   }
 
