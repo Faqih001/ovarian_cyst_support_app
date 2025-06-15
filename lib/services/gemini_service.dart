@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -773,14 +774,19 @@ the text label in the key "label". Use descriptive medical labels.
   List<DetectedObject> _parseDetectedObjects(String responseText) {
     final List<DetectedObject> detectedObjects = [];
 
-    // Use regex to find patterns like "object_name: [y1, x1, y2, x2]"
+    // First try to extract structured format using a more precise regex
+    // This handles formats like "object_name: [y1, x1, y2, x2]" or "object_name: [y1, x1, y2, x2] (confidence: 0.95)"
     final regex = RegExp(
-      r'([a-zA-Z\s]+):\s*\[(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]',
+      r'([a-zA-Z\s\-]+):\s*\[(\d+)(?:\.\d+)?\s*,\s*(\d+)(?:\.\d+)?\s*,\s*(\d+)(?:\.\d+)?\s*,\s*(\d+)(?:\.\d+)?\s*\](?:\s*\(confidence:\s*(\d+\.\d+)\))?',
     );
     final matches = regex.allMatches(responseText);
 
+    // Track if we found any matches with the first regex
+    bool foundMatches = false;
+
     for (final match in matches) {
       if (match.groupCount >= 5) {
+        foundMatches = true;
         final label = match.group(1)?.trim() ?? 'Unknown';
 
         try {
@@ -791,16 +797,154 @@ the text label in the key "label". Use descriptive medical labels.
             double.parse(match.group(5) ?? '0'),
           ];
 
-          detectedObjects.add(
-            DetectedObject(label: label, boundingBox: boundingBox),
-          );
+          // Extract confidence if available (group 6)
+          double confidence = 0.0;
+          if (match.groupCount >= 6 && match.group(6) != null) {
+            try {
+              confidence = double.parse(match.group(6)!);
+            } catch (e) {
+              debugPrint('Error parsing confidence: $e');
+            }
+          }
+
+          // Validate that the bounding box values are within a reasonable range
+          // All values should be between 0 and 1000
+          bool isValid = true;
+          for (final value in boundingBox) {
+            if (value < 0 || value > 1000) {
+              isValid = false;
+              break;
+            }
+          }
+
+          // Only add if valid
+          if (isValid) {
+            detectedObjects.add(
+              DetectedObject(
+                label: label, 
+                boundingBox: boundingBox,
+                confidence: confidence,
+              ),
+            );
+          }
         } catch (e) {
           debugPrint('Error parsing bounding box coordinates: $e');
         }
       }
     }
 
-    return detectedObjects;
+    // If no matches found with the first regex, try a fallback regex
+    // This handles different formats like "Object: object_name, Box: [y1, x1, y2, x2]"
+    if (!foundMatches) {
+      try {
+        // Look for JSON-like pattern first
+        final jsonRegex = RegExp(r'\[\s*\{.*?\}\s*\]', dotAll: true);
+        final jsonMatch = jsonRegex.firstMatch(responseText);
+        
+        if (jsonMatch != null) {
+          String jsonString = jsonMatch.group(0) ?? '';
+          jsonString = jsonString.replaceAll(RegExp(r'```json|```'), '').trim();
+          
+          try {
+            final List<dynamic> jsonData = json.decode(jsonString);
+            
+            for (final item in jsonData) {
+              if (item is Map<String, dynamic> && 
+                  item.containsKey('label') && 
+                  item.containsKey('box')) {
+                
+                final label = item['label'] as String? ?? 'Unknown';
+                final box = item['box'] as List<dynamic>? ?? [];
+                
+                if (box.length == 4) {
+                  final boundingBox = [
+                    double.parse(box[0].toString()),
+                    double.parse(box[1].toString()),
+                    double.parse(box[2].toString()),
+                    double.parse(box[3].toString()),
+                  ];
+                  
+                  detectedObjects.add(
+                    DetectedObject(
+                      label: label,
+                      boundingBox: boundingBox,
+                      confidence: item['confidence'] != null ? 
+                          double.parse(item['confidence'].toString()) : 0.0,
+                    ),
+                  );
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('Error parsing JSON object data: $e');
+          }
+        }
+      } catch (e) {
+        debugPrint('Error in fallback object parsing: $e');
+      }
+    }
+
+    // Filter out any duplicate objects (same label and very similar bounding boxes)
+    final uniqueObjects = <DetectedObject>[];
+    for (final obj in detectedObjects) {
+      bool isDuplicate = false;
+      for (final uniqueObj in uniqueObjects) {
+        if (obj.label == uniqueObj.label) {
+          // Check if bounding boxes are very similar
+          final similarity = _boundingBoxSimilarity(obj.boundingBox, uniqueObj.boundingBox);
+          if (similarity > 0.8) { // 80% similar bounding boxes
+            isDuplicate = true;
+            break;
+          }
+        }
+      }
+      if (!isDuplicate) {
+        uniqueObjects.add(obj);
+      }
+    }
+
+    return uniqueObjects;
+  }
+
+  // Helper method to calculate similarity between two bounding boxes
+  double _boundingBoxSimilarity(List<double> box1, List<double> box2) {
+    double iou = 0.0;
+    try {
+      // Extract coordinates
+      final y1_1 = box1[0];
+      final x1_1 = box1[1];
+      final y2_1 = box1[2];
+      final x2_1 = box1[3];
+      
+      final y1_2 = box2[0];
+      final x1_2 = box2[1];
+      final y2_2 = box2[2];
+      final x2_2 = box2[3];
+      
+      // Calculate intersection
+      final x_left = math.max(x1_1, x1_2);
+      final y_top = math.max(y1_1, y1_2);
+      final x_right = math.min(x2_1, x2_2);
+      final y_bottom = math.min(y2_1, y2_2);
+      
+      if (x_right < x_left || y_bottom < y_top) {
+        return 0.0; // No overlap
+      }
+      
+      final intersection_area = (x_right - x_left) * (y_bottom - y_top);
+      final box1_area = (x2_1 - x1_1) * (y2_1 - y1_1);
+      final box2_area = (x2_2 - x1_2) * (y2_2 - y1_2);
+      final union_area = box1_area + box2_area - intersection_area;
+      
+      if (union_area <= 0) {
+        return 0.0;
+      }
+      
+      iou = intersection_area / union_area;
+    } catch (e) {
+      debugPrint('Error calculating bounding box similarity: $e');
+    }
+    return iou;
   }
 
   /// Parse the JSON response to extract segmentation data
